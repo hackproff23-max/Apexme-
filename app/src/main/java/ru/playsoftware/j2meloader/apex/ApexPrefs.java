@@ -193,11 +193,11 @@ public final class ApexPrefs {
 		sp().edit().putFloat(k + "x", x).putFloat(k + "y", y).apply();
 	}
 
-	// ---------------- mapeamento letra -> numero ----------------
-	private static synchronized SparseIntArray letters() {
+	// ---------------- mapeamento numero -> letra ----------------
+	private static synchronized SparseIntArray numbers() {
 		if (letterMap == null) {
 			letterMap = new SparseIntArray();
-			String s = sp().getString("letter_map", "");
+			String s = sp().getString("number_map", "");
 			for (String e : s.split(";")) {
 				String[] kv = e.split(":");
 				if (kv.length == 2) {
@@ -211,27 +211,26 @@ public final class ApexPrefs {
 		return letterMap;
 	}
 
-	/** Codigo (MIDP) para o qual a letra esta mapeada, ou -1. letter = 'a'..'z'. */
-	public static int letterTarget(char letter) {
-		return letters().get(letter, -1);
+	/** Letra (codigo minusculo) que a tecla numerica envia, ou -1. numberCode = '0'..'9', '*', '#'. */
+	public static int numberTarget(int numberCode) {
+		return numbers().get(numberCode, -1);
 	}
 
-	public static synchronized void setLetterMap(SparseIntArray map) {
+	public static synchronized void setNumberMap(SparseIntArray map) {
 		StringBuilder sb = new StringBuilder();
 		for (int i = 0; i < map.size(); i++) {
 			sb.append(map.keyAt(i)).append(':').append(map.valueAt(i)).append(';');
 		}
 		letterMap = map.clone();
-		sp().edit().putString("letter_map", sb.toString()).apply();
+		sp().edit().putString("number_map", sb.toString()).apply();
 	}
 
-	/** Se o codigo for uma letra mapeada, devolve o numero correspondente; senao o proprio codigo. */
-	public static int remapLetter(int code) {
-		int c = (code >= 'A' && code <= 'Z') ? code + 32 : code;
-		if (c < 'a' || c > 'z') {
-			return code;
+	/** Se a tecla numerica tiver uma letra, devolve a letra; senao o proprio codigo. */
+	public static int remapNumber(int code) {
+		if ((code >= '0' && code <= '9') || code == '*' || code == '#') {
+			return numbers().get(code, code);
 		}
-		return letters().get(c, code);
+		return code;
 	}
 
 	// ---------------- PNG dos botoes ----------------

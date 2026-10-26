@@ -1075,7 +1075,7 @@ public abstract class Canvas extends Displayable {
 			if (keyCode == 0) {
 				return false;
 			}
-			keyCode = ApexPrefs.remapLetter(keyCode);
+			keyCode = ApexPrefs.remapNumber(keyCode);
 			if (event.getRepeatCount() == 0) {
 				if (overlay == null || !overlay.keyPressed(keyCode)) {
 					postKeyPressed(keyCode);
@@ -1093,7 +1093,7 @@ public abstract class Canvas extends Displayable {
 			if (midpKeyCode == 0) {
 				return false;
 			}
-			midpKeyCode = ApexPrefs.remapLetter(midpKeyCode);
+			midpKeyCode = ApexPrefs.remapNumber(midpKeyCode);
 			if (overlay == null || !overlay.keyReleased(midpKeyCode)) {
 				postKeyReleased(midpKeyCode);
 			}

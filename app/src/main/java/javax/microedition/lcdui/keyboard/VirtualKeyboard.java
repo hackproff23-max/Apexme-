@@ -1274,6 +1274,7 @@ public class VirtualKeyboard implements Overlay, Runnable {
 		int corners;
 		private final int hashCode;
 		private int repeatCount;
+		private int sentCode;
 
 		VirtualKey(int keyCode, String label) {
 			this.keyCode = keyCode;
@@ -1290,7 +1291,14 @@ public class VirtualKeyboard implements Overlay, Runnable {
 			return visible && rect.contains(x, y);
 		}
 
+		/** Rotulo mostrado: se o numero estiver mapeado, mostra a letra. */
+		String displayLabel() {
+			int m = ApexPrefs.remapNumber(keyCode);
+			return m != keyCode ? String.valueOf(Character.toUpperCase((char) m)) : label;
+		}
+
 		void paint(CanvasWrapper g) {
+			String shown = displayLabel();
 			int bgColor;
 			int fgColor;
 			if (selected) {
@@ -1305,7 +1313,7 @@ public class VirtualKeyboard implements Overlay, Runnable {
 			if (png != null) {
 				g.drawBitmap(png, rect, alpha >>> 24);
 				g.setTextColor(alpha | fgColor);
-				g.drawString(label, rect.centerX(), rect.centerY());
+				g.drawString(shown, rect.centerX(), rect.centerY());
 				return;
 			}
 			g.setFillColor(alpha | bgColor);
@@ -1326,7 +1334,7 @@ public class VirtualKeyboard implements Overlay, Runnable {
 					g.drawArc(rect, 0, 360);
 					break;
 			}
-			g.drawString(label, rect.centerX(), rect.centerY());
+			g.drawString(shown, rect.centerX(), rect.centerY());
 		}
 
 		@NonNull
@@ -1354,19 +1362,21 @@ public class VirtualKeyboard implements Overlay, Runnable {
 
 		public void onRepeat() {
 			handler.postDelayed(this, repeatCount > 6 ? 80 : REPEAT_INTERVALS[repeatCount++]);
-			target.postKeyRepeated(keyCode);
+			target.postKeyRepeated(ApexPrefs.remapNumber(keyCode));
 		}
 
 		protected void onDown() {
 			selected = true;
-			target.postKeyPressed(keyCode);
+			sentCode = ApexPrefs.remapNumber(keyCode);
+			target.postKeyPressed(sentCode);
 			handler.postDelayed(this, 400);
 		}
 
 		public void onUp() {
 			selected = false;
 			handler.removeCallbacks(this);
-			target.postKeyReleased(keyCode);
+			target.postKeyReleased(sentCode != 0 ? sentCode : keyCode);
+			sentCode = 0;
 		}
 	}
 

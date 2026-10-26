@@ -134,9 +134,6 @@ public class ApexLetterPad {
 	}
 
 	private int mapped(Key k) {
-		if (k.code >= 'a' && k.code <= 'z') {
-			return ApexPrefs.remapLetter(k.code);
-		}
 		return k.code;
 	}
 

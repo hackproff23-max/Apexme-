@@ -19,8 +19,16 @@ import ru.playsoftware.j2meloader.R;
 
 /** Janela do Teclado virtual: edicao, tamanhos, PNG, analogico, letras e mapeamento. */
 public final class VkDialog {
-	private static final String[] TARGETS = {"—", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "#"};
-	private static final int[] TARGET_CODES = {-1, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 42, 35};
+	private static final String[] NUM_LABELS = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "*", "#"};
+	private static final int[] NUM_CODES = {49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 42, 35};
+	private static final String[] LETTERS = new String[27];
+
+	static {
+		LETTERS[0] = "—";
+		for (int i = 0; i < 26; i++) {
+			LETTERS[i + 1] = String.valueOf((char) ('A' + i));
+		}
+	}
 
 	private VkDialog() {
 	}
@@ -78,9 +86,9 @@ public final class VkDialog {
 			ApexPrefs.setLettersEnabled(on);
 			vk.apexRelayout();
 		}));
-		root.addView(ApexUi.button(a, "Mapear letras nos números", v -> {
+		root.addView(ApexUi.button(a, "Mapear números nas letras", v -> {
 			holder[0].dismiss();
-			showMapping(a);
+			showMapping(a, vk);
 		}));
 		root.addView(ApexUi.text(a, "Dica: use o Modo edição para arrastar o analógico e o teclado de letras.", 12));
 
@@ -100,49 +108,51 @@ public final class VkDialog {
 		});
 	}
 
-	private static void showMapping(MicroActivity a) {
+	private static void showMapping(MicroActivity a, VirtualKeyboard vk) {
 		ScrollView sv = new ScrollView(a);
 		LinearLayout root = ApexUi.column(a);
 		sv.addView(root);
-		root.addView(ApexUi.text(a, "Escolha qual número cada letra vai enviar (— = envia a própria letra). " +
-				"Vale para o teclado de letras e para teclado físico/Bluetooth.", 12));
-		Spinner[] spinners = new Spinner[26];
-		for (int i = 0; i < 26; i++) {
-			char letter = (char) ('a' + i);
+		root.addView(ApexUi.text(a, "Escolha a letra de cada número. O botão passa a mostrar a letra " +
+				"e envia a letra para o jogo (— = continua enviando o número). " +
+				"Vale também para teclado físico/Bluetooth.", 12));
+		Spinner[] spinners = new Spinner[NUM_CODES.length];
+		for (int i = 0; i < NUM_CODES.length; i++) {
 			LinearLayout row = new LinearLayout(a);
 			row.setOrientation(LinearLayout.HORIZONTAL);
 			row.setPadding(0, ApexUi.dp(a, 4), 0, ApexUi.dp(a, 4));
-			TextView t = ApexUi.text(a, String.valueOf(Character.toUpperCase(letter)), 18);
+			TextView t = ApexUi.text(a, NUM_LABELS[i], 18);
 			row.addView(t, new LinearLayout.LayoutParams(ApexUi.dp(a, 48), LinearLayout.LayoutParams.WRAP_CONTENT));
 			Spinner sp = new Spinner(a);
-			ArrayAdapter<String> ad = new ArrayAdapter<>(a, android.R.layout.simple_spinner_item, TARGETS);
+			ArrayAdapter<String> ad = new ArrayAdapter<>(a, android.R.layout.simple_spinner_item, LETTERS);
 			ad.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 			sp.setAdapter(ad);
-			int cur = ApexPrefs.letterTarget(letter);
-			for (int j = 0; j < TARGET_CODES.length; j++) {
-				if (TARGET_CODES[j] == cur) {
-					sp.setSelection(j);
-				}
+			int cur = ApexPrefs.numberTarget(NUM_CODES[i]);
+			if (cur >= 'a' && cur <= 'z') {
+				sp.setSelection(cur - 'a' + 1);
 			}
 			spinners[i] = sp;
 			row.addView(sp, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
 			root.addView(row);
 		}
 		new AlertDialog.Builder(a)
-				.setTitle("Mapear letras nos números")
+				.setTitle("Mapear números nas letras")
 				.setView(sv)
 				.setPositiveButton(android.R.string.ok, (d, w) -> {
 					SparseIntArray map = new SparseIntArray();
-					for (int i = 0; i < 26; i++) {
-						int code = TARGET_CODES[spinners[i].getSelectedItemPosition()];
-						if (code != -1) {
-							map.put('a' + i, code);
+					for (int i = 0; i < NUM_CODES.length; i++) {
+						int pos = spinners[i].getSelectedItemPosition();
+						if (pos > 0) {
+							map.put(NUM_CODES[i], 'a' + pos - 1);
 						}
 					}
-					ApexPrefs.setLetterMap(map);
+					ApexPrefs.setNumberMap(map);
+					vk.apexRelayout();
 				})
 				.setNegativeButton(android.R.string.cancel, null)
-				.setNeutralButton("Limpar", (d, w) -> ApexPrefs.setLetterMap(new SparseIntArray()))
+				.setNeutralButton("Limpar", (d, w) -> {
+					ApexPrefs.setNumberMap(new SparseIntArray());
+					vk.apexRelayout();
+				})
 				.show();
 	}
 }
