@@ -29,7 +29,6 @@ import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.res.ColorStateList;
 import android.database.sqlite.SQLiteDiskIOException;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -51,11 +50,11 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
@@ -66,18 +65,13 @@ import androidx.core.content.pm.ShortcutManagerCompat;
 import androidx.core.graphics.drawable.IconCompat;
 import androidx.core.widget.TextViewCompat;
 import androidx.fragment.app.FragmentActivity;
-import androidx.fragment.app.Fragment;
+import androidx.fragment.app.ListFragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.preference.PreferenceManager;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.TimeUnit;
 
 import io.reactivex.Observable;
@@ -94,17 +88,13 @@ import ru.playsoftware.j2meloader.filepicker.FilteredFilePickerFragment;
 import ru.playsoftware.j2meloader.info.AboutDialogFragment;
 import ru.playsoftware.j2meloader.info.HelpDialogFragment;
 import ru.playsoftware.j2meloader.settings.SettingsActivity;
-import ru.playsoftware.j2meloader.theme.ApexTheme;
-import ru.playsoftware.j2meloader.theme.ThemeDialog;
 import ru.playsoftware.j2meloader.util.AppUtils;
 import ru.playsoftware.j2meloader.util.Constants;
 import ru.playsoftware.j2meloader.util.FileUtils;
 import ru.playsoftware.j2meloader.util.LogUtils;
-import ru.playsoftware.j2meloader.util.PickDirResultContract;
-import ru.woesss.j2me.installer.BatchInstaller;
 import ru.woesss.j2me.installer.InstallerDialog;
 
-public class AppsListFragment extends Fragment {
+public class AppsListFragment extends ListFragment {
 	private static final String TAG = AppsListFragment.class.getSimpleName();
 	private final AppsListAdapter adapter = new AppsListAdapter();
 	private Uri appUri;
@@ -117,138 +107,6 @@ public class AppsListFragment extends Fragment {
 	private final ActivityResultLauncher<String> openFileLauncher = registerForActivityResult(
 			FileUtils.getFilePicker(),
 			this::onPickFileResult);
-
-	private final ActivityResultLauncher<String> pickFolderLauncher = registerForActivityResult(
-			new PickDirResultContract(),
-			this::onPickFolderResult);
-
-	private AlertDialog batchDialog;
-
-	private void startFolderImport() {
-		if (!FileUtils.isExternalStorageLegacy()) {
-			Toast.makeText(requireContext(), R.string.import_folder_need_access, Toast.LENGTH_LONG).show();
-			return;
-		}
-		String path = preferences.getString(PREF_LAST_PATH, null);
-		if (path == null || !new File(path).isDirectory()) {
-			path = Environment.getExternalStorageDirectory().getAbsolutePath();
-		}
-		try {
-			pickFolderLauncher.launch(path);
-		} catch (ActivityNotFoundException e) {
-			Toast.makeText(getContext(), R.string.error_no_picker, Toast.LENGTH_SHORT).show();
-		}
-	}
-
-	private void onPickFolderResult(Uri uri) {
-		if (uri == null) {
-			return;
-		}
-		File dir = com.nononsenseapps.filepicker.Utils.getFileForUri(uri);
-		if (!dir.isDirectory()) {
-			return;
-		}
-		preferences.edit().putString(PREF_LAST_PATH, dir.getAbsolutePath()).apply();
-		// Somente arquivos .jar direto na pasta escolhida (sem ler subpastas)
-		File[] files = dir.listFiles(f -> f.isFile() && f.getName().toLowerCase(Locale.ROOT).endsWith(".jar"));
-		if (files == null || files.length == 0) {
-			Toast.makeText(requireContext(), R.string.import_folder_empty, Toast.LENGTH_LONG).show();
-			return;
-		}
-		Arrays.sort(files, Comparator.comparing((File f) -> f.getName().toLowerCase(Locale.ROOT)));
-		List<File> jars = new ArrayList<>(Arrays.asList(files));
-		new AlertDialog.Builder(requireActivity())
-				.setTitle(R.string.action_import_folder)
-				.setMessage(getString(R.string.import_folder_confirm, jars.size()))
-				.setPositiveButton(android.R.string.ok, (d, w) -> runBatch(jars))
-				.setNegativeButton(android.R.string.cancel, null)
-				.show();
-	}
-
-	private void runBatch(List<File> jars) {
-		final FragmentActivity activity = requireActivity();
-		final AtomicBoolean cancel = new AtomicBoolean(false);
-		batchDialog = new AlertDialog.Builder(activity)
-				.setTitle(R.string.import_folder_title)
-				.setMessage(getString(R.string.import_folder_progress, 0, jars.size(), ""))
-				.setCancelable(false)
-				.setNegativeButton(android.R.string.cancel, (d, w) -> cancel.set(true))
-				.create();
-		batchDialog.setCanceledOnTouchOutside(false);
-		batchDialog.show();
-		final Context appContext = activity.getApplicationContext();
-		BatchInstaller.start(activity.getApplication(), appRepository, jars, cancel,
-				new BatchInstaller.Listener() {
-					@Override
-					public void onProgress(int index, int total, String fileName) {
-						if (batchDialog != null && batchDialog.isShowing()) {
-							batchDialog.setMessage(appContext.getString(
-									R.string.import_folder_progress, index, total, fileName));
-						}
-					}
-
-					@Override
-					public void onDone(int installed, int skipped, List<String> failed, boolean cancelled) {
-						try {
-							if (batchDialog != null) {
-								batchDialog.dismiss();
-							}
-						} catch (Exception ignored) {
-						}
-						batchDialog = null;
-						StringBuilder msg = new StringBuilder(appContext.getString(
-								R.string.import_folder_result, installed, skipped, failed.size()));
-						if (cancelled) {
-							msg.append("\n\n").append(appContext.getString(R.string.import_folder_cancelled));
-						}
-						for (int i = 0; i < failed.size() && i < 15; i++) {
-							msg.append(i == 0 ? "\n\n" : "\n").append(failed.get(i));
-						}
-						if (failed.size() > 15) {
-							msg.append("\n...");
-						}
-						if (activity.isFinishing() || activity.isDestroyed()) {
-							Toast.makeText(appContext, msg.toString(), Toast.LENGTH_LONG).show();
-							return;
-						}
-						new AlertDialog.Builder(activity)
-								.setTitle(R.string.action_import_folder)
-								.setMessage(msg)
-								.setPositiveButton(android.R.string.ok, null)
-								.show();
-					}
-				});
-	}
-
-	private int pendingThemeTarget;
-	private final ActivityResultLauncher<String[]> themePicker = registerForActivityResult(
-			new ActivityResultContracts.OpenDocument(),
-			this::onThemeFilePicked);
-
-	private void onThemeFilePicked(Uri uri) {
-		if (uri == null) {
-			return;
-		}
-		boolean ok = ApexTheme.importFile(requireContext(), pendingThemeTarget, uri);
-		Toast.makeText(requireContext(), ok ? R.string.apex_import_ok : R.string.apex_import_fail,
-				Toast.LENGTH_SHORT).show();
-		if (ok) {
-			requireActivity().recreate();
-		}
-	}
-
-	private void showThemeDialog() {
-		ThemeDialog.show(requireActivity(), target -> {
-			pendingThemeTarget = target;
-			String[] types = target == ApexTheme.TARGET_FONT
-					? new String[]{"*/*"} : new String[]{"image/*"};
-			try {
-				themePicker.launch(types);
-			} catch (ActivityNotFoundException e) {
-				Toast.makeText(getContext(), R.string.error_no_picker, Toast.LENGTH_SHORT).show();
-			}
-		});
-	}
 
 	public static AppsListFragment newInstance(Uri data) {
 		AppsListFragment fragment = new AppsListFragment();
@@ -280,14 +138,9 @@ public class AppsListFragment extends Fragment {
 	@Override
 	public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
 		super.onViewCreated(view, savedInstanceState);
-		registerForContextMenu(binding.list);
+		registerForContextMenu(getListView());
 		setHasOptionsMenu(true);
-		binding.list.setEmptyView(binding.empty);
-		binding.floatingActionButton.setBackgroundTintList(new ColorStateList(
-				new int[][]{{android.R.attr.state_pressed}, {}},
-				new int[]{ApexTheme.pressedColor(requireContext()), ApexTheme.outlineColor(requireContext())}));
-		binding.list.setAdapter(adapter);
-		binding.list.setOnItemClickListener((parent, v, position, id) -> onListItemClick(position));
+		setListAdapter(adapter);
 		binding.floatingActionButton.setOnClickListener(v -> {
 			String path = preferences.getString(PREF_LAST_PATH, null);
 			if (path == null) {
@@ -372,7 +225,8 @@ public class AppsListFragment extends Fragment {
 		builder.show();
 	}
 
-	private void onListItemClick(int position) {
+	@Override
+	public void onListItemClick(@NonNull ListView l, @NonNull View v, int position, long id) {
 		AppItem item = adapter.getItem(position);
 		Config.startApp(requireActivity(), item.getTitle(), item.getPathExt(), false);
 	}
@@ -457,6 +311,26 @@ public class AppsListFragment extends Fragment {
 	@Override
 	public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
 		inflater.inflate(R.menu.main, menu);
+		final MenuItem searchItem = menu.findItem(R.id.action_search);
+		SearchView searchView = (SearchView) searchItem.getActionView();
+		searchViewDisposable = Observable.create((ObservableOnSubscribe<String>) emitter ->
+				searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+					@Override
+					public boolean onQueryTextSubmit(String query) {
+						emitter.onNext(query);
+						return true;
+					}
+
+					@Override
+					public boolean onQueryTextChange(String newText) {
+						emitter.onNext(newText);
+						return true;
+					}
+				})).debounce(300, TimeUnit.MILLISECONDS)
+				.map(String::toLowerCase)
+				.distinctUntilChanged()
+				.observeOn(AndroidSchedulers.mainThread())
+				.subscribe(charSequence -> adapter.getFilter().filter(charSequence));
 	}
 
 	@Override
@@ -487,10 +361,6 @@ public class AppsListFragment extends Fragment {
 			activity.finish();
 		} else if (itemId == R.id.action_sort) {
 			showSortDialog();
-		} else if (itemId == R.id.action_colors) {
-			showThemeDialog();
-		} else if (itemId == R.id.action_import_folder) {
-			startFolderImport();
 		}
 		return false;
 	}

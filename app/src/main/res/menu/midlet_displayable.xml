@@ -6,6 +6,9 @@
         android:id="@+id/action_save_log"
         android:title="@string/save_log" />
     <item
+        android:id="@+id/action_shaders"
+        android:title="@string/menu_import_shaders" />
+    <item
         android:id="@+id/action_lock_orientation"
         android:title="@string/action_lock_orientation"
         android:checkable="true"
@@ -29,6 +32,14 @@
             android:id="@+id/action_submenu_vk"
             android:title="@string/PREF_VIRTUAL_KEYBOARD_OPTIONS">
             <menu>
+                <item
+                    android:id="@+id/action_analog"
+                    android:title="@string/vk_analog_title"
+                    android:checkable="true"
+                    android:checked="false" />
+                <item
+                    android:id="@+id/action_import_png"
+                    android:title="@string/menu_import_png" />
                 <item
                     android:id="@+id/action_layout_edit_mode"
                     android:title="@string/layout_edit_mode" />

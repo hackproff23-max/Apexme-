@@ -20,6 +20,7 @@ package javax.microedition.lcdui.keyboard;
 import static javax.microedition.lcdui.keyboard.KeyMapper.SE_KEY_SPECIAL_GAMING_A;
 import static javax.microedition.lcdui.keyboard.KeyMapper.SE_KEY_SPECIAL_GAMING_B;
 
+import android.graphics.Bitmap;
 import android.graphics.PointF;
 import android.graphics.RectF;
 import android.os.Handler;
@@ -172,8 +173,8 @@ public class VirtualKeyboard implements Overlay, Runnable {
 	private final Handler handler;
 	private final File saveFile;
 	private final ProfileModel settings;
+	private final ButtonImages images;
 	private final RectF virtualScreen = new RectF();
-	private final AnalogStick analog = new AnalogStick();
 
 	private Canvas target;
 	private View overlayView;
@@ -191,9 +192,25 @@ public class VirtualKeyboard implements Overlay, Runnable {
 	private float snapRadius;
 	private int layoutVariant;
 
+	// ---- botao analogico (joystick) no lugar das 8 setas ----
+	public static final String PREF_ANALOG = "vk_analog_mode";
+	private static final float ANALOG_DEAD_ZONE = 0.28f;
+	private static final float ANALOG_GRAB_SCALE = 1.25f;
+	private boolean analogMode;
+	private int analogPointer = -1;
+	private int analogDir = -1;
+	private float analogKnobDx;
+	private float analogKnobDy;
+	private final RectF analogRect = new RectF();
+	private final RectF analogKnobRect = new RectF();
+
 	public VirtualKeyboard(ProfileModel settings) {
 		this.settings = settings;
 		this.saveFile = new File(settings.dir + Config.MIDLET_KEY_LAYOUT_FILE);
+		this.images = settings.vkUseImages ? ButtonImages.load() : null;
+		this.analogMode = androidx.preference.PreferenceManager
+				.getDefaultSharedPreferences(ContextHolder.getAppContext())
+				.getBoolean(PREF_ANALOG, false);
 
 		for (int i = KEY_NUM1; i < 9; i++) {
 			keypad[i] = new VirtualKey(Canvas.KEY_NUM1 + i, Integer.toString(1 + i));
@@ -224,6 +241,9 @@ public class VirtualKeyboard implements Overlay, Runnable {
 
 		keypad[KEY_FIRE] = new VirtualKey(Canvas.KEY_FIRE, "F");
 		keypad[KEY_MENU] = new MenuKey();
+		for (int i = 0; i < keypad.length; i++) {
+			keypad[i].index = i;
+		}
 
 		layoutVariant = readLayoutType();
 
@@ -800,19 +820,10 @@ public class VirtualKeyboard implements Overlay, Runnable {
 				key.opaque = true;
 			}
 		}
-		boolean analogHit = false;
-		if (settings.vkAnalog) {
-			analog.layout();
-			analogHit = !isPhone && RectF.intersects(analog.baseRect, virtualScreen);
-			if (analogHit) {
-				obscuresVirtualScreen = true;
-			}
-		}
 		boolean opaque = !obscuresVirtualScreen || settings.vkForceOpacity;
 		for (VirtualKey key : keypad) {
 			key.opaque &= opaque;
 		}
-		analog.opaque = !analogHit && opaque;
 	}
 
 	public boolean isPhone() {
@@ -883,9 +894,6 @@ public class VirtualKeyboard implements Overlay, Runnable {
 		overlayView.postInvalidate();
 		int delay = settings.vkHideDelay;
 		if (delay > 0 && obscuresVirtualScreen && layoutEditMode == LAYOUT_EOF) {
-			if (analog.active) {
-				return;
-			}
 			for (VirtualKey key : associatedKeys) {
 				if (key != null) {
 					return;
@@ -920,14 +928,181 @@ public class VirtualKeyboard implements Overlay, Runnable {
 	@Override
 	public void paint(CanvasWrapper g) {
 		if (visible) {
+			boolean analog = analogActive();
+			if (analog && analogAnyVisible()) {
+				paintAnalog(g);
+			}
 			for (VirtualKey key : keypad) {
+				if (analog && isDirectionKey(key.index)) {
+					continue;
+				}
 				if (key.visible) {
 					key.paint(g);
 				}
 			}
-			if (settings.vkAnalog) {
-				analog.paint(g);
+		}
+	}
+
+	private static boolean isDirectionKey(int index) {
+		return index >= KEY_UP_LEFT && index <= KEY_DOWN_RIGHT;
+	}
+
+	private boolean analogActive() {
+		return analogMode && layoutEditMode == LAYOUT_EOF;
+	}
+
+	private boolean analogAnyVisible() {
+		for (int i = KEY_UP_LEFT; i <= KEY_DOWN_RIGHT; i++) {
+			if (keypad[i].visible) {
+				return true;
 			}
+		}
+		return false;
+	}
+
+	/** Circulo do analogico: quadrado que envolve as 8 setas. */
+	private RectF getAnalogRect() {
+		RectF u = analogRect;
+		u.set(keypad[KEY_UP_LEFT].rect);
+		for (int i = KEY_UP; i <= KEY_DOWN_RIGHT; i++) {
+			u.union(keypad[i].rect);
+		}
+		float size = Math.min(u.width(), u.height());
+		float cx = u.centerX();
+		float cy = u.centerY();
+		u.set(cx - size / 2f, cy - size / 2f, cx + size / 2f, cy + size / 2f);
+		return u;
+	}
+
+	private void paintAnalog(CanvasWrapper g) {
+		RectF r = getAnalogRect();
+		boolean pressed = analogPointer != -1;
+		int a = pressed ? 0xFF : settings.vkAlpha;
+		Bitmap baseImg = images != null ? images.getAnalogBase(pressed) : null;
+		Bitmap knobImg = images != null ? images.getAnalogKnob(pressed) : null;
+		if (baseImg != null) {
+			g.drawKeyBitmap(baseImg, r, a, false);
+		} else {
+			g.setFillColor((a << 24) | settings.vkBgColor);
+			g.setDrawColor((a << 24) | settings.vkOutlineColor);
+			g.fillArc(r, 0, 360);
+			g.drawArc(r, 0, 360);
+		}
+		float radius = r.width() / 2f;
+		float kr = radius * 0.42f;
+		float kx = r.centerX() + analogKnobDx;
+		float ky = r.centerY() + analogKnobDy;
+		analogKnobRect.set(kx - kr, ky - kr, kx + kr, ky + kr);
+		if (knobImg != null) {
+			g.drawKeyBitmap(knobImg, analogKnobRect, a, false);
+			return;
+		}
+		g.setFillColor((a << 24) | (pressed ? settings.vkBgColorSelected : settings.vkFgColor));
+		g.fillArc(analogKnobRect, 0, 360);
+		g.drawArc(analogKnobRect, 0, 360);
+	}
+
+	private boolean analogContains(float x, float y) {
+		if (!analogActive() || !analogAnyVisible()) {
+			return false;
+		}
+		if (keypad[KEY_FIRE].contains(x, y)) {
+			return false; // o botao de acao no centro continua funcionando
+		}
+		RectF r = getAnalogRect();
+		float radius = r.width() / 2f * ANALOG_GRAB_SCALE;
+		float dx = x - r.centerX();
+		float dy = y - r.centerY();
+		return dx * dx + dy * dy <= radius * radius;
+	}
+
+	/** Atualiza o direcional e o desenho do botao conforme a posicao do dedo. */
+	private void analogUpdate(float x, float y) {
+		RectF r = getAnalogRect();
+		float radius = r.width() / 2f;
+		float dx = x - r.centerX();
+		float dy = y - r.centerY();
+		float dist = (float) Math.hypot(dx, dy);
+		float max = radius * 0.58f;
+		if (dist > max && dist > 0) {
+			analogKnobDx = dx / dist * max;
+			analogKnobDy = dy / dist * max;
+		} else {
+			analogKnobDx = dx;
+			analogKnobDy = dy;
+		}
+		int dir = -1;
+		if (dist >= radius * ANALOG_DEAD_ZONE) {
+			double angle = Math.toDegrees(Math.atan2(dy, dx));
+			int sector = ((int) Math.round(angle / 45.0) + 8) % 8;
+			switch (sector) {
+				case 0:
+					dir = KEY_RIGHT;
+					break;
+				case 1:
+					dir = KEY_DOWN_RIGHT;
+					break;
+				case 2:
+					dir = KEY_DOWN;
+					break;
+				case 3:
+					dir = KEY_DOWN_LEFT;
+					break;
+				case 4:
+					dir = KEY_LEFT;
+					break;
+				case 5:
+					dir = KEY_UP_LEFT;
+					break;
+				case 6:
+					dir = KEY_UP;
+					break;
+				default:
+					dir = KEY_UP_RIGHT;
+					break;
+			}
+		}
+		setAnalogDirection(dir);
+	}
+
+	private void setAnalogDirection(int newDir) {
+		if (newDir == analogDir) {
+			return;
+		}
+		if (analogDir != -1 && target != null) {
+			keypad[analogDir].onUp();
+		}
+		boolean wasIdle = analogDir == -1;
+		analogDir = newDir;
+		if (newDir != -1 && target != null) {
+			if (wasIdle) {
+				vibrate();
+			}
+			keypad[newDir].onDown();
+		}
+	}
+
+	private void analogRelease() {
+		analogPointer = -1;
+		setAnalogDirection(-1);
+		analogKnobDx = 0;
+		analogKnobDy = 0;
+	}
+
+	public boolean isAnalogMode() {
+		return analogMode;
+	}
+
+	public void setAnalogMode(boolean enabled) {
+		if (enabled == analogMode) {
+			return;
+		}
+		analogRelease();
+		analogMode = enabled;
+		androidx.preference.PreferenceManager.getDefaultSharedPreferences(ContextHolder.getAppContext())
+				.edit().putBoolean(PREF_ANALOG, enabled).apply();
+		if (overlayView != null) {
+			overlayView.postInvalidate();
 		}
 	}
 
@@ -935,16 +1110,20 @@ public class VirtualKeyboard implements Overlay, Runnable {
 	public boolean pointerPressed(int pointer, float x, float y) {
 		switch (layoutEditMode) {
 			case LAYOUT_EOF:
-				if (settings.vkAnalog && analog.pointer < 0 && analog.contains(x, y)) {
-					analog.pointer = pointer;
-					analog.active = true;
-					analog.update(x, y);
-					return false;
-				}
 				if (pointer > associatedKeys.length) {
 					return false;
 				}
+				if (analogPointer == -1 && analogContains(x, y)) {
+					analogPointer = pointer;
+					analogUpdate(x, y);
+					overlayView.postInvalidate();
+					return false;
+				}
+				boolean analogOn = analogActive();
 				for (VirtualKey key : keypad) {
+					if (analogOn && isDirectionKey(key.index)) {
+						continue;
+					}
 					if (key.contains(x, y)) {
 						vibrate();
 						associatedKeys[pointer] = key;
@@ -956,12 +1135,6 @@ public class VirtualKeyboard implements Overlay, Runnable {
 				break;
 			case LAYOUT_KEYS:
 				editedIndex = -1;
-				if (settings.vkAnalog && analog.containsBase(x, y)) {
-					analog.editing = true;
-					analog.offX = x - analog.cx;
-					analog.offY = y - analog.cy;
-					break;
-				}
 				for (int i = 0; i < keypad.length; i++) {
 					if (keypad[i].contains(x, y)) {
 						editedIndex = i;
@@ -999,11 +1172,12 @@ public class VirtualKeyboard implements Overlay, Runnable {
 	public boolean pointerDragged(int pointer, float x, float y) {
 		switch (layoutEditMode) {
 			case LAYOUT_EOF:
-				if (pointer == analog.pointer) {
-					analog.update(x, y);
+				if (pointer > associatedKeys.length) {
 					return false;
 				}
-				if (pointer > associatedKeys.length) {
+				if (pointer == analogPointer) {
+					analogUpdate(x, y);
+					overlayView.postInvalidate();
 					return false;
 				}
 				VirtualKey aKey = associatedKeys[pointer];
@@ -1017,10 +1191,6 @@ public class VirtualKeyboard implements Overlay, Runnable {
 				}
 				break;
 			case LAYOUT_KEYS:
-				if (analog.editing) {
-					analog.moveTo(x - analog.offX, y - analog.offY);
-					break;
-				}
 				if (editedIndex >= 0) {
 					VirtualKey key = keypad[editedIndex];
 					RectF rect = key.rect;
@@ -1078,11 +1248,12 @@ public class VirtualKeyboard implements Overlay, Runnable {
 	@Override
 	public boolean pointerReleased(int pointer, float x, float y) {
 		if (layoutEditMode == LAYOUT_EOF) {
-			if (pointer == analog.pointer) {
-				analog.release();
+			if (pointer > associatedKeys.length) {
 				return false;
 			}
-			if (pointer > associatedKeys.length) {
+			if (pointer == analogPointer) {
+				analogRelease();
+				overlayView.postInvalidate();
 				return false;
 			}
 			VirtualKey key = associatedKeys[pointer];
@@ -1092,11 +1263,6 @@ public class VirtualKeyboard implements Overlay, Runnable {
 				overlayView.postInvalidate();
 			}
 		} else if (layoutEditMode == LAYOUT_KEYS) {
-			if (analog.editing) {
-				analog.editing = false;
-				ProfilesManager.saveConfig(settings);
-				return false;
-			}
 			for (int key = 0; key < keypad.length; key++) {
 				VirtualKey vKey = keypad[key];
 				if (vKey.snapOrigin == editedIndex) {
@@ -1146,7 +1312,10 @@ public class VirtualKeyboard implements Overlay, Runnable {
 
 	@Override
 	public void cancel() {
-		analog.release();
+		analogPointer = -1;
+		analogDir = -1;
+		analogKnobDx = 0;
+		analogKnobDy = 0;
 		for (VirtualKey key : keypad) {
 			key.selected = false;
 			handler.removeCallbacks(key);
@@ -1248,166 +1417,6 @@ public class VirtualKeyboard implements Overlay, Runnable {
 		ProfilesManager.saveConfig(settings);
 	}
 
-	/**
-	 * Botao analogico: base circular + bolinha. Dispara as setas (cima/baixo/esquerda/direita),
-	 * com diagonais quando os dois eixos passam da zona morta.
-	 */
-	private class AnalogStick implements Runnable {
-		private final int[] codes = {Canvas.KEY_UP, Canvas.KEY_DOWN, Canvas.KEY_LEFT, Canvas.KEY_RIGHT};
-		private final boolean[] down = new boolean[4];
-		private final boolean[] next = new boolean[4];
-		final RectF baseRect = new RectF();
-		private final RectF knobRect = new RectF();
-		float cx;
-		float cy;
-		private float radius;
-		private float knobR;
-		private float kx;
-		private float ky;
-		int pointer = -1;
-		boolean active;
-		boolean opaque = true;
-		boolean editing;
-		float offX;
-		float offY;
-		private boolean repeating;
-		private int repeatCount;
-
-		void layout() {
-			if (screen == null) {
-				return;
-			}
-			float pct = settings.vkAnalogSize > 0 ? settings.vkAnalogSize : 100;
-			float diameter = keySize * 3.0f * pct / 100f;
-			diameter = Math.min(diameter, Math.min(screen.width(), screen.height()));
-			radius = diameter / 2f;
-			knobR = radius * 0.42f;
-			float fx = settings.vkAnalogX > 0 ? settings.vkAnalogX : 0.20f;
-			float fy = settings.vkAnalogY > 0 ? settings.vkAnalogY : 0.78f;
-			cx = clamp(screen.left + fx * screen.width(), screen.left + radius, screen.right - radius);
-			cy = clamp(screen.top + fy * screen.height(), screen.top + radius, screen.bottom - radius);
-			baseRect.set(cx - radius, cy - radius, cx + radius, cy + radius);
-			if (!active) {
-				kx = cx;
-				ky = cy;
-			}
-		}
-
-		private float clamp(float v, float min, float max) {
-			return max < min ? (min + max) / 2f : Math.max(min, Math.min(max, v));
-		}
-
-		boolean contains(float x, float y) {
-			return Math.hypot(x - cx, y - cy) <= radius * 1.15f;
-		}
-
-		boolean containsBase(float x, float y) {
-			return Math.hypot(x - cx, y - cy) <= radius;
-		}
-
-		void moveTo(float x, float y) {
-			if (screen == null) {
-				return;
-			}
-			settings.vkAnalogX = Math.max(0.01f, (x - screen.left) / screen.width());
-			settings.vkAnalogY = Math.max(0.01f, (y - screen.top) / screen.height());
-			snapKeys();
-			overlayView.postInvalidate();
-		}
-
-		void update(float x, float y) {
-			float travel = Math.max(1f, radius - knobR);
-			float dx = x - cx;
-			float dy = y - cy;
-			double dist = Math.hypot(dx, dy);
-			if (dist > travel) {
-				dx = (float) (dx * travel / dist);
-				dy = (float) (dy * travel / dist);
-			}
-			kx = cx + dx;
-			ky = cy + dy;
-			float t = travel * 0.40f;
-			boolean[] n = next;
-			n[0] = dy < -t;
-			n[1] = dy > t;
-			n[2] = dx < -t;
-			n[3] = dx > t;
-			apply(n);
-			overlayView.postInvalidate();
-		}
-
-		void release() {
-			boolean wasActive = active;
-			active = false;
-			pointer = -1;
-			kx = cx;
-			ky = cy;
-			Arrays.fill(next, false);
-			apply(next);
-			if (wasActive && overlayView != null) {
-				overlayView.postInvalidate();
-			}
-		}
-
-		private synchronized void apply(boolean[] n) {
-			if (target == null) {
-				Arrays.fill(down, false);
-				return;
-			}
-			boolean pressedNow = false;
-			for (int i = 0; i < 4; i++) {
-				if (n[i] && !down[i]) {
-					down[i] = true;
-					pressedNow = true;
-					target.postKeyPressed(codes[i]);
-				} else if (!n[i] && down[i]) {
-					down[i] = false;
-					target.postKeyReleased(codes[i]);
-				}
-			}
-			if (pressedNow) {
-				vibrate();
-			}
-			boolean any = down[0] || down[1] || down[2] || down[3];
-			if (any && !repeating) {
-				repeating = true;
-				repeatCount = 0;
-				handler.postDelayed(this, 400);
-			} else if (!any && repeating) {
-				repeating = false;
-				handler.removeCallbacks(this);
-			}
-		}
-
-		@Override
-		public synchronized void run() {
-			if (target == null || !(down[0] || down[1] || down[2] || down[3])) {
-				repeating = false;
-				return;
-			}
-			for (int i = 0; i < 4; i++) {
-				if (down[i]) {
-					target.postKeyRepeated(codes[i]);
-				}
-			}
-			handler.postDelayed(this, repeatCount > 6 ? 80 : REPEAT_INTERVALS[repeatCount++]);
-		}
-
-		void paint(CanvasWrapper g) {
-			int a = opaque || layoutEditMode != LAYOUT_EOF ? 0xFF : settings.vkAlpha;
-			int baseAlpha = ((int) (a * 0.6f)) << 24;
-			int alpha = a << 24;
-			g.setFillColor(baseAlpha | settings.vkBgColor);
-			g.setDrawColor(alpha | settings.vkOutlineColor);
-			g.fillArc(baseRect, 0, 360);
-			g.drawArc(baseRect, 0, 360);
-			knobRect.set(kx - knobR, ky - knobR, kx + knobR, ky + knobR);
-			g.setFillColor(alpha | (active || editing ? settings.vkBgColorSelected : settings.vkFgColor));
-			g.fillArc(knobRect, 0, 360);
-			g.drawArc(knobRect, 0, 360);
-		}
-	}
-
 	private class VirtualKey implements Runnable {
 		final String label;
 		final int keyCode;
@@ -1420,6 +1429,7 @@ public class VirtualKeyboard implements Overlay, Runnable {
 		boolean visible = true;
 		boolean opaque = true;
 		int corners;
+		int index;
 		private final int hashCode;
 		private int repeatCount;
 
@@ -1439,6 +1449,14 @@ public class VirtualKeyboard implements Overlay, Runnable {
 		}
 
 		void paint(CanvasWrapper g) {
+			if (images != null) {
+				Bitmap bmp = images.get(index, selected);
+				if (bmp != null) {
+					int a = layoutEditMode != LAYOUT_EOF ? 0xB0 : (opaque ? 0xFF : settings.vkAlpha);
+					g.drawKeyBitmap(bmp, rect, a, images.isDimmed(index, selected));
+					return;
+				}
+			}
 			int bgColor;
 			int fgColor;
 			if (selected) {

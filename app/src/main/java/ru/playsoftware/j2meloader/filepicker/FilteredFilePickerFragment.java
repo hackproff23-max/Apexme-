@@ -16,7 +16,6 @@
 
 package ru.playsoftware.j2meloader.filepicker;
 
-import android.os.Build;
 import android.os.Environment;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -102,22 +101,5 @@ public class FilteredFilePickerFragment extends FilePickerFragment {
 		} else {
 			viewHolder.itemView.setEnabled(false);
 		}
-	}
-
-	@Override
-	protected boolean hasPermission(@NonNull File path) {
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager()) {
-			return true;
-		}
-		return super.hasPermission(path);
-	}
-
-	@Override
-	protected void handlePermission(@NonNull File path) {
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-			// Android 11+: WRITE_EXTERNAL_STORAGE nunca e concedida; vale "acesso a todos os arquivos".
-			return;
-		}
-		super.handlePermission(path);
 	}
 }

@@ -37,8 +37,3 @@
 -keep class com.arthenica.mobileffmpeg.** { *; }
 -keep class org.acra.attachment.DefaultAttachmentProvider { *; }
 -keep class ru.playsoftware.j2meloader.crashes.models.* { *; }
-
--keep class ru.playsoftware.j2meloader.base.ApexmeViewInflater { <init>(); }
--keep class ru.playsoftware.j2meloader.theme.ApexAppBackground { <init>(); }
--keep class ru.playsoftware.j2meloader.theme.ApexWindowBackground { <init>(); }
--keep class ru.playsoftware.j2meloader.theme.ApexPressedDrawable { <init>(); }

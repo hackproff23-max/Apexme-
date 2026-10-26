@@ -72,6 +72,7 @@ import javax.microedition.lcdui.overlay.FpsCounter;
 import javax.microedition.lcdui.overlay.Layer;
 import javax.microedition.lcdui.overlay.Overlay;
 import javax.microedition.lcdui.overlay.OverlayView;
+import javax.microedition.lcdui.skin.SkinLayer;
 import javax.microedition.shell.MicroActivity;
 import javax.microedition.util.ContextHolder;
 
@@ -183,6 +184,20 @@ public abstract class Canvas extends Displayable {
 
 	public static void setShaderFilter(ShaderInfo shader) {
 		Canvas.shaderFilter = shader;
+	}
+
+	public static ShaderInfo getShaderFilter() {
+		return shaderFilter;
+	}
+
+	/**
+	 * Applies the current shader ({@link #getShaderFilter()}) to this screen right away,
+	 * without restarting the game. Only has effect with the OpenGL ES graphics mode.
+	 */
+	public void applyShader() {
+		if (renderer != null) {
+			renderer.reloadShader();
+		}
 	}
 
 	public static void setScale(int screenGravity, int scaleType, int scaleRatio) {
@@ -351,16 +366,26 @@ public abstract class Canvas extends Displayable {
 		 * than zero, which means auto-selection of this size so that the resulting canvas
 		 * has the same aspect ratio as the actual screen of the device.
 		 */
+		int scaledDisplayWidth = displayWidth;
 		int scaledDisplayHeight;
-		VirtualKeyboard vk = ContextHolder.getVk();
-		boolean isPhoneSkin = vk != null && vk.isPhone();
-
-		// if phone keyboard layout is active, then scale down the virtual screen
-		if (isPhoneSkin) {
-			float vkHeight = vk.getPhoneKeyboardHeight(displayWidth, displayHeight);
-			scaledDisplayHeight = (int) (displayHeight - vkHeight - 1);
+		SkinLayer skinLayer = SkinLayer.getInstance();
+		boolean skinFrame = skinLayer != null && skinLayer.hasDisplayFrame();
+		if (skinFrame) {
+			// the game screen lives inside the transparent area of the skin image
+			skinLayer.resize(virtualScreen, 0, 0, displayWidth, displayHeight);
+			scaledDisplayWidth = (int) virtualScreen.width();
+			scaledDisplayHeight = (int) virtualScreen.height();
 		} else {
-			scaledDisplayHeight = displayHeight;
+			VirtualKeyboard vk = ContextHolder.getVk();
+			boolean isPhoneSkin = vk != null && vk.isPhone();
+
+			// if phone keyboard layout is active, then scale down the virtual screen
+			if (isPhoneSkin) {
+				float vkHeight = vk.getPhoneKeyboardHeight(displayWidth, displayHeight);
+				scaledDisplayHeight = (int) (displayHeight - vkHeight - 1);
+			} else {
+				scaledDisplayHeight = displayHeight;
+			}
 		}
 		if (virtualWidth > 0) {
 			if (virtualHeight > 0) {
@@ -375,7 +400,7 @@ public abstract class Canvas extends Displayable {
 				 * height is selected by the ratio of the real screen
 				 */
 				width = virtualWidth;
-				height = scaledDisplayHeight * virtualWidth / displayWidth;
+				height = scaledDisplayHeight * virtualWidth / scaledDisplayWidth;
 			}
 		} else {
 			if (virtualHeight > 0) {
@@ -383,13 +408,13 @@ public abstract class Canvas extends Displayable {
 				 * only the canvas height is set
 				 * width is selected by the ratio of the real screen
 				 */
-				width = displayWidth * virtualHeight / scaledDisplayHeight;
+				width = scaledDisplayWidth * virtualHeight / scaledDisplayHeight;
 				height = virtualHeight;
 			} else {
 				/*
 				 * nothing is set - screen-sized canvas
 				 */
-				width = displayWidth;
+				width = scaledDisplayWidth;
 				height = scaledDisplayHeight;
 			}
 		}
@@ -407,8 +432,8 @@ public abstract class Canvas extends Displayable {
 				break;
 			case 1:
 				// try to fit in width
-				onWidth = displayWidth;
-				onHeight = height * displayWidth / width;
+				onWidth = scaledDisplayWidth;
+				onHeight = height * scaledDisplayWidth / width;
 				if (onHeight > scaledDisplayHeight) {
 					// if height is too big, then fit in height
 					onHeight = scaledDisplayHeight;
@@ -421,7 +446,7 @@ public abstract class Canvas extends Displayable {
 			case 2:
 				// scaling without preserving the aspect ratio:
 				// just stretch the picture to full screen
-				onWidth = displayWidth;
+				onWidth = scaledDisplayWidth;
 				onHeight = scaledDisplayHeight;
 				if (scaleRatio > 100) {
 					scaleRatio = 100;
@@ -438,23 +463,28 @@ public abstract class Canvas extends Displayable {
 				onY = (scaledDisplayHeight - onHeight) / 2;
 				break;
 			case 1: // top
-				onX = (displayWidth - onWidth) / 2;
+				onX = (scaledDisplayWidth - onWidth) / 2;
 				onY = 0;
 				break;
 			case 2: // center
-				onX = (displayWidth - onWidth) / 2;
+				onX = (scaledDisplayWidth - onWidth) / 2;
 				onY = (scaledDisplayHeight - onHeight) / 2;
 				break;
 			case 3: // right
-				onX = displayWidth - onWidth;
+				onX = scaledDisplayWidth - onWidth;
 				onY = (scaledDisplayHeight - onHeight) / 2;
 				break;
 			case 4: // bottom
-				onX = (displayWidth - onWidth) / 2;
+				onX = (scaledDisplayWidth - onWidth) / 2;
 				onY = scaledDisplayHeight - onHeight;
 				break;
 		}
 
+
+		if (skinFrame) {
+			onX += virtualScreen.left;
+			onY += virtualScreen.top;
+		}
 
 		/*
 		 * calculate the maximum height
@@ -487,6 +517,9 @@ public abstract class Canvas extends Displayable {
 		}
 		if (overlay != null) {
 			overlay.resize(screen, onX, onY, onX + onWidth, onY + onHeight + softBarHeight);
+		}
+		if (skinLayer != null && !skinFrame) {
+			skinLayer.resize(virtualScreen, 0, 0, displayWidth, displayHeight);
 		}
 
 		if (graphicsMode == 1) {
@@ -776,6 +809,8 @@ public abstract class Canvas extends Displayable {
 		private final int[] bgTextureId = new int[1];
 		private ShaderProgram program;
 		private boolean isStarted;
+		private int surfaceWidth;
+		private int surfaceHeight;
 
 		@Override
 		public void onSurfaceCreated(GL10 gl, EGLConfig config) {
@@ -788,7 +823,7 @@ public abstract class Canvas extends Displayable {
 			initTex();
 			Bitmap bitmap = offscreenCopy.getBitmap();
 			program.loadVbo(vbo, bitmap.getWidth(), bitmap.getHeight());
-			if (shaderFilter != null && shaderFilter.values != null) {
+			if (shaderFilter != null && shaderFilter.values != null && program.uSetting >= 0) {
 				glUniform4fv(program.uSetting, 1, shaderFilter.values, 0);
 			}
 			isStarted = true;
@@ -796,8 +831,13 @@ public abstract class Canvas extends Displayable {
 
 		@Override
 		public void onSurfaceChanged(GL10 gl, int width, int height) {
+			surfaceWidth = width;
+			surfaceHeight = height;
 			glViewport(0, 0, width, height);
-			glUniform2f(program.uPixelDelta, 1.0f / width, 1.0f / height);
+			if (program.uPixelDelta >= 0) {
+				glUniform2f(program.uPixelDelta, 1.0f / width, 1.0f / height);
+			}
+			program.setOutputSize(width, height);
 		}
 
 		@Override
@@ -810,6 +850,43 @@ public abstract class Canvas extends Displayable {
 			if (fpsCounter != null) {
 				fpsCounter.increment();
 			}
+		}
+
+		/** Swaps the shader program while the screen keeps running. */
+		void reloadShader() {
+			final GLSurfaceView view = mView;
+			if (view == null || !isStarted) {
+				return;
+			}
+			view.queueEvent(() -> {
+				ShaderProgram old = program;
+				ShaderProgram created;
+				try {
+					created = new ShaderProgram(shaderFilter);
+				} catch (RuntimeException e) {
+					e.printStackTrace();
+					return;
+				}
+				program = created;
+				glUniform1i(created.uTextureUnit, 0);
+				Bitmap bitmap = offscreenCopy.getBitmap();
+				synchronized (vbo) {
+					created.loadVbo(vbo, bitmap.getWidth(), bitmap.getHeight());
+				}
+				if (shaderFilter != null && shaderFilter.values != null && created.uSetting >= 0) {
+					glUniform4fv(created.uSetting, 1, shaderFilter.values, 0);
+				}
+				if (surfaceWidth > 0 && surfaceHeight > 0) {
+					if (created.uPixelDelta >= 0) {
+						glUniform2f(created.uPixelDelta, 1.0f / surfaceWidth, 1.0f / surfaceHeight);
+					}
+					created.setOutputSize(surfaceWidth, surfaceHeight);
+				}
+				if (old != null) {
+					old.release();
+				}
+				view.requestRender();
+			});
 		}
 
 		private void initTex() {

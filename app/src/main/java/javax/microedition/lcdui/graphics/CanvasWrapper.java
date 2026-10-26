@@ -3,10 +3,14 @@ package javax.microedition.lcdui.graphics;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.ColorFilter;
 import android.graphics.Paint;
 import android.graphics.PorterDuff;
+import android.graphics.PorterDuffColorFilter;
 import android.graphics.RectF;
+import android.graphics.Region;
 import android.graphics.Typeface;
+import android.os.Build;
 import android.util.TypedValue;
 
 import javax.microedition.lcdui.Image;
@@ -19,6 +23,9 @@ public class CanvasWrapper {
 	private final Paint fillPaint = new Paint();
 	private final Paint textPaint = new Paint();
 	private final Paint imgPaint = new Paint();
+	private final Paint keyImgPaint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG);
+	private final ColorFilter keyDimFilter = new PorterDuffColorFilter(0x66000000, PorterDuff.Mode.SRC_ATOP);
+	private final boolean filterBitmap;
 	private final float textSize;
 
 	private float textAscent;
@@ -27,6 +34,7 @@ public class CanvasWrapper {
 	private Canvas canvas;
 
 	public CanvasWrapper(boolean filterBitmap) {
+		this.filterBitmap = filterBitmap;
 		imgPaint.setFilterBitmap(filterBitmap);
 		drawPaint.setStyle(Paint.Style.STROKE);
 		fillPaint.setStyle(Paint.Style.FILL);
@@ -118,5 +126,26 @@ public class CanvasWrapper {
 		float descent = textPaint.descent();
 		textHeight = descent - textAscent;
 		textCenterOffset = ((descent + textAscent) / 2);
+	}
+
+	/** Draws a virtual keyboard button image stretched to {@code dst}. */
+	public void drawKeyBitmap(Bitmap bitmap, RectF dst, int alpha, boolean dim) {
+		keyImgPaint.setAlpha(alpha);
+		keyImgPaint.setColorFilter(dim ? keyDimFilter : null);
+		canvas.drawBitmap(bitmap, null, dst, keyImgPaint);
+	}
+
+	/** Draws a skin image over {@code dst}, leaving the {@code exclude} area untouched. */
+	public void drawBackground(Bitmap bitmap, RectF dst, RectF exclude) {
+		int save = canvas.save();
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+			canvas.clipOutRect(exclude);
+		} else {
+			canvas.clipRect(exclude, Region.Op.DIFFERENCE);
+		}
+		imgPaint.setFilterBitmap(true);
+		canvas.drawBitmap(bitmap, null, dst, imgPaint);
+		imgPaint.setFilterBitmap(filterBitmap);
+		canvas.restoreToCount(save);
 	}
 }

@@ -18,15 +18,11 @@
 package ru.playsoftware.j2meloader;
 
 import android.Manifest;
-import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.media.AudioManager;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
-import android.provider.Settings;
 import android.view.ViewConfiguration;
 import android.widget.Toast;
 
@@ -64,59 +60,16 @@ public class MainActivity extends BaseActivity {
 			new PickDirResultContract(),
 			this::onPickDirResult);
 
-	private final ActivityResultLauncher<Intent> allFilesLauncher = registerForActivityResult(
-			new ActivityResultContracts.StartActivityForResult(),
-			r -> onAllFilesResult());
-
 	private SharedPreferences preferences;
 	private AppListModel appListModel;
-
-	/** Pasta principal na memoria interna: /storage/emulated/0/Apexme (precisa de "acesso a todos os arquivos"). */
-	private void setupStorage() {
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-			if (Environment.isExternalStorageManager()) {
-				ensureApexmeDir();
-			} else if (!preferences.getBoolean("all_files_asked", false)) {
-				preferences.edit().putBoolean("all_files_asked", true).apply();
-				requestAllFilesAccess();
-			}
-		} else if (FileUtils.isExternalStorageLegacy()) {
-			permissionsLauncher.launch(STORAGE_PERMISSIONS);
-		}
-	}
-
-	private void requestAllFilesAccess() {
-		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-			return;
-		}
-		try {
-			allFilesLauncher.launch(new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
-					Uri.parse("package:" + getPackageName())));
-		} catch (ActivityNotFoundException e) {
-			try {
-				allFilesLauncher.launch(new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION));
-			} catch (ActivityNotFoundException ignored) {
-			}
-		}
-	}
-
-	private void onAllFilesResult() {
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager()) {
-			ensureApexmeDir();
-		}
-	}
-
-	private void ensureApexmeDir() {
-		if (!preferences.contains(PREF_EMULATOR_DIR)) {
-			applyWorkDir(new File(Environment.getExternalStorageDirectory(), "Apexme"));
-		}
-		checkAndCreateDirs();
-	}
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
+		if (FileUtils.isExternalStorageLegacy()) {
+			permissionsLauncher.launch(STORAGE_PERMISSIONS);
+		}
 		appListModel = new ViewModelProvider(this).get(AppListModel.class);
 		if (savedInstanceState == null) {
 			Intent intent = getIntent();
@@ -129,14 +82,12 @@ public class MainActivity extends BaseActivity {
 					.replace(R.id.container, fragment).commit();
 		}
 		preferences = PreferenceManager.getDefaultSharedPreferences(this);
-		setupStorage();
 		if (!preferences.contains(PREF_TOOLBAR)) {
 			boolean enable = !ViewConfiguration.get(this).hasPermanentMenuKey();
 			preferences.edit().putBoolean(PREF_TOOLBAR, enable).apply();
 		}
 		boolean warningShown = preferences.getBoolean(PREF_STORAGE_WARNING_SHOWN, false);
-		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R
-				&& !FileUtils.isExternalStorageLegacy() && !warningShown) {
+		if (!FileUtils.isExternalStorageLegacy() && !warningShown) {
 			showScopedStorageDialog();
 			preferences.edit().putBoolean(PREF_STORAGE_WARNING_SHOWN, true).apply();
 		}

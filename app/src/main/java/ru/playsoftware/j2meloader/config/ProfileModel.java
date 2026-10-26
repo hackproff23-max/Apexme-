@@ -47,6 +47,9 @@ public class ProfileModel {
 	@SerializedName("ScreenBackgroundColor")
 	public int screenBackgroundColor;
 
+	@SerializedName("ScreenBackgroundImage")
+	public String screenBackgroundImage;
+
 	@SerializedName("ScreenScaleRatio")
 	public int screenScaleRatio;
 
@@ -131,19 +134,8 @@ public class ProfileModel {
 	@SerializedName("VirtualKeyboardDelay")
 	public int vkHideDelay;
 
-	@SerializedName("VirtualKeyboardAnalog")
-	public boolean vkAnalog;
-
-	/** Tamanho do analogico em porcentagem (50..200). 0 = padrao (100). */
-	@SerializedName("VirtualKeyboardAnalogSize")
-	public int vkAnalogSize;
-
-	/** Posicao do centro do analogico como fracao da tela (0 = padrao). */
-	@SerializedName("VirtualKeyboardAnalogX")
-	public float vkAnalogX;
-
-	@SerializedName("VirtualKeyboardAnalogY")
-	public float vkAnalogY;
+	@SerializedName("VkUseImages")
+	public boolean vkUseImages;
 
 	@SerializedName("VirtualKeyboardColorBackground")
 	public int vkBgColor;
@@ -203,7 +195,6 @@ public class ProfileModel {
 
 		vkButtonShape = VirtualKeyboard.ROUND_RECT_SHAPE;
 		vkAlpha = 64;
-		vkAnalogSize = 100;
 
 		vkBgColor = 0xD0D0D0;
 		vkFgColor = 0x000080;

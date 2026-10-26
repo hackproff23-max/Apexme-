@@ -10,7 +10,7 @@ android {
     namespace 'ru.playsoftware.j2meloader'
 
     defaultConfig {
-        applicationId "org.apexme.java"
+        applicationId "ru.playsoftware.j2meloader"
         minSdk MIN_SDK
         targetSdk TARGET_SDK
         versionCode 101
@@ -22,15 +22,14 @@ android {
 
     signingConfigs {
         release {
-            def keystoreFile = rootProject.file("keystore.properties")
             if (System.getenv()['BITRISE_IO']) {
                 keyAlias System.getenv('BITRISEIO_ANDROID_KEYSTORE_ALIAS')
                 keyPassword System.getenv('BITRISEIO_ANDROID_KEYSTORE_PRIVATE_KEY_PASSWORD')
                 storeFile rootProject.file(System.getenv('BITRISEIO_ANDROID_KEYSTORE_NAME'))
                 storePassword System.getenv('BITRISEIO_ANDROID_KEYSTORE_PASSWORD')
-            } else if (keystoreFile.exists()) {
+            } else {
                 Properties keystoreProps = new Properties()
-                keystoreProps.load(new FileInputStream(keystoreFile))
+                keystoreProps.load(new FileInputStream(rootProject.file("keystore.properties")))
                 keyAlias keystoreProps['keyAlias']
                 keyPassword keystoreProps['keyPassword']
                 storeFile file(keystoreProps['storeFile'])
@@ -43,14 +42,10 @@ android {
         release {
             minifyEnabled true
             shrinkResources true
-            // sem keystore.properties o release e assinado com a chave debug
-            if (System.getenv()['BITRISE_IO'] || rootProject.file("keystore.properties").exists()) {
-                signingConfig signingConfigs.release
-            } else {
-                signingConfig signingConfigs.debug
-            }
+            signingConfig signingConfigs.release
         }
         debug {
+            applicationIdSuffix '.debug'
             jniDebuggable true
             multiDexEnabled true
             multiDexKeepProguard file('multidex-config.pro')
@@ -122,6 +117,9 @@ android {
     }
 
     applicationVariants.all {
+        if (buildType.name == 'debug' && flavorName != 'midlet') {
+            resValue 'string', 'app_name', 'JL-Debug'
+        }
         def baseName = flavorName == 'midlet' ? "${midletArchivesBaseName}-" : "${rootProject.name}-"
         outputs.all {
             outputFileName = "${baseName}${versionName}-${dirName}-${buildType.name}.apk"
@@ -135,12 +133,8 @@ android {
 }
 
 static def generateVersionCode() {
-    try {
-        def result = "git rev-list HEAD --count".execute().text.trim()
-        return result.toInteger()
-    } catch (Exception ignored) {
-        return 0
-    }
+    def result = "git rev-list HEAD --count".execute().text.trim()
+    return result.toInteger()
 }
 
 def getMidletManifestProperties() {
@@ -173,6 +167,7 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.9.0'
     implementation 'androidx.preference:preference:1.2.0'
+    implementation 'androidx.documentfile:documentfile:1.0.1'
     implementation 'androidx.multidex:multidex:2.0.1'
 
     // Networking && APIs
