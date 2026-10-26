@@ -221,7 +221,13 @@ public class FileUtils {
 	}
 
 	public static boolean isExternalStorageLegacy() {
-		return Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || Environment.isExternalStorageLegacy();
+		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+			return true;
+		}
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager()) {
+			return true;
+		}
+		return Environment.isExternalStorageLegacy();
 	}
 
 	public static ActivityResultContract<String,Uri> getFilePicker() {

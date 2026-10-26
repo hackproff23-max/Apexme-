@@ -27,7 +27,7 @@
         android:singleLine="true"
         android:textColor="@android:color/white"
         android:textSize="12sp"
-        android:textStyle="bold"
+        android:textStyle="bold|italic"
         tools:text="Example MIDlet Name" />
 
 </LinearLayout>

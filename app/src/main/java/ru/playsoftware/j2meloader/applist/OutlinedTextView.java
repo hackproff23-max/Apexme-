@@ -3,22 +3,21 @@ package ru.playsoftware.j2meloader.applist;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.Typeface;
 import android.text.Layout;
 import android.text.TextPaint;
 import android.util.AttributeSet;
 
 import androidx.appcompat.widget.AppCompatTextView;
-import androidx.core.content.ContextCompat;
 
-import ru.playsoftware.j2meloader.R;
+import ru.playsoftware.j2meloader.theme.ApexTheme;
 
 /**
  * TextView com contorno: desenha o texto em modo STROKE e depois o preenchimento normal por cima.
- * A cor do contorno vem de R.color.name_outline.
+ * As cores e a fonte vem de ApexTheme (janela "Cores").
  */
 public class OutlinedTextView extends AppCompatTextView {
 	private final int outlineColor;
-	private final float outlineWidth;
 
 	public OutlinedTextView(Context context) {
 		this(context, null);
@@ -30,8 +29,13 @@ public class OutlinedTextView extends AppCompatTextView {
 
 	public OutlinedTextView(Context context, AttributeSet attrs, int defStyleAttr) {
 		super(context, attrs, defStyleAttr);
-		outlineColor = ContextCompat.getColor(context, R.color.name_outline);
-		outlineWidth = getResources().getDisplayMetrics().density * 2.5f;
+		outlineColor = ApexTheme.outlineColor(context);
+		setTextColor(ApexTheme.textColor(context));
+		Typeface custom = ApexTheme.typeface(context);
+		if (custom != null) {
+			Typeface current = getTypeface();
+			setTypeface(custom, current != null ? current.getStyle() : Typeface.BOLD_ITALIC);
+		}
 	}
 
 	@Override
@@ -43,7 +47,7 @@ public class OutlinedTextView extends AppCompatTextView {
 			canvas.translate(getCompoundPaddingLeft(), getExtendedPaddingTop());
 			paint.setStyle(Paint.Style.STROKE);
 			paint.setStrokeJoin(Paint.Join.ROUND);
-			paint.setStrokeWidth(outlineWidth);
+			paint.setStrokeWidth(Math.max(getResources().getDisplayMetrics().density, getTextSize() * 0.14f));
 			paint.setColor(outlineColor);
 			layout.draw(canvas);
 			paint.setStyle(Paint.Style.FILL);

@@ -20,9 +20,15 @@ import static ru.playsoftware.j2meloader.util.Constants.PREF_BLACK_BACKGROUND;
 
 import android.annotation.SuppressLint;
 import android.content.SharedPreferences;
+import android.os.Build;
 import android.os.Bundle;
+import android.view.WindowManager;
+
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -30,6 +36,7 @@ import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.preference.PreferenceManager;
 
 import ru.playsoftware.j2meloader.R;
+import ru.playsoftware.j2meloader.theme.ApexTheme;
 
 @SuppressLint("Registered")
 public class BaseActivity extends AppCompatActivity {
@@ -44,6 +51,24 @@ public class BaseActivity extends AppCompatActivity {
 			getSupportActionBar().setElevation(getResources().getDisplayMetrics().density * 2);
 		}
 		super.onCreate(savedInstanceState);
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+			// desenha tambem sobre o recorte (notch/camera)
+			WindowManager.LayoutParams lp = getWindow().getAttributes();
+			lp.layoutInDisplayCutoutMode = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+					? WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+					: WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+			getWindow().setAttributes(lp);
+		}
+	}
+
+	@Override
+	protected void onPostCreate(@Nullable Bundle savedInstanceState) {
+		super.onPostCreate(savedInstanceState);
+		ActionBar bar = getSupportActionBar();
+		if (bar != null) {
+			bar.setBackgroundDrawable(new ColorDrawable(ApexTheme.hasAppImage(this)
+					? Color.TRANSPARENT : ApexTheme.bgColor(this)));
+		}
 	}
 
 	@Override
