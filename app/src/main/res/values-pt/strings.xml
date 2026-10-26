@@ -164,4 +164,6 @@
     <string name="import_folder_title">Importando jogos</string>
     <string name="import_folder_result">Convertidos: %1$d\nJá instalados (ignorados): %2$d\nFalharam: %3$d</string>
     <string name="import_folder_cancelled">Cancelado.</string>
+    <string name="PREF_VK_ANALOG">Botão analógico</string>
+    <string name="PREF_VK_ANALOG_SIZE">Tamanho do analógico: %1$d%%</string>
 </resources>

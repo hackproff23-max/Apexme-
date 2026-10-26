@@ -595,6 +595,24 @@ public class ConfigActivity extends BaseActivity implements View.OnClickListener
 		binding.buttonsLayoutSelector.setSelection(params.keyCodesLayout);
 		binding.buttonShapeSelector.setSelection(params.vkButtonShape);
 		binding.changeOpacitySeekbar.setProgress(params.vkAlpha);
+		binding.analogToggle.setChecked(params.vkAnalog);
+		int analogSize = params.vkAnalogSize > 0 ? params.vkAnalogSize : 100;
+		binding.analogSizeSeekbar.setProgress(Math.max(0, Math.min(150, analogSize - 50)));
+		updateAnalogSizeLabel();
+		binding.analogSizeSeekbar.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
+			@Override
+			public void onProgressChanged(android.widget.SeekBar seekBar, int progress, boolean fromUser) {
+				updateAnalogSizeLabel();
+			}
+
+			@Override
+			public void onStartTrackingTouch(android.widget.SeekBar seekBar) {
+			}
+
+			@Override
+			public void onStopTrackingTouch(android.widget.SeekBar seekBar) {
+			}
+		});
 		int vkHideDelay = params.vkHideDelay;
 		binding.virtualKeyboardHideDelay.setText(vkHideDelay > 0 ? Integer.toString(vkHideDelay) : "");
 
@@ -670,6 +688,8 @@ public class ConfigActivity extends BaseActivity implements View.OnClickListener
 			params.keyCodesLayout = binding.buttonsLayoutSelector.getSelectedItemPosition();
 			params.vkButtonShape = binding.buttonShapeSelector.getSelectedItemPosition();
 			params.vkAlpha = binding.changeOpacitySeekbar.getProgress();
+			params.vkAnalog = binding.analogToggle.isChecked();
+			params.vkAnalogSize = 50 + binding.analogSizeSeekbar.getProgress();
 			params.vkHideDelay = parseInt(binding.virtualKeyboardHideDelay.getText().toString());
 			try {
 				params.vkBgColor = Integer.parseInt(
@@ -991,5 +1011,11 @@ public class ConfigActivity extends BaseActivity implements View.OnClickListener
 	protected void onDestroy() {
 		binding = null;
 		super.onDestroy();
+	}
+
+	private void updateAnalogSizeLabel() {
+		if (binding == null) return;
+		binding.analogSizeHint.setText(getString(R.string.PREF_VK_ANALOG_SIZE,
+				50 + binding.analogSizeSeekbar.getProgress()));
 	}
 }

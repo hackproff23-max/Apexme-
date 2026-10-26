@@ -281,4 +281,6 @@
     <string name="import_folder_title">Importing games</string>
     <string name="import_folder_result">Converted: %1$d\nAlready installed (skipped): %2$d\nFailed: %3$d</string>
     <string name="import_folder_cancelled">Cancelled.</string>
+    <string name="PREF_VK_ANALOG">Analog stick</string>
+    <string name="PREF_VK_ANALOG_SIZE">Analog size: %1$d%%</string>
 </resources>
