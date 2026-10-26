@@ -273,4 +273,12 @@
     <string name="apex_apply" translatable="false">Aplicar</string>
     <string name="apex_import_ok" translatable="false">Importado com sucesso</string>
     <string name="apex_import_fail" translatable="false">Arquivo inválido ou não foi possível importar</string>
+    <string name="action_import_folder">Import folder of games</string>
+    <string name="import_folder_need_access">Allow \"access to all files\" for Apexme in Android settings first.</string>
+    <string name="import_folder_empty">No .jar files in this folder.</string>
+    <string name="import_folder_confirm">Convert %1$d game(s) from this folder? Subfolders are not read.</string>
+    <string name="import_folder_progress">Converting %1$d/%2$d\n%3$s</string>
+    <string name="import_folder_title">Importing games</string>
+    <string name="import_folder_result">Converted: %1$d\nAlready installed (skipped): %2$d\nFailed: %3$d</string>
+    <string name="import_folder_cancelled">Cancelled.</string>
 </resources>

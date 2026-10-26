@@ -9,6 +9,10 @@
         android:title="@string/action_colors"
         app:showAsAction="always" />
     <item
+        android:id="@+id/action_import_folder"
+        android:title="@string/action_import_folder"
+        app:showAsAction="never" />
+    <item
         android:id="@+id/action_sort"
         android:title="@string/pref_app_sort_title"
         android:icon="@drawable/ic_setting_sort"

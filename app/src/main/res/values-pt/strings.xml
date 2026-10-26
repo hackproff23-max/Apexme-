@@ -156,4 +156,12 @@
     <string name="error_name_exists">Já existe, digite outro nome</string>
     <string name="default_label">"%s (padrão)"</string>
     <string name="not_saved_exists">Já existe</string>
+    <string name="action_import_folder">Importar pasta de jogos</string>
+    <string name="import_folder_need_access">Primeiro permita \"acesso a todos os arquivos\" para o Apexme nas configurações do Android.</string>
+    <string name="import_folder_empty">Nenhum arquivo .jar nesta pasta.</string>
+    <string name="import_folder_confirm">Converter %1$d jogo(s) desta pasta? As subpastas não são lidas.</string>
+    <string name="import_folder_progress">Convertendo %1$d/%2$d\n%3$s</string>
+    <string name="import_folder_title">Importando jogos</string>
+    <string name="import_folder_result">Convertidos: %1$d\nJá instalados (ignorados): %2$d\nFalharam: %3$d</string>
+    <string name="import_folder_cancelled">Cancelado.</string>
 </resources>

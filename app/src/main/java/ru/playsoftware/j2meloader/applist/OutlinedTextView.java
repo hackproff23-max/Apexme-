@@ -7,6 +7,7 @@ import android.graphics.Typeface;
 import android.text.Layout;
 import android.text.TextPaint;
 import android.util.AttributeSet;
+import android.view.Gravity;
 
 import androidx.appcompat.widget.AppCompatTextView;
 
@@ -44,7 +45,15 @@ public class OutlinedTextView extends AppCompatTextView {
 		if (layout != null) {
 			TextPaint paint = getPaint();
 			int save = canvas.save();
-			canvas.translate(getCompoundPaddingLeft(), getExtendedPaddingTop());
+			// mesmo deslocamento vertical que o TextView usa (gravity center/bottom)
+			int boxH = getHeight() - getExtendedPaddingTop() - getExtendedPaddingBottom();
+			int textH = layout.getHeight();
+			int voff = 0;
+			int vg = getGravity() & Gravity.VERTICAL_GRAVITY_MASK;
+			if (vg != Gravity.TOP && textH < boxH) {
+				voff = vg == Gravity.BOTTOM ? boxH - textH : (boxH - textH) >> 1;
+			}
+			canvas.translate(getCompoundPaddingLeft() + getScrollX(), getExtendedPaddingTop() + voff + getScrollY());
 			paint.setStyle(Paint.Style.STROKE);
 			paint.setStrokeJoin(Paint.Join.ROUND);
 			paint.setStrokeWidth(Math.max(getResources().getDisplayMetrics().density, getTextSize() * 0.14f));

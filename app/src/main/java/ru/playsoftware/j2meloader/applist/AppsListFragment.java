@@ -72,7 +72,12 @@ import androidx.preference.PreferenceManager;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.TimeUnit;
 
 import io.reactivex.Observable;
@@ -95,6 +100,8 @@ import ru.playsoftware.j2meloader.util.AppUtils;
 import ru.playsoftware.j2meloader.util.Constants;
 import ru.playsoftware.j2meloader.util.FileUtils;
 import ru.playsoftware.j2meloader.util.LogUtils;
+import ru.playsoftware.j2meloader.util.PickDirResultContract;
+import ru.woesss.j2me.installer.BatchInstaller;
 import ru.woesss.j2me.installer.InstallerDialog;
 
 public class AppsListFragment extends Fragment {
@@ -110,6 +117,108 @@ public class AppsListFragment extends Fragment {
 	private final ActivityResultLauncher<String> openFileLauncher = registerForActivityResult(
 			FileUtils.getFilePicker(),
 			this::onPickFileResult);
+
+	private final ActivityResultLauncher<String> pickFolderLauncher = registerForActivityResult(
+			new PickDirResultContract(),
+			this::onPickFolderResult);
+
+	private AlertDialog batchDialog;
+
+	private void startFolderImport() {
+		if (!FileUtils.isExternalStorageLegacy()) {
+			Toast.makeText(requireContext(), R.string.import_folder_need_access, Toast.LENGTH_LONG).show();
+			return;
+		}
+		String path = preferences.getString(PREF_LAST_PATH, null);
+		if (path == null || !new File(path).isDirectory()) {
+			path = Environment.getExternalStorageDirectory().getAbsolutePath();
+		}
+		try {
+			pickFolderLauncher.launch(path);
+		} catch (ActivityNotFoundException e) {
+			Toast.makeText(getContext(), R.string.error_no_picker, Toast.LENGTH_SHORT).show();
+		}
+	}
+
+	private void onPickFolderResult(Uri uri) {
+		if (uri == null) {
+			return;
+		}
+		File dir = com.nononsenseapps.filepicker.Utils.getFileForUri(uri);
+		if (!dir.isDirectory()) {
+			return;
+		}
+		preferences.edit().putString(PREF_LAST_PATH, dir.getAbsolutePath()).apply();
+		// Somente arquivos .jar direto na pasta escolhida (sem ler subpastas)
+		File[] files = dir.listFiles(f -> f.isFile() && f.getName().toLowerCase(Locale.ROOT).endsWith(".jar"));
+		if (files == null || files.length == 0) {
+			Toast.makeText(requireContext(), R.string.import_folder_empty, Toast.LENGTH_LONG).show();
+			return;
+		}
+		Arrays.sort(files, Comparator.comparing((File f) -> f.getName().toLowerCase(Locale.ROOT)));
+		List<File> jars = new ArrayList<>(Arrays.asList(files));
+		new AlertDialog.Builder(requireActivity())
+				.setTitle(R.string.action_import_folder)
+				.setMessage(getString(R.string.import_folder_confirm, jars.size()))
+				.setPositiveButton(android.R.string.ok, (d, w) -> runBatch(jars))
+				.setNegativeButton(android.R.string.cancel, null)
+				.show();
+	}
+
+	private void runBatch(List<File> jars) {
+		final FragmentActivity activity = requireActivity();
+		final AtomicBoolean cancel = new AtomicBoolean(false);
+		batchDialog = new AlertDialog.Builder(activity)
+				.setTitle(R.string.import_folder_title)
+				.setMessage(getString(R.string.import_folder_progress, 0, jars.size(), ""))
+				.setCancelable(false)
+				.setNegativeButton(android.R.string.cancel, (d, w) -> cancel.set(true))
+				.create();
+		batchDialog.setCanceledOnTouchOutside(false);
+		batchDialog.show();
+		final Context appContext = activity.getApplicationContext();
+		BatchInstaller.start(activity.getApplication(), appRepository, jars, cancel,
+				new BatchInstaller.Listener() {
+					@Override
+					public void onProgress(int index, int total, String fileName) {
+						if (batchDialog != null && batchDialog.isShowing()) {
+							batchDialog.setMessage(appContext.getString(
+									R.string.import_folder_progress, index, total, fileName));
+						}
+					}
+
+					@Override
+					public void onDone(int installed, int skipped, List<String> failed, boolean cancelled) {
+						try {
+							if (batchDialog != null) {
+								batchDialog.dismiss();
+							}
+						} catch (Exception ignored) {
+						}
+						batchDialog = null;
+						StringBuilder msg = new StringBuilder(appContext.getString(
+								R.string.import_folder_result, installed, skipped, failed.size()));
+						if (cancelled) {
+							msg.append("\n\n").append(appContext.getString(R.string.import_folder_cancelled));
+						}
+						for (int i = 0; i < failed.size() && i < 15; i++) {
+							msg.append(i == 0 ? "\n\n" : "\n").append(failed.get(i));
+						}
+						if (failed.size() > 15) {
+							msg.append("\n...");
+						}
+						if (activity.isFinishing() || activity.isDestroyed()) {
+							Toast.makeText(appContext, msg.toString(), Toast.LENGTH_LONG).show();
+							return;
+						}
+						new AlertDialog.Builder(activity)
+								.setTitle(R.string.action_import_folder)
+								.setMessage(msg)
+								.setPositiveButton(android.R.string.ok, null)
+								.show();
+					}
+				});
+	}
 
 	private int pendingThemeTarget;
 	private final ActivityResultLauncher<String[]> themePicker = registerForActivityResult(
@@ -380,6 +489,8 @@ public class AppsListFragment extends Fragment {
 			showSortDialog();
 		} else if (itemId == R.id.action_colors) {
 			showThemeDialog();
+		} else if (itemId == R.id.action_import_folder) {
+			startFolderImport();
 		}
 		return false;
 	}
