@@ -17,7 +17,7 @@ import javax.microedition.util.ContextHolder;
 
 import ru.playsoftware.j2meloader.R;
 
-/** Janela do Teclado virtual: edicao, tamanhos, PNG, analogico, letras e mapeamento. */
+/** Janela do Teclado virtual: edicao, tamanhos, imagem por botao, analogico, letras e mapeamento. */
 public final class VkDialog {
 	private static final String[] NUM_LABELS = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "*", "#"};
 	private static final int[] NUM_CODES = {49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 42, 35};
@@ -72,13 +72,15 @@ public final class VkDialog {
 			vk.apexRelayout();
 		}));
 
-		root.addView(ApexUi.section(a, "Imagem dos botões (PNG)"));
-		root.addView(ApexUi.row(a,
-				ApexUi.button(a, "PNG normal", v -> importPng(a, vk, false)),
-				ApexUi.button(a, "PNG pressionado", v -> importPng(a, vk, true))));
-		root.addView(ApexUi.button(a, "Remover PNGs", v -> {
-			ApexPrefs.clearButtonPngs();
+		root.addView(ApexUi.section(a, "Imagem de cada botão"));
+		root.addView(ApexUi.button(a, "Escolher imagem por botão", v -> {
+			holder[0].dismiss();
+			showButtonList(a, vk, 0);
+		}));
+		root.addView(ApexUi.button(a, "Remover todas as imagens", v -> {
+			ApexPrefs.clearAllButtonImages();
 			vk.apexRelayout();
+			Toast.makeText(a, "Imagens removidas", Toast.LENGTH_SHORT).show();
 		}));
 
 		root.addView(ApexUi.section(a, "Teclado de letras"));
@@ -100,11 +102,49 @@ public final class VkDialog {
 		holder[0].show();
 	}
 
-	private static void importPng(MicroActivity a, VirtualKeyboard vk, boolean pressed) {
+	/** Lista todos os botoes; toque em um para definir a imagem so dele. */
+	private static void showButtonList(MicroActivity a, VirtualKeyboard vk, int scrollTo) {
+		String[][] all = ApexPrefs.allButtons();
+		String[] items = new String[all.length];
+		for (int i = 0; i < all.length; i++) {
+			boolean n = ApexPrefs.hasButtonImage(all[i][0], false);
+			boolean p = ApexPrefs.hasButtonImage(all[i][0], true);
+			items[i] = all[i][1] + (n || p ? "  ✓" + (n ? " normal" : "") + (p ? " pressionado" : "") : "");
+		}
+		AlertDialog d = new AlertDialog.Builder(a)
+				.setTitle("Imagem de qual botão?")
+				.setItems(items, (dlg, which) -> showButtonOptions(a, vk, all[which], which))
+				.setNegativeButton(R.string.apex_close, null)
+				.create();
+		d.show();
+		d.getListView().setSelection(scrollTo);
+	}
+
+	private static void showButtonOptions(MicroActivity a, VirtualKeyboard vk, String[] btn, int index) {
+		String id = btn[0];
+		new AlertDialog.Builder(a)
+				.setTitle(btn[1])
+				.setItems(new String[]{"Importar imagem normal", "Importar imagem pressionada",
+						"Remover imagens deste botão"}, (dlg, which) -> {
+					if (which == 2) {
+						ApexPrefs.clearButtonImage(id);
+						vk.apexRelayout();
+						showButtonList(a, vk, index);
+					} else {
+						importImage(a, vk, id, which == 1, index);
+					}
+				})
+				.setNegativeButton(android.R.string.cancel, (dlg, w) -> showButtonList(a, vk, index))
+				.setOnCancelListener(dlg -> showButtonList(a, vk, index))
+				.show();
+	}
+
+	private static void importImage(MicroActivity a, VirtualKeyboard vk, String id, boolean pressed, int index) {
 		ApexUi.pick(a, "image/*", uri -> {
-			boolean ok = ApexPrefs.importButtonPng(a, uri, pressed);
-			Toast.makeText(a, ok ? "PNG importado" : "Imagem inválida", Toast.LENGTH_SHORT).show();
+			boolean ok = ApexPrefs.importButtonImage(a, uri, id, pressed);
+			Toast.makeText(a, ok ? "Imagem importada" : "Imagem inválida", Toast.LENGTH_SHORT).show();
 			vk.apexRelayout();
+			showButtonList(a, vk, index);
 		});
 	}
 

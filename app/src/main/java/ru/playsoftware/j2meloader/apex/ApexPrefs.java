@@ -13,11 +13,14 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 
 import javax.microedition.util.ContextHolder;
 
-/** Configuracoes extras do Apexme: shaders, analogico, teclado de letras, PNG de botoes. */
+/** Configuracoes extras do Apexme: shaders, analogico, teclado de letras, imagem por botao. */
 public final class ApexPrefs {
 	private static final String FILE = "apex_extras";
 	public static final String SEL_AUTO = "";
@@ -26,9 +29,6 @@ public final class ApexPrefs {
 
 	private static SharedPreferences sp;
 	private static SparseIntArray letterMap;
-	private static Bitmap btnNormal;
-	private static Bitmap btnPressed;
-	private static boolean btnLoaded;
 
 	private ApexPrefs() {
 	}
@@ -233,14 +233,80 @@ public final class ApexPrefs {
 		return code;
 	}
 
-	// ---------------- PNG dos botoes ----------------
-	public static synchronized Bitmap buttonBitmap(boolean pressed) {
-		if (!btnLoaded) {
-			btnNormal = decode(new File(dir("buttons"), "normal.png"));
-			btnPressed = decode(new File(dir("buttons"), "pressed.png"));
-			btnLoaded = true;
+	// ---------------- imagens dos botoes (uma por botao) ----------------
+	/** Ids dos botoes do teclado virtual, na mesma ordem do array keypad do VirtualKeyboard. */
+	public static final String[] KEY_IDS = {
+			"num1", "num2", "num3", "num4", "num5", "num6", "num7", "num8", "num9", "num0",
+			"star", "pound", "softleft", "softright", "d", "c",
+			"upleft", "up", "upright", "left", "right", "downleft", "down", "downright",
+			"fire", "a", "b", "menu"};
+	private static final String[] KEY_NAMES = {
+			"Tecla 1", "Tecla 2", "Tecla 3", "Tecla 4", "Tecla 5", "Tecla 6", "Tecla 7", "Tecla 8",
+			"Tecla 9", "Tecla 0", "Tecla *", "Tecla #", "Soft esquerda (L)", "Soft direita (R)",
+			"Tecla D", "Tecla C", "Cima-esquerda", "Cima", "Cima-direita", "Esquerda", "Direita",
+			"Baixo-esquerda", "Baixo", "Baixo-direita", "Fire (F)", "Tecla A", "Tecla B", "Menu (M)"};
+	public static final String ANALOG_BASE = "analog_base";
+	public static final String ANALOG_KNOB = "analog_knob";
+	public static final String LETTER_PREFIX = "letter_";
+
+	private static final HashMap<String, Bitmap> bitmaps = new HashMap<>();
+	private static final HashSet<String> missing = new HashSet<>();
+
+	/** Lista de todos os botoes personalizaveis: {id, nome}. */
+	public static String[][] allButtons() {
+		ArrayList<String[]> l = new ArrayList<>();
+		for (int i = 0; i < KEY_IDS.length; i++) {
+			l.add(new String[]{KEY_IDS[i], KEY_NAMES[i]});
 		}
-		return pressed && btnPressed != null ? btnPressed : btnNormal;
+		l.add(new String[]{ANALOG_BASE, "Analógico (base)"});
+		l.add(new String[]{ANALOG_KNOB, "Analógico (bolinha)"});
+		for (char ch = 'a'; ch <= 'z'; ch++) {
+			l.add(new String[]{LETTER_PREFIX + ch, "Letra " + Character.toUpperCase(ch)});
+		}
+		l.add(new String[]{LETTER_PREFIX + "back", "Letra: apagar"});
+		l.add(new String[]{LETTER_PREFIX + "space", "Letra: espaço"});
+		l.add(new String[]{LETTER_PREFIX + "ok", "Letra: OK"});
+		return l.toArray(new String[0][]);
+	}
+
+	private static File imageFile(String id, boolean pressed) {
+		return new File(dir("buttons"), id.replaceAll("[^A-Za-z0-9_]", "_")
+				+ (pressed ? "_pressed.png" : "_normal.png"));
+	}
+
+	/**
+	 * Imagem do botao {@code id}. Se estiver pressionado e nao houver imagem "pressionado",
+	 * usa a normal. Devolve null se o botao nao tiver imagem (desenho padrao).
+	 */
+	public static synchronized Bitmap buttonBitmap(String id, boolean pressed) {
+		if (id == null) {
+			return null;
+		}
+		if (pressed) {
+			Bitmap b = load(id, true);
+			if (b != null) {
+				return b;
+			}
+		}
+		return load(id, false);
+	}
+
+	private static Bitmap load(String id, boolean pressed) {
+		String k = id + (pressed ? "|p" : "|n");
+		Bitmap b = bitmaps.get(k);
+		if (b != null) {
+			return b;
+		}
+		if (missing.contains(k)) {
+			return null;
+		}
+		b = decode(imageFile(id, pressed));
+		if (b == null) {
+			missing.add(k);
+		} else {
+			bitmaps.put(k, b);
+		}
+		return b;
 	}
 
 	private static Bitmap decode(File f) {
@@ -248,14 +314,33 @@ public final class ApexPrefs {
 			return null;
 		}
 		try {
-			return BitmapFactory.decodeFile(f.getPath());
+			BitmapFactory.Options o = new BitmapFactory.Options();
+			o.inJustDecodeBounds = true;
+			BitmapFactory.decodeFile(f.getPath(), o);
+			int sample = 1;
+			while (o.outWidth / sample > 512 || o.outHeight / sample > 512) {
+				sample *= 2;
+			}
+			BitmapFactory.Options o2 = new BitmapFactory.Options();
+			o2.inSampleSize = sample;
+			return BitmapFactory.decodeFile(f.getPath(), o2);
 		} catch (Throwable e) {
 			return null;
 		}
 	}
 
-	public static synchronized boolean importButtonPng(Context c, Uri uri, boolean pressed) {
-		File out = new File(dir("buttons"), pressed ? "pressed.png" : "normal.png");
+	private static void invalidateCache() {
+		bitmaps.clear();
+		missing.clear();
+	}
+
+	public static synchronized boolean hasButtonImage(String id, boolean pressed) {
+		return imageFile(id, pressed).exists();
+	}
+
+	/** Importa a imagem apenas para o botao {@code id}. */
+	public static synchronized boolean importButtonImage(Context c, Uri uri, String id, boolean pressed) {
+		File out = imageFile(id, pressed);
 		File tmp = new File(out.getPath() + ".tmp");
 		try (InputStream in = c.getContentResolver().openInputStream(uri);
 			 OutputStream os = new FileOutputStream(tmp)) {
@@ -264,7 +349,12 @@ public final class ApexPrefs {
 			}
 			byte[] buf = new byte[8192];
 			int n;
+			long total = 0;
 			while ((n = in.read(buf)) > 0) {
+				total += n;
+				if (total > 8 * 1024 * 1024) {
+					throw new java.io.IOException("too big");
+				}
 				os.write(buf, 0, n);
 			}
 		} catch (Exception e) {
@@ -283,23 +373,28 @@ public final class ApexPrefs {
 		//noinspection ResultOfMethodCallIgnored
 		out.delete();
 		boolean ok = tmp.renameTo(out);
-		btnLoaded = false;
+		invalidateCache();
 		return ok;
 	}
 
-	public static synchronized void clearButtonPngs() {
-		File d = dir("buttons");
-		File[] files = d.listFiles();
+	/** Remove as imagens (normal e pressionado) de um unico botao. */
+	public static synchronized void clearButtonImage(String id) {
+		//noinspection ResultOfMethodCallIgnored
+		imageFile(id, false).delete();
+		//noinspection ResultOfMethodCallIgnored
+		imageFile(id, true).delete();
+		invalidateCache();
+	}
+
+	/** Remove as imagens de todos os botoes. */
+	public static synchronized void clearAllButtonImages() {
+		File[] files = dir("buttons").listFiles();
 		if (files != null) {
 			for (File f : files) {
 				//noinspection ResultOfMethodCallIgnored
 				f.delete();
 			}
 		}
-		btnLoaded = false;
-	}
-
-	public static boolean hasButtonPng() {
-		return buttonBitmap(false) != null;
+		invalidateCache();
 	}
 }

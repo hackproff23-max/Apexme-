@@ -1,5 +1,6 @@
 package javax.microedition.lcdui.keyboard;
 
+import android.graphics.Bitmap;
 import android.graphics.RectF;
 import android.os.Handler;
 import android.os.Looper;
@@ -79,18 +80,29 @@ public class ApexAnalog implements Runnable {
 		if (!enabled() || screen.isEmpty()) {
 			return;
 		}
-		int a = (opaque ? 0xFF : settings.vkAlpha) << 24;
-		g.setFillColor(a | settings.vkBgColor);
-		g.setDrawColor(a | settings.vkOutlineColor);
-		g.fillArc(rect, 0, 360);
-		g.drawArc(rect, 0, 360);
+		int alpha = opaque ? 0xFF : settings.vkAlpha;
+		int a = alpha << 24;
+		boolean active = pointer >= 0;
+		Bitmap baseImg = ApexPrefs.buttonBitmap(ApexPrefs.ANALOG_BASE, active);
+		if (baseImg != null) {
+			g.drawBitmap(baseImg, rect, alpha);
+		} else {
+			g.setFillColor(a | settings.vkBgColor);
+			g.setDrawColor(a | settings.vkOutlineColor);
+			g.fillArc(rect, 0, 360);
+			g.drawArc(rect, 0, 360);
+		}
 		float kr = radius * 0.45f;
 		RectF knob = new RectF(knobX - kr, knobY - kr, knobX + kr, knobY + kr);
-		boolean active = pointer >= 0;
-		g.setFillColor(a | (active ? settings.vkBgColorSelected : settings.vkFgColor));
-		g.setDrawColor(a | settings.vkOutlineColor);
-		g.fillArc(knob, 0, 360);
-		g.drawArc(knob, 0, 360);
+		Bitmap knobImg = ApexPrefs.buttonBitmap(ApexPrefs.ANALOG_KNOB, active);
+		if (knobImg != null) {
+			g.drawBitmap(knobImg, knob, alpha);
+		} else {
+			g.setFillColor(a | (active ? settings.vkBgColorSelected : settings.vkFgColor));
+			g.setDrawColor(a | settings.vkOutlineColor);
+			g.fillArc(knob, 0, 360);
+			g.drawArc(knob, 0, 360);
+		}
 	}
 
 	private boolean contains(float x, float y) {

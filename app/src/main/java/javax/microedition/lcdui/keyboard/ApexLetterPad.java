@@ -20,6 +20,7 @@ public class ApexLetterPad {
 	private static final String[] ROWS = {"qwertyuiop", "asdfghjkl", "zxcvbnm"};
 
 	private static class Key {
+		final String id;
 		final String label;
 		final int code;
 		final float units;
@@ -27,7 +28,8 @@ public class ApexLetterPad {
 		boolean selected;
 		int sentCode;
 
-		Key(String label, int code, float units) {
+		Key(String id, String label, int code, float units) {
+			this.id = ApexPrefs.LETTER_PREFIX + id;
 			this.label = label;
 			this.code = code;
 			this.units = units;
@@ -52,15 +54,15 @@ public class ApexLetterPad {
 		ArrayList<Integer> rows = new ArrayList<>();
 		for (int r = 0; r < ROWS.length; r++) {
 			for (char ch : ROWS[r].toCharArray()) {
-				keys.add(new Key(String.valueOf(Character.toUpperCase(ch)), ch, 1f));
+				keys.add(new Key(String.valueOf(ch), String.valueOf(Character.toUpperCase(ch)), ch, 1f));
 				rows.add(r);
 			}
 		}
-		keys.add(new Key("\u232B", Canvas.KEY_CLEAR, 1.5f));
+		keys.add(new Key("back", "\u232B", Canvas.KEY_CLEAR, 1.5f));
 		rows.add(3);
-		keys.add(new Key("ESP", ' ', 4f));
+		keys.add(new Key("space", "ESP", ' ', 4f));
 		rows.add(3);
-		keys.add(new Key("OK", Canvas.KEY_FIRE, 1.5f));
+		keys.add(new Key("ok", "OK", Canvas.KEY_FIRE, 1.5f));
 		rows.add(3);
 		rowOf = new int[rows.size()];
 		for (int i = 0; i < rowOf.length; i++) {
@@ -129,7 +131,7 @@ public class ApexLetterPad {
 			return;
 		}
 		for (Key k : keys) {
-			ApexKeyPaint.draw(g, k.rect, k.label, k.selected, opaque, settings, 0.8f);
+			ApexKeyPaint.draw(g, k.rect, k.id, k.label, k.selected, opaque, settings, 0.8f);
 		}
 	}
 

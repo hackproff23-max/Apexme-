@@ -8,17 +8,17 @@ import javax.microedition.lcdui.graphics.CanvasWrapper;
 import ru.playsoftware.j2meloader.apex.ApexPrefs;
 import ru.playsoftware.j2meloader.config.ProfileModel;
 
-/** Desenho comum das teclas extras (letras), com suporte a PNG importado. */
+/** Desenho comum das teclas extras (letras), com imagem propria por tecla. */
 final class ApexKeyPaint {
 	private ApexKeyPaint() {
 	}
 
-	static void draw(CanvasWrapper g, RectF r, String label, boolean sel, boolean opaque,
+	static void draw(CanvasWrapper g, RectF r, String id, String label, boolean sel, boolean opaque,
 					 ProfileModel s, float textScale) {
 		int bg = sel ? s.vkBgColorSelected : s.vkBgColor;
 		int fg = sel ? s.vkFgColorSelected : s.vkFgColor;
 		int a = opaque ? 0xFF : s.vkAlpha;
-		Bitmap bmp = ApexPrefs.buttonBitmap(sel);
+		Bitmap bmp = ApexPrefs.buttonBitmap(id, sel);
 		if (bmp != null) {
 			g.drawBitmap(bmp, r, a);
 		} else {

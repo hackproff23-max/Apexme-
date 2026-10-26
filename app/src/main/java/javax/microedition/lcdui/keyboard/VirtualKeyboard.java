@@ -227,6 +227,9 @@ public class VirtualKeyboard implements Overlay, Runnable {
 
 		keypad[KEY_FIRE] = new VirtualKey(Canvas.KEY_FIRE, "F");
 		keypad[KEY_MENU] = new MenuKey();
+		for (int i = 0; i < keypad.length; i++) {
+			keypad[i].imageId = ApexPrefs.KEY_IDS[i];
+		}
 
 		layoutVariant = readLayoutType();
 
@@ -1263,6 +1266,7 @@ public class VirtualKeyboard implements Overlay, Runnable {
 	private class VirtualKey implements Runnable {
 		final String label;
 		final int keyCode;
+		String imageId;
 		final RectF rect = new RectF();
 		final PointF snapOffset = new PointF();
 		int snapOrigin;
@@ -1309,7 +1313,7 @@ public class VirtualKeyboard implements Overlay, Runnable {
 				fgColor = settings.vkFgColor;
 			}
 			int alpha = (opaque || layoutEditMode != LAYOUT_EOF ? 0xFF : settings.vkAlpha) << 24;
-			Bitmap png = ApexPrefs.buttonBitmap(selected);
+			Bitmap png = ApexPrefs.buttonBitmap(imageId, selected);
 			if (png != null) {
 				g.drawBitmap(png, rect, alpha >>> 24);
 				g.setTextColor(alpha | fgColor);
