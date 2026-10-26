@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#000000</color>
+    <color name="fab_material_red_500">#f44336</color>
+    <color name="file_picker_accent">#0099ff</color>
+
+    <!--tema Apexme: totalmente preto-->
+    <color name="primary">#000000</color>
+    <color name="primary_dark">#000000</color>
+    <color name="accent">#0099ff</color>
+    <color name="background">#000000</color>
+    <color name="text_primary">#ffffff</color>
+    <color name="text_secondary">#dedede</color>
+    <color name="btn_bg_normal">#0099ff</color>
+    <color name="btn_bg_pressed">#005D8C</color>
+    <color name="config_card">#0d0d0d</color>
+    <color name="name_outline">#0099ff</color>
+
+    <color name="nnf_separator_color">@color/nnf_dark_separator_color</color>
+</resources>
