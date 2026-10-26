@@ -34,7 +34,7 @@
     </style>
 
     <style name="Widget.AppTheme.TextView" parent="Widget.AppCompat.TextView">
-        <item name="android:textStyle">bold|italic</item>
+        <item name="android:textStyle">bold</item>
     </style>
 
     <style name="Widget.AppTheme.ActionBar" parent="Widget.AppCompat.ActionBar.Solid">
@@ -118,7 +118,7 @@
 
     <style name="ButtonStyle" parent="Widget.AppCompat.Button.Colored">
         <item name="android:minHeight">38dp</item>
-        <item name="android:textStyle">bold|italic</item>
+        <item name="android:textStyle">bold</item>
         <item name="android:paddingLeft">6dp</item>
         <item name="android:paddingRight">6dp</item>
         <item name="android:elevation" tools:targetApi="lollipop">1dp</item>

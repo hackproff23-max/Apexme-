@@ -2,20 +2,6 @@
 <androidx.preference.PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools">
-    <ListPreference
-        android:defaultValue="@string/pref_theme_default"
-        android:entries="@array/pref_theme_entries"
-        android:entryValues="@array/pref_theme_values"
-        android:icon="@drawable/ic_setting_theme"
-        android:key="pref_theme"
-        app:useSimpleSummaryProvider="true"
-        android:title="@string/pref_theme_title" />
-    <SwitchPreferenceCompat
-        android:defaultValue="false"
-        android:icon="@drawable/ic_setting_black_background"
-        android:key="pref_black_background"
-        android:summary="@string/pref_black_background_summary"
-        android:title="@string/pref_black_background_title" />
     <SwitchPreferenceCompat
         android:defaultValue="false"
         android:icon="@drawable/ic_setting_enable_action_bar"
@@ -35,17 +21,6 @@
         android:title="@string/pref_add_cutout_area_title"
         app:isPreferenceVisible="false"
         tools:isPreferenceVisible="true" />
-    <SwitchPreferenceCompat
-        android:defaultValue="false"
-        android:icon="@drawable/ic_setting_keep_screen_on"
-        android:key="pref_wakelock_switch"
-        android:title="@string/pref_wakelock_title" />
-    <SwitchPreferenceCompat
-        android:defaultValue="false"
-        android:icon="@drawable/ic_setting_screenshot"
-        android:key="pref_screenshot_switch"
-        android:title="@string/pref_screenshot_title"
-        android:summary="@string/pref_screenshot_summary"/>
     <SwitchPreferenceCompat
         android:defaultValue="true"
         android:icon="@drawable/ic_setting_enable_vibration"

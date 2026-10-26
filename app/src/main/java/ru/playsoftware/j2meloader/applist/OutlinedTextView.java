@@ -34,7 +34,7 @@ public class OutlinedTextView extends AppCompatTextView {
 		Typeface custom = ApexTheme.typeface(context);
 		if (custom != null) {
 			Typeface current = getTypeface();
-			setTypeface(custom, current != null ? current.getStyle() : Typeface.BOLD_ITALIC);
+			setTypeface(custom, current != null ? (current.getStyle() & Typeface.BOLD) : Typeface.BOLD);
 		}
 	}
 
