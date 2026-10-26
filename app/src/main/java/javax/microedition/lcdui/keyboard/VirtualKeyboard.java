@@ -45,6 +45,7 @@ import javax.microedition.lcdui.overlay.Overlay;
 import javax.microedition.shell.MicroActivity;
 import javax.microedition.util.ContextHolder;
 
+import ru.playsoftware.j2meloader.apex.ApexPrefs;
 import ru.playsoftware.j2meloader.config.Config;
 import ru.playsoftware.j2meloader.config.ProfileModel;
 import ru.playsoftware.j2meloader.config.ProfilesManager;
@@ -171,9 +172,10 @@ public class VirtualKeyboard implements Overlay, Runnable {
 	private final int[] snapStack = new int[KEYBOARD_SIZE];
 
 	private final Handler handler;
+	private final ApexAnalog analog;
+	private final ApexLetterPad letterPad;
 	private final File saveFile;
 	private final ProfileModel settings;
-	private final ButtonImages images;
 	private final RectF virtualScreen = new RectF();
 
 	private Canvas target;
@@ -192,25 +194,9 @@ public class VirtualKeyboard implements Overlay, Runnable {
 	private float snapRadius;
 	private int layoutVariant;
 
-	// ---- botao analogico (joystick) no lugar das 8 setas ----
-	public static final String PREF_ANALOG = "vk_analog_mode";
-	private static final float ANALOG_DEAD_ZONE = 0.28f;
-	private static final float ANALOG_GRAB_SCALE = 1.25f;
-	private boolean analogMode;
-	private int analogPointer = -1;
-	private int analogDir = -1;
-	private float analogKnobDx;
-	private float analogKnobDy;
-	private final RectF analogRect = new RectF();
-	private final RectF analogKnobRect = new RectF();
-
 	public VirtualKeyboard(ProfileModel settings) {
 		this.settings = settings;
 		this.saveFile = new File(settings.dir + Config.MIDLET_KEY_LAYOUT_FILE);
-		this.images = settings.vkUseImages ? ButtonImages.load() : null;
-		this.analogMode = androidx.preference.PreferenceManager
-				.getDefaultSharedPreferences(ContextHolder.getAppContext())
-				.getBoolean(PREF_ANALOG, false);
 
 		for (int i = KEY_NUM1; i < 9; i++) {
 			keypad[i] = new VirtualKey(Canvas.KEY_NUM1 + i, Integer.toString(1 + i));
@@ -241,9 +227,6 @@ public class VirtualKeyboard implements Overlay, Runnable {
 
 		keypad[KEY_FIRE] = new VirtualKey(Canvas.KEY_FIRE, "F");
 		keypad[KEY_MENU] = new MenuKey();
-		for (int i = 0; i < keypad.length; i++) {
-			keypad[i].index = i;
-		}
 
 		layoutVariant = readLayoutType();
 
@@ -264,6 +247,8 @@ public class VirtualKeyboard implements Overlay, Runnable {
 				saveLayout();
 			}
 		}
+		analog = new ApexAnalog(settings);
+		letterPad = new ApexLetterPad(settings);
 		HandlerThread thread = new HandlerThread("MidletVirtualKeyboard");
 		thread.start();
 		handler = new Handler(thread.getLooper());
@@ -752,7 +737,16 @@ public class VirtualKeyboard implements Overlay, Runnable {
 	@Override
 	public void setTarget(Canvas canvas) {
 		target = canvas;
+		analog.setTarget(canvas);
+		letterPad.setTarget(canvas);
 		highlightGroup(-1);
+	}
+
+	/** Recalcula o layout (apos mudar tamanhos/ativar extras). */
+	public void apexRelayout() {
+		if (screen != null && overlayView != null) {
+			resize(screen, virtualScreen.left, virtualScreen.top, virtualScreen.right, virtualScreen.bottom);
+		}
 	}
 
 	private void setSnap(int key, int origin, int mode, boolean visible) {
@@ -891,6 +885,8 @@ public class VirtualKeyboard implements Overlay, Runnable {
 			resizeKeyGroup(group);
 		}
 		snapKeys();
+		analog.layout(screen);
+		letterPad.layout(screen);
 		overlayView.postInvalidate();
 		int delay = settings.vkHideDelay;
 		if (delay > 0 && obscuresVirtualScreen && layoutEditMode == LAYOUT_EOF) {
@@ -922,208 +918,44 @@ public class VirtualKeyboard implements Overlay, Runnable {
 		} else {
 			keySize = min / 6.5F;
 		}
+		if (!isPhone()) {
+			keySize *= ApexPrefs.buttonScale();
+		}
 		return keySize;
 	}
 
 	@Override
 	public void paint(CanvasWrapper g) {
 		if (visible) {
-			boolean analog = analogActive();
-			if (analog && analogAnyVisible()) {
-				paintAnalog(g);
-			}
 			for (VirtualKey key : keypad) {
-				if (analog && isDirectionKey(key.index)) {
-					continue;
-				}
 				if (key.visible) {
 					key.paint(g);
 				}
 			}
-		}
-	}
-
-	private static boolean isDirectionKey(int index) {
-		return index >= KEY_UP_LEFT && index <= KEY_DOWN_RIGHT;
-	}
-
-	private boolean analogActive() {
-		return analogMode && layoutEditMode == LAYOUT_EOF;
-	}
-
-	private boolean analogAnyVisible() {
-		for (int i = KEY_UP_LEFT; i <= KEY_DOWN_RIGHT; i++) {
-			if (keypad[i].visible) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	/** Circulo do analogico: quadrado que envolve as 8 setas. */
-	private RectF getAnalogRect() {
-		RectF u = analogRect;
-		u.set(keypad[KEY_UP_LEFT].rect);
-		for (int i = KEY_UP; i <= KEY_DOWN_RIGHT; i++) {
-			u.union(keypad[i].rect);
-		}
-		float size = Math.min(u.width(), u.height());
-		float cx = u.centerX();
-		float cy = u.centerY();
-		u.set(cx - size / 2f, cy - size / 2f, cx + size / 2f, cy + size / 2f);
-		return u;
-	}
-
-	private void paintAnalog(CanvasWrapper g) {
-		RectF r = getAnalogRect();
-		boolean pressed = analogPointer != -1;
-		int a = pressed ? 0xFF : settings.vkAlpha;
-		Bitmap baseImg = images != null ? images.getAnalogBase(pressed) : null;
-		Bitmap knobImg = images != null ? images.getAnalogKnob(pressed) : null;
-		if (baseImg != null) {
-			g.drawKeyBitmap(baseImg, r, a, false);
-		} else {
-			g.setFillColor((a << 24) | settings.vkBgColor);
-			g.setDrawColor((a << 24) | settings.vkOutlineColor);
-			g.fillArc(r, 0, 360);
-			g.drawArc(r, 0, 360);
-		}
-		float radius = r.width() / 2f;
-		float kr = radius * 0.42f;
-		float kx = r.centerX() + analogKnobDx;
-		float ky = r.centerY() + analogKnobDy;
-		analogKnobRect.set(kx - kr, ky - kr, kx + kr, ky + kr);
-		if (knobImg != null) {
-			g.drawKeyBitmap(knobImg, analogKnobRect, a, false);
-			return;
-		}
-		g.setFillColor((a << 24) | (pressed ? settings.vkBgColorSelected : settings.vkFgColor));
-		g.fillArc(analogKnobRect, 0, 360);
-		g.drawArc(analogKnobRect, 0, 360);
-	}
-
-	private boolean analogContains(float x, float y) {
-		if (!analogActive() || !analogAnyVisible()) {
-			return false;
-		}
-		if (keypad[KEY_FIRE].contains(x, y)) {
-			return false; // o botao de acao no centro continua funcionando
-		}
-		RectF r = getAnalogRect();
-		float radius = r.width() / 2f * ANALOG_GRAB_SCALE;
-		float dx = x - r.centerX();
-		float dy = y - r.centerY();
-		return dx * dx + dy * dy <= radius * radius;
-	}
-
-	/** Atualiza o direcional e o desenho do botao conforme a posicao do dedo. */
-	private void analogUpdate(float x, float y) {
-		RectF r = getAnalogRect();
-		float radius = r.width() / 2f;
-		float dx = x - r.centerX();
-		float dy = y - r.centerY();
-		float dist = (float) Math.hypot(dx, dy);
-		float max = radius * 0.58f;
-		if (dist > max && dist > 0) {
-			analogKnobDx = dx / dist * max;
-			analogKnobDy = dy / dist * max;
-		} else {
-			analogKnobDx = dx;
-			analogKnobDy = dy;
-		}
-		int dir = -1;
-		if (dist >= radius * ANALOG_DEAD_ZONE) {
-			double angle = Math.toDegrees(Math.atan2(dy, dx));
-			int sector = ((int) Math.round(angle / 45.0) + 8) % 8;
-			switch (sector) {
-				case 0:
-					dir = KEY_RIGHT;
-					break;
-				case 1:
-					dir = KEY_DOWN_RIGHT;
-					break;
-				case 2:
-					dir = KEY_DOWN;
-					break;
-				case 3:
-					dir = KEY_DOWN_LEFT;
-					break;
-				case 4:
-					dir = KEY_LEFT;
-					break;
-				case 5:
-					dir = KEY_UP_LEFT;
-					break;
-				case 6:
-					dir = KEY_UP;
-					break;
-				default:
-					dir = KEY_UP_RIGHT;
-					break;
-			}
-		}
-		setAnalogDirection(dir);
-	}
-
-	private void setAnalogDirection(int newDir) {
-		if (newDir == analogDir) {
-			return;
-		}
-		if (analogDir != -1 && target != null) {
-			keypad[analogDir].onUp();
-		}
-		boolean wasIdle = analogDir == -1;
-		analogDir = newDir;
-		if (newDir != -1 && target != null) {
-			if (wasIdle) {
-				vibrate();
-			}
-			keypad[newDir].onDown();
-		}
-	}
-
-	private void analogRelease() {
-		analogPointer = -1;
-		setAnalogDirection(-1);
-		analogKnobDx = 0;
-		analogKnobDy = 0;
-	}
-
-	public boolean isAnalogMode() {
-		return analogMode;
-	}
-
-	public void setAnalogMode(boolean enabled) {
-		if (enabled == analogMode) {
-			return;
-		}
-		analogRelease();
-		analogMode = enabled;
-		androidx.preference.PreferenceManager.getDefaultSharedPreferences(ContextHolder.getAppContext())
-				.edit().putBoolean(PREF_ANALOG, enabled).apply();
-		if (overlayView != null) {
-			overlayView.postInvalidate();
+			boolean opaque = layoutEditMode != LAYOUT_EOF;
+			analog.paint(g, opaque);
+			letterPad.paint(g, opaque);
 		}
 	}
 
 	@Override
 	public boolean pointerPressed(int pointer, float x, float y) {
+		if (layoutEditMode == LAYOUT_EOF) {
+			if (letterPad.press(pointer, x, y) || analog.press(pointer, x, y)) {
+				overlayView.postInvalidate();
+				return false;
+			}
+		} else if (layoutEditMode == LAYOUT_KEYS) {
+			if (letterPad.editBegin(x, y) || analog.editBegin(x, y)) {
+				return false;
+			}
+		}
 		switch (layoutEditMode) {
 			case LAYOUT_EOF:
 				if (pointer > associatedKeys.length) {
 					return false;
 				}
-				if (analogPointer == -1 && analogContains(x, y)) {
-					analogPointer = pointer;
-					analogUpdate(x, y);
-					overlayView.postInvalidate();
-					return false;
-				}
-				boolean analogOn = analogActive();
 				for (VirtualKey key : keypad) {
-					if (analogOn && isDirectionKey(key.index)) {
-						continue;
-					}
 					if (key.contains(x, y)) {
 						vibrate();
 						associatedKeys[pointer] = key;
@@ -1170,14 +1002,23 @@ public class VirtualKeyboard implements Overlay, Runnable {
 
 	@Override
 	public boolean pointerDragged(int pointer, float x, float y) {
+		if (layoutEditMode == LAYOUT_EOF) {
+			if (letterPad.drag(pointer, x, y) || analog.drag(pointer, x, y)) {
+				return false;
+			}
+		} else if (layoutEditMode == LAYOUT_KEYS) {
+			if (analog.isEditing()) {
+				analog.editDrag(x, y);
+				return false;
+			}
+			if (letterPad.isEditing()) {
+				letterPad.editDrag(x, y);
+				return false;
+			}
+		}
 		switch (layoutEditMode) {
 			case LAYOUT_EOF:
 				if (pointer > associatedKeys.length) {
-					return false;
-				}
-				if (pointer == analogPointer) {
-					analogUpdate(x, y);
-					overlayView.postInvalidate();
 					return false;
 				}
 				VirtualKey aKey = associatedKeys[pointer];
@@ -1247,13 +1088,15 @@ public class VirtualKeyboard implements Overlay, Runnable {
 
 	@Override
 	public boolean pointerReleased(int pointer, float x, float y) {
+		if (analog.isEditing() || letterPad.isEditing()) {
+			if (analog.isEditing()) analog.editEnd();
+			if (letterPad.isEditing()) letterPad.editEnd();
+			return false;
+		}
 		if (layoutEditMode == LAYOUT_EOF) {
+			letterPad.release(pointer);
+			analog.release(pointer);
 			if (pointer > associatedKeys.length) {
-				return false;
-			}
-			if (pointer == analogPointer) {
-				analogRelease();
-				overlayView.postInvalidate();
 				return false;
 			}
 			VirtualKey key = associatedKeys[pointer];
@@ -1312,10 +1155,8 @@ public class VirtualKeyboard implements Overlay, Runnable {
 
 	@Override
 	public void cancel() {
-		analogPointer = -1;
-		analogDir = -1;
-		analogKnobDx = 0;
-		analogKnobDy = 0;
+		analog.cancel();
+		letterPad.cancel();
 		for (VirtualKey key : keypad) {
 			key.selected = false;
 			handler.removeCallbacks(key);
@@ -1365,6 +1206,8 @@ public class VirtualKeyboard implements Overlay, Runnable {
 
 	public void setView(View view) {
 		overlayView = view;
+		analog.setView(view);
+		letterPad.setView(view);
 	}
 
 	public int getKeyStatesVodafone() {
@@ -1429,7 +1272,6 @@ public class VirtualKeyboard implements Overlay, Runnable {
 		boolean visible = true;
 		boolean opaque = true;
 		int corners;
-		int index;
 		private final int hashCode;
 		private int repeatCount;
 
@@ -1449,14 +1291,6 @@ public class VirtualKeyboard implements Overlay, Runnable {
 		}
 
 		void paint(CanvasWrapper g) {
-			if (images != null) {
-				Bitmap bmp = images.get(index, selected);
-				if (bmp != null) {
-					int a = layoutEditMode != LAYOUT_EOF ? 0xB0 : (opaque ? 0xFF : settings.vkAlpha);
-					g.drawKeyBitmap(bmp, rect, a, images.isDimmed(index, selected));
-					return;
-				}
-			}
 			int bgColor;
 			int fgColor;
 			if (selected) {
@@ -1467,6 +1301,13 @@ public class VirtualKeyboard implements Overlay, Runnable {
 				fgColor = settings.vkFgColor;
 			}
 			int alpha = (opaque || layoutEditMode != LAYOUT_EOF ? 0xFF : settings.vkAlpha) << 24;
+			Bitmap png = ApexPrefs.buttonBitmap(selected);
+			if (png != null) {
+				g.drawBitmap(png, rect, alpha >>> 24);
+				g.setTextColor(alpha | fgColor);
+				g.drawString(label, rect.centerX(), rect.centerY());
+				return;
+			}
 			g.setFillColor(alpha | bgColor);
 			g.setTextColor(alpha | fgColor);
 			g.setDrawColor(alpha | settings.vkOutlineColor);

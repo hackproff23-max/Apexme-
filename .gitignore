@@ -39,3 +39,7 @@ captures/
 .externalNativeBuild
 .cxx
 keystore.properties
+build/
+.gradle/
+*.apk
+local.properties

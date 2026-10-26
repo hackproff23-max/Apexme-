@@ -953,63 +953,6 @@
             <!-- Keyboard settings -->
         </androidx.constraintlayout.widget.ConstraintLayout><!-- Input -->
 
-        <!-- Skin -->
-        <LinearLayout
-            android:id="@+id/skin_config_root"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_margin="5dp"
-            android:background="?attr/bg_config_card"
-            android:orientation="vertical"
-            android:padding="5dp"
-            app:elevation="2dp">
-
-            <TextView
-                style="@style/ConfigTitleTextStyle"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/pref_skin_title" />
-
-            <Spinner
-                android:id="@+id/skin_selector"
-                android:layout_width="match_parent"
-                android:layout_height="@dimen/height_config_row"
-                android:textColor="?attr/textColorSecondary"
-                android:textSize="15sp" />
-        </LinearLayout><!-- Skin -->
-
-        <!-- Button PNG images -->
-        <LinearLayout
-            android:id="@+id/button_images_config_root"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_margin="5dp"
-            android:background="?attr/bg_config_card"
-            android:orientation="vertical"
-            android:padding="5dp"
-            app:elevation="2dp">
-
-            <TextView
-                style="@style/ConfigTitleTextStyle"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/vk_img_title" />
-
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/vk_use_images_toggle"
-                style="@style/SwitchStyle"
-                android:layout_width="match_parent"
-                android:layout_height="@dimen/height_config_row"
-                android:checked="false"
-                android:text="@string/pref_vk_use_images" />
-
-            <Button
-                android:id="@+id/vk_images_button"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/menu_import_png" />
-        </LinearLayout><!-- Button PNG images -->
-
         <!-- System Properties -->
         <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/system_properties_config_root"

@@ -4,10 +4,10 @@
     tools:context="ru.playsoftware.j2meloader.MainActivity">
 
     <item
-        android:id="@+id/action_search"
-        android:title="@string/search"
-        app:actionViewClass="androidx.appcompat.widget.SearchView"
-        app:showAsAction="ifRoom" />
+        android:id="@+id/action_colors"
+        android:icon="@drawable/ic_apex_colors"
+        android:title="@string/action_colors"
+        app:showAsAction="always" />
     <item
         android:id="@+id/action_sort"
         android:title="@string/pref_app_sort_title"

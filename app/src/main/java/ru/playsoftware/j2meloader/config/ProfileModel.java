@@ -47,9 +47,6 @@ public class ProfileModel {
 	@SerializedName("ScreenBackgroundColor")
 	public int screenBackgroundColor;
 
-	@SerializedName("ScreenBackgroundImage")
-	public String screenBackgroundImage;
-
 	@SerializedName("ScreenScaleRatio")
 	public int screenScaleRatio;
 
@@ -133,9 +130,6 @@ public class ProfileModel {
 
 	@SerializedName("VirtualKeyboardDelay")
 	public int vkHideDelay;
-
-	@SerializedName("VkUseImages")
-	public boolean vkUseImages;
 
 	@SerializedName("VirtualKeyboardColorBackground")
 	public int vkBgColor;

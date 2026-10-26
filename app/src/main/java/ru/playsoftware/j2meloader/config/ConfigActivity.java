@@ -49,7 +49,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -58,8 +57,6 @@ import java.util.Set;
 import javax.microedition.shell.MicroActivity;
 import javax.microedition.util.ContextHolder;
 
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.PopupMenu;
@@ -98,23 +95,6 @@ public class ConfigActivity extends BaseActivity implements View.OnClickListener
 	private boolean needShow;
 
 	private ActivityConfigBinding binding;
-	private ArrayAdapter<String> skinAdapter;
-	private String pendingImageSlot;
-	private boolean pendingImagePressed;
-	private final ActivityResultLauncher<String> pickButtonPng = registerForActivityResult(
-			new ActivityResultContracts.GetContent(), uri -> {
-				if (uri == null || pendingImageSlot == null) {
-					return;
-				}
-				int result = ButtonImagesManager.importPng(this, uri, pendingImageSlot, pendingImagePressed);
-				int msg = result == ButtonImagesManager.OK ? R.string.vk_img_imported
-						: result == ButtonImagesManager.ERR_STORAGE ? R.string.vk_img_storage_error
-						: R.string.vk_img_invalid;
-				Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
-				if (result == ButtonImagesManager.OK) {
-					showButtonImagesDialog();
-				}
-			});
 
 	@SuppressLint({"StringFormatMatches", "StringFormatInvalid"})
 	@Override
@@ -206,8 +186,6 @@ public class ConfigActivity extends BaseActivity implements View.OnClickListener
 		binding.updateKeyboardOutlineColor.setOnClickListener(this);
 		binding.updateEncoding.setOnClickListener(this::showCharsetPicker);
 		binding.tuneSelectedShader.setOnClickListener(this::showShaderSettings);
-		binding.vkImagesButton.setOnClickListener(v -> showButtonImagesDialog());
-		initSkinSpinner();
 		binding.scaleRatio.addTextChangedListener(new TextWatcher() {
 			@Override
 			public void beforeTextChanged(CharSequence s, int start, int count, int after) {
@@ -350,35 +328,6 @@ public class ConfigActivity extends BaseActivity implements View.OnClickListener
 		ShaderTuneDialog.newInstance(shader).show(getSupportFragmentManager(), "ShaderTuning");
 	}
 
-	private void showButtonImagesDialog() {
-		ButtonImagesUi.showSlots(this, (slot, pressed) -> {
-			pendingImageSlot = slot;
-			pendingImagePressed = pressed;
-			pickButtonPng.launch("image/*");
-		});
-	}
-
-	private void initSkinSpinner() {
-		File dir = new File(workDir + Config.SKINS_DIR);
-		if (!dir.exists()) {
-			//noinspection ResultOfMethodCallIgnored
-			dir.mkdirs();
-		}
-		skinAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item);
-		skinAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-		binding.skinSelector.setAdapter(skinAdapter);
-		skinAdapter.add(getString(R.string.pref_skin_not_set));
-		String[] files = dir.list((d, n) -> new File(d, n).isFile());
-		if (files != null) {
-			Arrays.sort(files, (o1, o2) -> {
-				int res = o1.compareToIgnoreCase(o2);
-				return res != 0 ? res : o1.compareTo(o2);
-			});
-			skinAdapter.addAll(files);
-		}
-		skinAdapter.notifyDataSetChanged();
-	}
-
 	private void initShaderSpinner() {
 		if (spShaderAdapter != null) {
 			binding.shaderRoot.setVisibility(View.VISIBLE);
@@ -393,7 +342,33 @@ public class ConfigActivity extends BaseActivity implements View.OnClickListener
 		spShaderAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, infos);
 		spShaderAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 		binding.shaderSelector.setAdapter(spShaderAdapter);
-		infos.addAll(ShaderCatalog.load(this, dir));
+		File[] files = dir.listFiles((f) -> f.isFile() && f.getName().toLowerCase().endsWith(".ini"));
+		if (files != null) {
+			for (File file : files) {
+				String text = FileUtils.getText(file.getAbsolutePath());
+				String[] split = text.split("[\\n\\r]+");
+				ShaderInfo info = null;
+				for (String line : split) {
+					if (line.startsWith("[")) {
+						if (info != null && info.fragment != null && info.vertex != null) {
+							infos.add(info);
+						}
+						info = new ShaderInfo(line.replaceAll("[\\[\\]]", ""), "unknown");
+					} else if (info != null) {
+						try {
+							info.set(line);
+						} catch (Exception e) {
+							Log.e(TAG, "initShaderSpinner: ", e);
+						}
+					}
+				}
+				if (info != null && info.fragment != null && info.vertex != null) {
+					infos.add(info);
+				}
+			}
+			Collections.sort(infos);
+		}
+		infos.add(0, new ShaderInfo(getString(R.string.identity_filter), "woesss"));
 		spShaderAdapter.notifyDataSetChanged();
 		ShaderInfo selected = params.shader;
 		if (selected != null) {
@@ -593,10 +568,6 @@ public class ConfigActivity extends BaseActivity implements View.OnClickListener
 		binding.forceFullscreenToggle.setChecked(params.forceFullscreen);
 		binding.graphicalModeSelector.setSelection(params.graphicsMode);
 		binding.showFpsToggle.setChecked(params.showFps);
-		int skinPosition = params.screenBackgroundImage == null || skinAdapter == null
-				? 0 : skinAdapter.getPosition(params.screenBackgroundImage);
-		binding.skinSelector.setSelection(Math.max(skinPosition, 0));
-		binding.vkUseImagesToggle.setChecked(params.vkUseImages);
 		binding.shaderSelector.setSelection(0);
 		if (spShaderAdapter != null) {
 			ShaderInfo shader = params.shader;
@@ -672,9 +643,6 @@ public class ConfigActivity extends BaseActivity implements View.OnClickListener
 			params.parallelRedrawScreen = binding.parallelScreenRedrawingToggle.isChecked();
 			params.forceFullscreen = binding.forceFullscreenToggle.isChecked();
 			params.showFps = binding.showFpsToggle.isChecked();
-			params.screenBackgroundImage = binding.skinSelector.getSelectedItemPosition() > 0
-					? (String) binding.skinSelector.getSelectedItem() : null;
-			params.vkUseImages = binding.vkUseImagesToggle.isChecked();
 			params.fpsLimit = parseInt(binding.fpsLimit.getText().toString());
 
 			try {

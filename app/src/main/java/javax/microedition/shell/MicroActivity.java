@@ -75,13 +75,15 @@ import javax.microedition.lcdui.List;
 import javax.microedition.lcdui.ViewHandler;
 import javax.microedition.lcdui.event.SimpleEvent;
 import javax.microedition.lcdui.keyboard.VirtualKeyboard;
-import javax.microedition.lcdui.skin.SkinLayer;
 import javax.microedition.location.LocationProviderImpl;
 import javax.microedition.util.ContextHolder;
 
 import io.reactivex.SingleObserver;
 import io.reactivex.disposables.Disposable;
 import ru.playsoftware.j2meloader.BuildConfig;
+import ru.playsoftware.j2meloader.apex.ApexMenuDialog;
+import ru.playsoftware.j2meloader.apex.ShadersDialog;
+import ru.playsoftware.j2meloader.apex.VkDialog;
 import ru.playsoftware.j2meloader.R;
 import ru.playsoftware.j2meloader.config.Config;
 import ru.playsoftware.j2meloader.databinding.ActivityMicroBinding;
@@ -172,10 +174,6 @@ public class MicroActivity extends AppCompatActivity {
 			return;
 		}
 		microLoader.applyConfiguration();
-		SkinLayer skinLayer = SkinLayer.getInstance();
-		if (skinLayer != null) {
-			binding.overlayView.addLayer(skinLayer);
-		}
 		VirtualKeyboard vk = ContextHolder.getVk();
 		int orientation = microLoader.getOrientation();
 		if (vk != null) {
@@ -383,11 +381,7 @@ public class MicroActivity extends AppCompatActivity {
 
 	@Override
 	public void openOptionsMenu() {
-		if (!actionBarEnabled &&
-				Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT && current instanceof Canvas) {
-			showSystemUI();
-		}
-		super.openOptionsMenu();
+		ApexMenuDialog.show(this);
 	}
 
 	@Override
@@ -424,37 +418,12 @@ public class MicroActivity extends AppCompatActivity {
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
-		MenuInflater inflater = getMenuInflater();
-		inflater.inflate(R.menu.midlet_displayable, menu);
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-			menu.findItem(R.id.action_lock_orientation).setVisible(true);
-		}
-		if (actionBarEnabled) {
-			menu.findItem(R.id.action_ime_keyboard).setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
-			menu.findItem(R.id.action_take_screenshot).setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
-		}
-		if (inputMethodManager == null) {
-			menu.findItem(R.id.action_ime_keyboard).setVisible(false);
-		}
-		if (ContextHolder.getVk() == null) {
-			menu.findItem(R.id.action_submenu_vk).setVisible(false);
-		}
+		getMenuInflater().inflate(R.menu.midlet_displayable, menu);
 		return true;
 	}
 
 	@Override
 	public boolean onPrepareOptionsMenu(Menu menu) {
-		if (current instanceof Canvas) {
-			menu.setGroupVisible(R.id.action_group_canvas, true);
-			VirtualKeyboard vk = ContextHolder.getVk();
-			if (vk != null) {
-				boolean visible = vk.getLayoutEditMode() != VirtualKeyboard.LAYOUT_EOF;
-				menu.findItem(R.id.action_layout_edit_finish).setVisible(visible);
-				menu.findItem(R.id.action_analog).setChecked(vk.isAnalogMode());
-			}
-		} else {
-			menu.setGroupVisible(R.id.action_group_canvas, false);
-		}
 		return true;
 	}
 
@@ -463,183 +432,29 @@ public class MicroActivity extends AppCompatActivity {
 		int id = item.getItemId();
 		if (id == R.id.action_exit_midlet) {
 			showExitConfirmation();
-		} else if (id == R.id.action_save_log) {
-			saveLog();
-		} else if (id == R.id.action_lock_orientation) {
-			if (item.isChecked()) {
-				VirtualKeyboard vk = ContextHolder.getVk();
-				int orientation = vk != null && vk.isPhone() ? ORIENTATION_PORTRAIT : microLoader.getOrientation();
-				setOrientation(orientation);
-				item.setChecked(false);
-			} else {
-				item.setChecked(true);
-				setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LOCKED);
-			}
-		} else if (id == R.id.action_shaders) {
-			showShaderImportDialog();
-		} else if (id == R.id.action_ime_keyboard) {
-			inputMethodManager.toggleSoftInputFromWindow(binding.displayableContainer.getWindowToken(),
-					InputMethodManager.SHOW_FORCED, 0);
-		} else if (id == R.id.action_take_screenshot) {
-			takeScreenshot();
-		} else if (id == R.id.action_limit_fps) {
-			showLimitFpsDialog();
-		} else if (ContextHolder.getVk() != null) {
-			// Handled only when virtual keyboard is enabled
-			handleVkOptions(id);
+		} else if (id == R.id.action_apex_shaders) {
+			ShadersDialog.show(this);
+		} else if (id == R.id.action_apex_keyboard) {
+			VkDialog.show(this);
 		}
 		return true;
 	}
 
-	private String pendingImageSlot;
-	private boolean pendingImagePressed;
-	private final androidx.activity.result.ActivityResultLauncher<String> pickButtonImage =
-			registerForActivityResult(new androidx.activity.result.contract.ActivityResultContracts.GetContent(), uri -> {
-				if (uri == null || pendingImageSlot == null) {
-					return;
-				}
-				int result = ru.playsoftware.j2meloader.config.ButtonImagesManager
-						.importPng(this, uri, pendingImageSlot, pendingImagePressed);
-				int msg = result == ru.playsoftware.j2meloader.config.ButtonImagesManager.OK ? R.string.vk_img_imported
-						: result == ru.playsoftware.j2meloader.config.ButtonImagesManager.ERR_STORAGE
-						? R.string.vk_img_storage_error : R.string.vk_img_invalid;
-				Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
-				if (result == ru.playsoftware.j2meloader.config.ButtonImagesManager.OK) {
-					showButtonImages();
-				}
-			});
-	private final androidx.activity.result.ActivityResultLauncher<String[]> pickShaderFiles =
-			registerForActivityResult(new androidx.activity.result.contract.ActivityResultContracts.OpenMultipleDocuments(), uris -> {
-				if (uris != null && !uris.isEmpty()) {
-					ru.playsoftware.j2meloader.config.ShaderImporter.importFiles(this, uris, this::showShaderChooser);
-				}
-			});
-	private final androidx.activity.result.ActivityResultLauncher<Uri> pickShaderFolder =
-			registerForActivityResult(new androidx.activity.result.contract.ActivityResultContracts.OpenDocumentTree(), uri -> {
-				if (uri != null) {
-					ru.playsoftware.j2meloader.config.ShaderImporter.importTree(this, uri, this::showShaderChooser);
-				}
-			});
-
-	private void showButtonImages() {
-		ru.playsoftware.j2meloader.config.ButtonImagesUi.showSlots(this, (slot, pressed) -> {
-			pendingImageSlot = slot;
-			pendingImagePressed = pressed;
-			pickButtonImage.launch("image/*");
-		});
-	}
-
-	private void showShaderImportDialog() {
-		new AlertDialog.Builder(this)
-				.setTitle(R.string.menu_import_shaders)
-				.setItems(new String[]{
-						getString(R.string.shaders_choose_for_game),
-						getString(R.string.shaders_pick_folder),
-						getString(R.string.shaders_pick_files)
-				}, (d, which) -> {
-					if (which == 0) {
-						showShaderChooser();
-					} else if (which == 1) {
-						pickShaderFolder.launch(null);
-					} else {
-						pickShaderFiles.launch(new String[]{"*/*"});
-					}
-				})
-				.setNegativeButton(android.R.string.cancel, null)
-				.show();
-	}
-
-	/** Lists the shaders in the folder and applies the chosen one to the game right away. */
-	private void showShaderChooser() {
-		final Toast loading = Toast.makeText(this, R.string.shaders_loading, Toast.LENGTH_SHORT);
-		loading.show();
-		new Thread(() -> {
-			final java.util.ArrayList<ru.playsoftware.j2meloader.config.ShaderInfo> list =
-					ru.playsoftware.j2meloader.config.ShaderCatalog.load(this,
-							ru.playsoftware.j2meloader.config.ShaderCatalog.dir());
-			runOnUiThread(() -> {
-				loading.cancel();
-				if (isFinishing()) {
-					return;
-				}
-				if (list.size() <= 1) {
-					Toast.makeText(this, R.string.shaders_none_found, Toast.LENGTH_LONG).show();
-					return;
-				}
-				ru.playsoftware.j2meloader.config.ShaderInfo currentShader = Canvas.getShaderFilter();
-				int checked = currentShader == null ? 0 : list.indexOf(currentShader);
-				if (checked < 0) {
-					checked = 0;
-				}
-				String[] names = new String[list.size()];
-				for (int i = 0; i < names.length; i++) {
-					names[i] = list.get(i).toString();
-				}
-				new AlertDialog.Builder(this)
-						.setTitle(R.string.shaders_choose_for_game)
-						.setSingleChoiceItems(names, checked, (dialog, which) -> {
-							dialog.dismiss();
-							applyShader(list.get(which), which == 0);
-						})
-						.setNegativeButton(android.R.string.cancel, null)
-						.show();
-			});
-		}, "ShaderList").start();
-	}
-
-	private void applyShader(ru.playsoftware.j2meloader.config.ShaderInfo shader, boolean none) {
-		ru.playsoftware.j2meloader.config.ProfileModel params = microLoader.params;
-		ru.playsoftware.j2meloader.config.ShaderInfo old = params.shader;
-		if (none) {
-			params.shader = null;
-		} else {
-			ru.playsoftware.j2meloader.config.ShaderCatalog.ensureDefaultValues(shader);
-			if (old != null && old.equals(shader) && old.values != null) {
-				shader.values = old.values;
-			}
-			shader.dir = Config.getEmulatorDir() + Config.SHADERS_DIR;
-			params.shader = shader;
-		}
-		Canvas.setShaderFilter(params.shader);
-		boolean saved = params.dir != null
-				&& ru.playsoftware.j2meloader.config.ProfilesManager.saveConfig(params);
-		if (current instanceof Canvas) {
-			((Canvas) current).applyShader();
-		}
-		String name = none ? getString(R.string.identity_filter) : shader.toString();
-		StringBuilder msg = new StringBuilder(getString(R.string.shaders_applied, name));
-		if (params.graphicsMode != 1) {
-			msg.append('\n').append(getString(R.string.shaders_need_gles));
-		}
-		if (!saved) {
-			msg.append('\n').append(getString(R.string.shaders_save_failed));
-		}
-		Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
-	}
-
-	private void handleVkOptions(int id) {
+	/** Inicia o modo edicao do teclado virtual (arrastar teclas, analogico e letras). */
+	public void apexVkEditStart() {
 		VirtualKeyboard vk = ContextHolder.getVk();
-		if (id == R.id.action_analog) {
-			boolean on = !vk.isAnalogMode();
-			vk.setAnalogMode(on);
-			Toast.makeText(this, on ? R.string.vk_analog_on : R.string.vk_analog_off, Toast.LENGTH_SHORT).show();
-		} else if (id == R.id.action_import_png) {
-			showButtonImages();
-		} else if (id == R.id.action_layout_edit_mode) {
-			vk.setLayoutEditMode(VirtualKeyboard.LAYOUT_KEYS);
-			Toast.makeText(this, R.string.layout_edit_mode, Toast.LENGTH_SHORT).show();
-		} else if (id == R.id.action_layout_scale_mode) {
-			vk.setLayoutEditMode(VirtualKeyboard.LAYOUT_SCALES);
-			Toast.makeText(this, R.string.layout_scale_mode, Toast.LENGTH_SHORT).show();
-		} else if (id == R.id.action_layout_edit_finish) {
-			vk.setLayoutEditMode(VirtualKeyboard.LAYOUT_EOF);
-			Toast.makeText(this, R.string.layout_edit_finished, Toast.LENGTH_SHORT).show();
-			showSaveVkAlert(false);
-		} else if (id == R.id.action_layout_switch) {
-			showSetLayoutDialog();
-		} else if (id == R.id.action_hide_buttons) {
-			showHideButtonDialog();
-		}
+		if (vk == null) return;
+		vk.setLayoutEditMode(VirtualKeyboard.LAYOUT_KEYS);
+		Toast.makeText(this, R.string.layout_edit_mode, Toast.LENGTH_SHORT).show();
+	}
+
+	/** Conclui o modo edicao e pergunta se deve salvar o layout. */
+	public void apexVkEditFinish() {
+		VirtualKeyboard vk = ContextHolder.getVk();
+		if (vk == null) return;
+		vk.setLayoutEditMode(VirtualKeyboard.LAYOUT_EOF);
+		Toast.makeText(this, R.string.layout_edit_finished, Toast.LENGTH_SHORT).show();
+		showSaveVkAlert(false);
 	}
 
 	@SuppressLint("CheckResult")

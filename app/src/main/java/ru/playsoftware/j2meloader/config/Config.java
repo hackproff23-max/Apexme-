@@ -51,7 +51,6 @@ public class Config {
 	public static final String MIDLET_RES_FILE = "/res.jar";
 	public static final String SCREENSHOTS_DIR;
 	public static final String SHADERS_DIR = "/shaders/";
-	public static final String SKINS_DIR = "/skins/";
 
 	private static String emulatorDir;
 	private static String dataDir;
@@ -68,7 +67,7 @@ public class Config {
 
 	static {
 		Context context = ContextHolder.getAppContext();
-		String appName = "J2ME-Loader";
+		String appName = "Apexme";
 		if (!BuildConfig.FULL_EMULATOR) {
 			appName = context.getString(R.string.app_name);
 		}

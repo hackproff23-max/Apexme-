@@ -50,7 +50,6 @@ import java.util.Locale;
 import java.util.Map;
 
 import javax.microedition.lcdui.Canvas;
-import javax.microedition.lcdui.skin.SkinLayer;
 import javax.microedition.lcdui.Display;
 import javax.microedition.lcdui.Displayable;
 import javax.microedition.lcdui.Font;
@@ -83,7 +82,7 @@ public class MicroLoader {
 	private final Context context;
 	private final String workDir;
 	private final String appDirName;
-	ProfileModel params;
+	private ProfileModel params;
 
 	MicroLoader(Context context, String appPath) {
 		this.context = context;
@@ -273,7 +272,6 @@ public class MicroLoader {
 				shader.dir = workDir + Config.SHADERS_DIR;
 			}
 			Canvas.setShaderFilter(shader);
-			SkinLayer.init(params);
 			Canvas.setForceFullscreen(params.forceFullscreen);
 			Canvas.setShowFps(params.showFps);
 			Canvas.setLimitFps(params.fpsLimit);

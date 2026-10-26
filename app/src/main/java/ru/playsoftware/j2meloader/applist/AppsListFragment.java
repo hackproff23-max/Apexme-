@@ -29,6 +29,7 @@ import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.ColorStateList;
 import android.database.sqlite.SQLiteDiskIOException;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -50,11 +51,11 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
@@ -65,7 +66,7 @@ import androidx.core.content.pm.ShortcutManagerCompat;
 import androidx.core.graphics.drawable.IconCompat;
 import androidx.core.widget.TextViewCompat;
 import androidx.fragment.app.FragmentActivity;
-import androidx.fragment.app.ListFragment;
+import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.preference.PreferenceManager;
 
@@ -88,13 +89,15 @@ import ru.playsoftware.j2meloader.filepicker.FilteredFilePickerFragment;
 import ru.playsoftware.j2meloader.info.AboutDialogFragment;
 import ru.playsoftware.j2meloader.info.HelpDialogFragment;
 import ru.playsoftware.j2meloader.settings.SettingsActivity;
+import ru.playsoftware.j2meloader.theme.ApexTheme;
+import ru.playsoftware.j2meloader.theme.ThemeDialog;
 import ru.playsoftware.j2meloader.util.AppUtils;
 import ru.playsoftware.j2meloader.util.Constants;
 import ru.playsoftware.j2meloader.util.FileUtils;
 import ru.playsoftware.j2meloader.util.LogUtils;
 import ru.woesss.j2me.installer.InstallerDialog;
 
-public class AppsListFragment extends ListFragment {
+public class AppsListFragment extends Fragment {
 	private static final String TAG = AppsListFragment.class.getSimpleName();
 	private final AppsListAdapter adapter = new AppsListAdapter();
 	private Uri appUri;
@@ -107,6 +110,36 @@ public class AppsListFragment extends ListFragment {
 	private final ActivityResultLauncher<String> openFileLauncher = registerForActivityResult(
 			FileUtils.getFilePicker(),
 			this::onPickFileResult);
+
+	private int pendingThemeTarget;
+	private final ActivityResultLauncher<String[]> themePicker = registerForActivityResult(
+			new ActivityResultContracts.OpenDocument(),
+			this::onThemeFilePicked);
+
+	private void onThemeFilePicked(Uri uri) {
+		if (uri == null) {
+			return;
+		}
+		boolean ok = ApexTheme.importFile(requireContext(), pendingThemeTarget, uri);
+		Toast.makeText(requireContext(), ok ? R.string.apex_import_ok : R.string.apex_import_fail,
+				Toast.LENGTH_SHORT).show();
+		if (ok) {
+			requireActivity().recreate();
+		}
+	}
+
+	private void showThemeDialog() {
+		ThemeDialog.show(requireActivity(), target -> {
+			pendingThemeTarget = target;
+			String[] types = target == ApexTheme.TARGET_FONT
+					? new String[]{"*/*"} : new String[]{"image/*"};
+			try {
+				themePicker.launch(types);
+			} catch (ActivityNotFoundException e) {
+				Toast.makeText(getContext(), R.string.error_no_picker, Toast.LENGTH_SHORT).show();
+			}
+		});
+	}
 
 	public static AppsListFragment newInstance(Uri data) {
 		AppsListFragment fragment = new AppsListFragment();
@@ -138,9 +171,14 @@ public class AppsListFragment extends ListFragment {
 	@Override
 	public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
 		super.onViewCreated(view, savedInstanceState);
-		registerForContextMenu(getListView());
+		registerForContextMenu(binding.list);
 		setHasOptionsMenu(true);
-		setListAdapter(adapter);
+		binding.list.setEmptyView(binding.empty);
+		binding.floatingActionButton.setBackgroundTintList(new ColorStateList(
+				new int[][]{{android.R.attr.state_pressed}, {}},
+				new int[]{ApexTheme.pressedColor(requireContext()), ApexTheme.outlineColor(requireContext())}));
+		binding.list.setAdapter(adapter);
+		binding.list.setOnItemClickListener((parent, v, position, id) -> onListItemClick(position));
 		binding.floatingActionButton.setOnClickListener(v -> {
 			String path = preferences.getString(PREF_LAST_PATH, null);
 			if (path == null) {
@@ -225,8 +263,7 @@ public class AppsListFragment extends ListFragment {
 		builder.show();
 	}
 
-	@Override
-	public void onListItemClick(@NonNull ListView l, @NonNull View v, int position, long id) {
+	private void onListItemClick(int position) {
 		AppItem item = adapter.getItem(position);
 		Config.startApp(requireActivity(), item.getTitle(), item.getPathExt(), false);
 	}
@@ -311,26 +348,6 @@ public class AppsListFragment extends ListFragment {
 	@Override
 	public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
 		inflater.inflate(R.menu.main, menu);
-		final MenuItem searchItem = menu.findItem(R.id.action_search);
-		SearchView searchView = (SearchView) searchItem.getActionView();
-		searchViewDisposable = Observable.create((ObservableOnSubscribe<String>) emitter ->
-				searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
-					@Override
-					public boolean onQueryTextSubmit(String query) {
-						emitter.onNext(query);
-						return true;
-					}
-
-					@Override
-					public boolean onQueryTextChange(String newText) {
-						emitter.onNext(newText);
-						return true;
-					}
-				})).debounce(300, TimeUnit.MILLISECONDS)
-				.map(String::toLowerCase)
-				.distinctUntilChanged()
-				.observeOn(AndroidSchedulers.mainThread())
-				.subscribe(charSequence -> adapter.getFilter().filter(charSequence));
 	}
 
 	@Override
@@ -361,6 +378,8 @@ public class AppsListFragment extends ListFragment {
 			activity.finish();
 		} else if (itemId == R.id.action_sort) {
 			showSortDialog();
+		} else if (itemId == R.id.action_colors) {
+			showThemeDialog();
 		}
 		return false;
 	}

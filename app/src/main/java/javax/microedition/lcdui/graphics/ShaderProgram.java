@@ -1,42 +1,42 @@
 /*
- * Copyright 2020-2023 Yury Kharchenko
+ *  Copyright 2020 Yury Kharchenko
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
  */
 
 package javax.microedition.lcdui.graphics;
-
-import static android.opengl.GLES20.*;
 
 import android.opengl.GLU;
 import android.util.Log;
 import android.widget.Toast;
 
+import java.io.File;
 import java.nio.FloatBuffer;
 
 import javax.microedition.lcdui.ViewHandler;
 import javax.microedition.util.ContextHolder;
 
-import ru.playsoftware.j2meloader.R;
+import ru.playsoftware.j2meloader.apex.ApexPrefs;
 import ru.playsoftware.j2meloader.config.ShaderInfo;
 import ru.playsoftware.j2meloader.util.FileUtils;
+
+import static android.opengl.GLES20.*;
 
 public class ShaderProgram {
 	private static final String TAG = ShaderProgram.class.getName();
 	private static final String VERTEX = "shaders/simple.vsh";
 	private static final String FRAGMENT = "shaders/simple.fsh";
-
-	private int programId = -1;
+	private static final String APEX_FRAGMENT = "shaders/apex.fsh";
 
 	public int aTexCoord;
 	public int uTextureUnit;
@@ -44,81 +44,52 @@ public class ShaderProgram {
 	public int uTexelDelta;
 	public int uSetting;
 	public int uPixelDelta;
-	public int uMvp;
-	public int uTextureSize;
-	public int uInputSize;
-	public int uOutputSize;
+	public int uColor;
 
 	public ShaderProgram(ShaderInfo shader) {
-		if (shader != null) {
-			String vertex = shader.vertex;
-			String fragment = shader.fragment;
-			if (fragment != null) {
-				// sem vertex proprio (shader so de fragment): usa o vertex padrao do emulador
-				String vertexCode = vertex != null ? FileUtils.getText(shader.dir + vertex)
-						: ContextHolder.getAssetAsString(VERTEX);
-				String fragmentCode = FileUtils.getText(shader.dir + fragment);
-				vertexCode = prepare(vertexCode, "VERTEX");
-				fragmentCode = prepare(fragmentCode, "FRAGMENT");
-				programId = createProgram(vertexCode, fragmentCode);
-				if (programId != -1) {
+		String sel = ApexPrefs.shaderSel();
+		if (sel.startsWith(ApexPrefs.SEL_USER)) {
+			File f = ApexPrefs.userShaderFile(sel.substring(ApexPrefs.SEL_USER.length()));
+			if (f.exists()) {
+				String vertexCode = ContextHolder.getAssetAsString(VERTEX);
+				String fragmentCode = FileUtils.getText(f.getPath());
+				if (createProgram(vertexCode, fragmentCode) != -1) {
 					glReleaseShaderCompiler();
 					return;
 				}
+				ViewHandler.postEvent(() -> Toast.makeText(ContextHolder.getActivity(),
+						"Erro no shader importado - usando o padrao!",
+						Toast.LENGTH_LONG).show());
 			}
-			ViewHandler.postEvent(() -> Toast.makeText(ContextHolder.getActivity(),
-					R.string.msg_error_loading_shader, Toast.LENGTH_LONG).show());
+		} else if (ApexPrefs.SEL_BUILTIN.equals(sel) || shader == null) {
+			String vertexCode = ContextHolder.getAssetAsString(VERTEX);
+			String fragmentCode = ContextHolder.getAssetAsString(APEX_FRAGMENT);
+			if (createProgram(vertexCode, fragmentCode) != -1) {
+				glReleaseShaderCompiler();
+				return;
+			}
+		}
+		if (shader != null && !sel.startsWith(ApexPrefs.SEL_USER) && !ApexPrefs.SEL_BUILTIN.equals(sel)) {
+			String vertex = shader.vertex;
+			String fragment = shader.fragment;
+			if (vertex != null && fragment != null) {
+				String vertexCode = FileUtils.getText(shader.dir + vertex);
+				String fragmentCode = FileUtils.getText(shader.dir + fragment);
+				if (createProgram(vertexCode, fragmentCode) != -1) {
+					glReleaseShaderCompiler();
+					return;
+				}
+				ViewHandler.postEvent(() -> Toast.makeText(ContextHolder.getActivity(),
+						"Error loading shader - default shader is used!",
+						Toast.LENGTH_LONG).show());
+			}
 		}
 		String vertexCode = ContextHolder.getAssetAsString(VERTEX);
 		String fragmentCode = ContextHolder.getAssetAsString(FRAGMENT);
 		int program = createProgram(vertexCode, fragmentCode);
-		programId = program;
 		glReleaseShaderCompiler();
 		if (program == -1) {
 			throw new RuntimeException("Init shader program error: see log for detail");
-		}
-	}
-
-	/**
-	 * Adapts desktop/RetroArch style GLSL to GLSL ES 1.00 (GLES 2.0):
-	 * removes #version lines and adds the VERTEX/FRAGMENT stage define
-	 * used by single-file RetroArch shaders ("#if defined(VERTEX)").
-	 */
-	private static String prepare(String code, String stage) {
-		if (code == null) {
-			return "";
-		}
-		code = code.replaceAll("(?m)^\\s*#version.*$", "");
-		return "#define " + stage + "\n" + code;
-	}
-
-	private static int attrib(int program, String... names) {
-		for (String n : names) {
-			int l = glGetAttribLocation(program, n);
-			if (l >= 0) return l;
-		}
-		return -1;
-	}
-
-	private static int uniform(int program, String... names) {
-		for (String n : names) {
-			int l = glGetUniformLocation(program, n);
-			if (l >= 0) return l;
-		}
-		return -1;
-	}
-
-	/** Libera o programa GL (chamar na thread do GL, depois de trocar para outro programa). */
-	public void release() {
-		if (programId > 0) {
-			glDeleteProgram(programId);
-		}
-		programId = -1;
-	}
-
-	public void setOutputSize(float width, float height) {
-		if (uOutputSize >= 0) {
-			glUniform2f(uOutputSize, width, height);
 		}
 	}
 
@@ -142,20 +113,14 @@ public class ShaderProgram {
 			String errorString = GLU.gluErrorString(error);
 			Log.e(TAG, "init program: glError " + errorString);
 		}
-		aPosition = attrib(program, "a_position", "VertexCoord");
-		aTexCoord = attrib(program, "a_texcoord0", "TexCoord");
-		uTextureUnit = uniform(program, "sampler0", "Texture");
+		aPosition = glGetAttribLocation(program, "a_position");
+		aTexCoord = glGetAttribLocation(program, "a_texcoord0");
+		uTextureUnit = glGetUniformLocation(program, "sampler0");
 		uTexelDelta = glGetUniformLocation(program, "u_texelDelta");
 		uPixelDelta = glGetUniformLocation(program, "u_pixelDelta");
 		uSetting = glGetUniformLocation(program, "u_setting");
-		uMvp = glGetUniformLocation(program, "MVPMatrix");
-		uTextureSize = glGetUniformLocation(program, "TextureSize");
-		uInputSize = glGetUniformLocation(program, "InputSize");
-		uOutputSize = glGetUniformLocation(program, "OutputSize");
+		uColor = glGetUniformLocation(program, "u_color");
 		glUseProgram(program);
-		if (uMvp >= 0) {
-			glUniformMatrix4fv(uMvp, 1, false, new float[]{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}, 0);
-		}
 		int error1 = glGetError();
 		if (error1 != GL_NO_ERROR) {
 			String s1 = GLU.gluErrorString(error1);
@@ -163,10 +128,8 @@ public class ShaderProgram {
 			glDeleteShader(vertexId);
 			glDeleteShader(fragmentId);
 			glDeleteProgram(program);
-			program = -1;
+			return -1;
 		}
-		glDeleteShader(vertexId);
-		glDeleteShader(fragmentId);
 		return program;
 	}
 
@@ -192,25 +155,13 @@ public class ShaderProgram {
 
 	public void loadVbo(FloatBuffer vbo, float width, float height) {
 		vbo.rewind();
-		if (aPosition >= 0) {
-			glVertexAttribPointer(aPosition, 2, GL_FLOAT, false, 4 * 4, vbo);
-			glEnableVertexAttribArray(aPosition);
-		}
+		glVertexAttribPointer(aPosition, 2, GL_FLOAT, false, 4 * 4, vbo);
+		glEnableVertexAttribArray(aPosition);
 
 		// координаты текстур
 		vbo.position(2);
-		if (aTexCoord >= 0) {
-			glVertexAttribPointer(aTexCoord, 2, GL_FLOAT, false, 4 * 4, vbo);
-			glEnableVertexAttribArray(aTexCoord);
-		}
-		if (uTexelDelta >= 0) {
-			glUniform2f(uTexelDelta, 1.0f / width, 1.0f / height);
-		}
-		if (uTextureSize >= 0) {
-			glUniform2f(uTextureSize, width, height);
-		}
-		if (uInputSize >= 0) {
-			glUniform2f(uInputSize, width, height);
-		}
+		glVertexAttribPointer(aTexCoord, 2, GL_FLOAT, false, 4 * 4, vbo);
+		glEnableVertexAttribArray(aTexCoord);
+		glUniform2f(uTexelDelta, 1.0f / width, 1.0f / height);
 	}
 }
