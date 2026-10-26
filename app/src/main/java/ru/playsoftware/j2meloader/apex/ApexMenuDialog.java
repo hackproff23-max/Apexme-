@@ -74,6 +74,7 @@ public final class ApexMenuDialog {
 		t.setText(label);
 		t.setTextSize(18);
 		t.setTextColor(ApexTheme.textColor(a));
+		ApexTheme.applyFont(t);
 		LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
 				LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
 		lp.leftMargin = ApexUi.dp(a, 16);

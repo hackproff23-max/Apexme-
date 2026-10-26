@@ -26,6 +26,8 @@ import android.content.pm.Signature;
 import android.os.Build;
 
 import androidx.appcompat.app.AppCompatDelegate;
+
+import ru.playsoftware.j2meloader.theme.ApexFontCallbacks;
 import androidx.multidex.MultiDex;
 import androidx.preference.PreferenceManager;
 
@@ -81,6 +83,7 @@ public class EmulatorApplication extends Application {
 		sp.registerOnSharedPreferenceChangeListener(themeListener);
 		setNightMode(sp.getString(Constants.PREF_THEME, null));
 		AppCompatDelegate.setCompatVectorFromResourcesEnabled(true);
+		registerActivityLifecycleCallbacks(new ApexFontCallbacks());
 	}
 
 	@SuppressLint("PackageManagerGetSignatures")

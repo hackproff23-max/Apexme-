@@ -53,6 +53,7 @@ final class ApexUi {
 		t.setText(s);
 		t.setTextSize(sp);
 		t.setTextColor(ApexTheme.textColor(c));
+		ApexTheme.applyFont(t);
 		return t;
 	}
 
@@ -68,6 +69,7 @@ final class ApexUi {
 		b.setText(label);
 		b.setAllCaps(false);
 		b.setOnClickListener(l);
+		ApexTheme.applyFont(b);
 		return b;
 	}
 
@@ -119,6 +121,7 @@ final class ApexUi {
 		sw.setChecked(checked);
 		sw.setOnCheckedChangeListener((b, v) -> l.on(v));
 		sw.setPadding(0, dp(c, 8), 0, dp(c, 8));
+		ApexTheme.applyFont(sw);
 		return sw;
 	}
 

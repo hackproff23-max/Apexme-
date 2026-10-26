@@ -267,7 +267,7 @@
     <string name="apex_color_pressed" translatable="false">Cor ao pressionar</string>
     <string name="apex_import_app_bg" translatable="false">Importar fundo do app</string>
     <string name="apex_import_window_bg" translatable="false">Importar fundo de janela</string>
-    <string name="apex_import_font" translatable="false">Importar fonte (.ttf)</string>
+    <string name="apex_import_font" translatable="false">Importar fonte (.ttf / .otf)</string>
     <string name="apex_remove" translatable="false">Remover</string>
     <string name="apex_reset" translatable="false">Restaurar padrão</string>
     <string name="apex_apply" translatable="false">Aplicar</string>

@@ -42,6 +42,7 @@ public final class ApexTheme {
 	private static Bitmap winBitmap;
 	private static boolean winLoaded;
 	private static Typeface typeface;
+	private static Typeface boldFace;
 	private static boolean fontLoaded;
 
 	private ApexTheme() {
@@ -109,6 +110,36 @@ public final class ApexTheme {
 		return typeface;
 	}
 
+	/** Fonte do app (importada ou padrao do sistema) sempre em negrito, nunca italico. */
+	public static synchronized Typeface boldTypeface(Context c) {
+		if (boldFace == null) {
+			Typeface t = typeface(c);
+			boldFace = Typeface.create(t != null ? t : Typeface.DEFAULT, Typeface.BOLD);
+		}
+		return boldFace;
+	}
+
+	/** Aplica a fonte do app (negrito, sem italico) neste texto. */
+	public static void applyFont(android.widget.TextView tv) {
+		Typeface t = boldTypeface(tv.getContext());
+		if (tv.getTypeface() != t) {
+			tv.setTypeface(t, Typeface.BOLD);
+		}
+	}
+
+	/** Aplica a fonte do app em todos os textos da hierarquia. */
+	public static void applyFontTree(android.view.View v) {
+		if (v instanceof android.widget.TextView) {
+			applyFont((android.widget.TextView) v);
+		}
+		if (v instanceof android.view.ViewGroup) {
+			android.view.ViewGroup g = (android.view.ViewGroup) v;
+			for (int i = 0; i < g.getChildCount(); i++) {
+				applyFontTree(g.getChildAt(i));
+			}
+		}
+	}
+
 	private static Bitmap loadBitmap(Context c, String key) {
 		String path = prefs(c).getString(key, null);
 		if (path == null || !new File(path).exists()) {
@@ -150,6 +181,7 @@ public final class ApexTheme {
 		appBitmap = null;
 		winBitmap = null;
 		typeface = null;
+		boldFace = null;
 	}
 
 	/** Copia o arquivo escolhido para a pasta interna do app e passa a usa-lo. */
@@ -158,7 +190,7 @@ public final class ApexTheme {
 		if (!dir.isDirectory() && !dir.mkdirs()) {
 			return false;
 		}
-		File out = new File(dir, target == TARGET_FONT ? "font_" + System.currentTimeMillis() + ".ttf"
+		File out = new File(dir, target == TARGET_FONT ? "font_" + System.currentTimeMillis() + fontExt(c, uri)
 				: (target == TARGET_APP_BG ? "app_bg_" : "window_bg_") + System.currentTimeMillis());
 		try (InputStream in = c.getContentResolver().openInputStream(uri);
 			 OutputStream os = new FileOutputStream(out)) {
@@ -198,6 +230,20 @@ public final class ApexTheme {
 		prefs(c).edit().putString(keyFor(target), out.getPath()).apply();
 		invalidate();
 		return true;
+	}
+
+	private static String fontExt(Context c, Uri uri) {
+		String name = null;
+		try (android.database.Cursor cur = c.getContentResolver().query(uri, null, null, null, null)) {
+			if (cur != null && cur.moveToFirst()) {
+				int i = cur.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME);
+				if (i >= 0) {
+					name = cur.getString(i);
+				}
+			}
+		} catch (Exception ignored) {
+		}
+		return name != null && name.toLowerCase(java.util.Locale.ROOT).endsWith(".otf") ? ".otf" : ".ttf";
 	}
 
 	public static void clear(Context c, int target) {

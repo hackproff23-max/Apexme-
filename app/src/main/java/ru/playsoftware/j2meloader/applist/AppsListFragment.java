@@ -224,6 +224,7 @@ public class AppsListFragment extends Fragment {
 		AppItem item = adapter.getItem(id);
 		FragmentActivity activity = requireActivity();
 		EditText editText = new EditText(activity);
+		ApexTheme.applyFont(editText);
 		editText.setText(item.getTitle());
 		float density = getResources().getDisplayMetrics().density;
 		LinearLayout linearLayout = new LinearLayout(activity);
@@ -354,30 +355,11 @@ public class AppsListFragment extends Fragment {
 	public boolean onOptionsItemSelected(MenuItem item) {
 		FragmentActivity activity = requireActivity();
 		int itemId = item.getItemId();
-		if (itemId == R.id.action_about) {
-			AboutDialogFragment aboutDialogFragment = new AboutDialogFragment();
-			aboutDialogFragment.show(getChildFragmentManager(), "about");
-		} else if (itemId == R.id.action_profiles) {
-			Intent intentProfiles = new Intent(activity, ProfilesActivity.class);
-			startActivity(intentProfiles);
-		} else if (item.getItemId() == R.id.action_settings) {
+		if (item.getItemId() == R.id.action_settings) {
 			startActivity(new Intent(activity, SettingsActivity.class));
 			return true;
-		} else if (itemId == R.id.action_help) {
-			HelpDialogFragment helpDialogFragment = new HelpDialogFragment();
-			helpDialogFragment.show(getChildFragmentManager(), "help");
-		} else if (itemId == R.id.action_save_log) {
-			try {
-				LogUtils.writeLog();
-				Toast.makeText(activity, R.string.log_saved, Toast.LENGTH_SHORT).show();
-			} catch (IOException e) {
-				e.printStackTrace();
-				Toast.makeText(activity, R.string.error, Toast.LENGTH_SHORT).show();
-			}
 		} else if (itemId == R.id.action_exit_app) {
 			activity.finish();
-		} else if (itemId == R.id.action_sort) {
-			showSortDialog();
 		} else if (itemId == R.id.action_colors) {
 			showThemeDialog();
 		}

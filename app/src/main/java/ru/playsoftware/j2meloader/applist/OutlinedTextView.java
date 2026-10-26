@@ -32,11 +32,7 @@ public class OutlinedTextView extends AppCompatTextView {
 		super(context, attrs, defStyleAttr);
 		outlineColor = ApexTheme.outlineColor(context);
 		setTextColor(ApexTheme.textColor(context));
-		Typeface custom = ApexTheme.typeface(context);
-		if (custom != null) {
-			Typeface current = getTypeface();
-			setTypeface(custom, current != null ? current.getStyle() : Typeface.BOLD_ITALIC);
-		}
+		ApexTheme.applyFont(this);
 	}
 
 	/** Mesmo deslocamento vertical que o TextView usa ao centralizar/alinhar embaixo. */
