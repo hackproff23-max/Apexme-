@@ -9,6 +9,9 @@ import android.net.Uri;
 import android.provider.OpenableColumns;
 import android.util.SparseIntArray;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
@@ -27,6 +30,13 @@ public final class ApexPrefs {
 	public static final String SEL_BUILTIN = "builtin";
 	public static final String SEL_USER = "user:";
 
+	/** Tipos de jogo: cada um tem sua propria pasta de imagens em importacao/botoes/TIPO/. */
+	public static final String GAME_PADRAO = "padrao";
+	public static final String GAME_TIRO = "tiro";
+	public static final String GAME_FUTEBOL = "futebol";
+	public static final String[] GAME_TYPES = {GAME_PADRAO, GAME_TIRO, GAME_FUTEBOL};
+	public static final String[] GAME_NAMES = {"Padrão", "Tiro", "Futebol"};
+
 	private static SharedPreferences sp;
 	private static SparseIntArray letterMap;
 
@@ -38,6 +48,38 @@ public final class ApexPrefs {
 			sp = ContextHolder.getAppContext().getSharedPreferences(FILE, Context.MODE_PRIVATE);
 		}
 		return sp;
+	}
+
+	// ---------------- tipo de jogo ----------------
+	/** Tipo de jogo ativo (padrao, tiro ou futebol). */
+	public static String gameType() {
+		String t = sp().getString("game_type", GAME_PADRAO);
+		for (String k : GAME_TYPES) {
+			if (k.equals(t)) {
+				return t;
+			}
+		}
+		return GAME_PADRAO;
+	}
+
+	public static String gameTypeName() {
+		String t = gameType();
+		for (int i = 0; i < GAME_TYPES.length; i++) {
+			if (GAME_TYPES[i].equals(t)) {
+				return GAME_NAMES[i];
+			}
+		}
+		return GAME_NAMES[0];
+	}
+
+	public static synchronized void setGameType(String type) {
+		for (String k : GAME_TYPES) {
+			if (k.equals(type)) {
+				sp().edit().putString("game_type", type).apply();
+				invalidateCache();
+				return;
+			}
+		}
 	}
 
 	// ---------------- shaders ----------------
@@ -344,9 +386,17 @@ public final class ApexPrefs {
 		return l.toArray(new String[0][]);
 	}
 
+	private static String imageName(String id, boolean pressed) {
+		return id.replaceAll("[^A-Za-z0-9_]", "_") + (pressed ? "_pressed.png" : "_normal.png");
+	}
+
+	private static File imageFile(String type, String id, boolean pressed) {
+		return new File(ImportStore.dir(ImportStore.botoesSub(type)), imageName(id, pressed));
+	}
+
+	/** Arquivo da imagem do botao no tipo de jogo ativo. */
 	private static File imageFile(String id, boolean pressed) {
-		return new File(ImportStore.dir(ImportStore.BOTOES), id.replaceAll("[^A-Za-z0-9_]", "_")
-				+ (pressed ? "_pressed.png" : "_normal.png"));
+		return imageFile(gameType(), id, pressed);
 	}
 
 	/**
@@ -362,7 +412,8 @@ public final class ApexPrefs {
 	}
 
 	private static Bitmap load(String id, boolean pressed) {
-		String k = id + (pressed ? "|p" : "|n");
+		String type = gameType();
+		String k = type + "|" + id + (pressed ? "|p" : "|n");
 		Bitmap b = bitmaps.get(k);
 		if (b != null) {
 			return b;
@@ -370,7 +421,7 @@ public final class ApexPrefs {
 		if (missing.contains(k)) {
 			return null;
 		}
-		b = decode(imageFile(id, pressed));
+		b = decode(imageFile(type, id, pressed));
 		if (b == null) {
 			missing.add(k);
 		} else {
@@ -458,9 +509,9 @@ public final class ApexPrefs {
 		ImportStore.sync();
 	}
 
-	/** Remove as imagens de todos os botoes. */
+	/** Remove as imagens de todos os botoes do tipo de jogo ativo. */
 	public static synchronized void clearAllButtonImages() {
-		File[] files = ImportStore.dir(ImportStore.BOTOES).listFiles();
+		File[] files = ImportStore.dir(ImportStore.botoesSub(gameType())).listFiles();
 		if (files != null) {
 			for (File f : files) {
 				String n = f.getName();
@@ -472,5 +523,114 @@ public final class ApexPrefs {
 		}
 		invalidateCache();
 		ImportStore.sync();
+	}
+	// ---------------- perfil: analogico e D-pad ----------------
+	/** Imagens do analogico e do D-pad que vao junto com o perfil. */
+	private static final String[] PROFILE_IMG_IDS = {ANALOG_BASE, ANALOG_KNOB, DPAD};
+	private static final String[] PROFILE_POS_NAMES = {"analog", "dpad"};
+
+	/** Valores do analogico e do D-pad (tamanho, opacidade, mapeamento, posicao, tipo) para gravar no perfil. */
+	public static synchronized JSONObject exportExtras() throws JSONException {
+		JSONObject o = new JSONObject();
+		o.put("versao", 1);
+		o.put("tipo_de_jogo", gameType());
+		o.put("analog_ligado", analogEnabled());
+		o.put("analog_tamanho", analogScale());
+		o.put("dpad_ligado", dpadEnabled());
+		o.put("dpad_tamanho", dpadScale());
+		o.put("dpad_mapa", sp().getString("dpad_map", ""));
+		o.put("opacidade_normal", normalOpacity());
+		o.put("opacidade_pressionado", pressedOpacity());
+		JSONObject pos = new JSONObject();
+		for (String n : PROFILE_POS_NAMES) {
+			for (String o2 : new String[]{"_p", "_l"}) {
+				for (String ax : new String[]{"x", "y"}) {
+					String k = n + o2 + ax;
+					if (sp().contains(k)) {
+						pos.put(k, (double) sp().getFloat(k, 0f));
+					}
+				}
+			}
+		}
+		o.put("posicao", pos);
+		return o;
+	}
+
+	/** Aplica os valores gravados no perfil. O que nao estiver no arquivo fica como esta. */
+	public static synchronized void importExtras(JSONObject o) {
+		SharedPreferences.Editor e = sp().edit();
+		String type = o.optString("tipo_de_jogo", "");
+		for (String k : GAME_TYPES) {
+			if (k.equals(type)) {
+				e.putString("game_type", type);
+			}
+		}
+		if (o.has("analog_ligado")) e.putBoolean("analog_on", o.optBoolean("analog_ligado"));
+		if (o.has("analog_tamanho")) e.putFloat("analog_scale", (float) o.optDouble("analog_tamanho", 1));
+		if (o.has("dpad_ligado")) e.putBoolean("dpad_on", o.optBoolean("dpad_ligado"));
+		if (o.has("dpad_tamanho")) e.putFloat("dpad_scale", (float) o.optDouble("dpad_tamanho", 1));
+		if (o.has("dpad_mapa")) e.putString("dpad_map", o.optString("dpad_mapa", ""));
+		if (o.has("opacidade_normal")) e.putFloat("op_normal", (float) o.optDouble("opacidade_normal", 0.7));
+		if (o.has("opacidade_pressionado")) e.putFloat("op_pressed", (float) o.optDouble("opacidade_pressionado", 1));
+		JSONObject pos = o.optJSONObject("posicao");
+		for (String n : PROFILE_POS_NAMES) {
+			for (String o2 : new String[]{"_p", "_l"}) {
+				for (String ax : new String[]{"x", "y"}) {
+					String k = n + o2 + ax;
+					if (pos != null && pos.has(k)) {
+						e.putFloat(k, (float) pos.optDouble(k, 0));
+					} else {
+						e.remove(k);
+					}
+				}
+			}
+		}
+		e.apply();
+		invalidateCache();
+	}
+
+	/** Copia as imagens do analogico e do D-pad (tipo ativo) para a pasta do perfil. */
+	public static synchronized void exportImages(File dstDir) {
+		//noinspection ResultOfMethodCallIgnored
+		dstDir.mkdirs();
+		File[] old = dstDir.listFiles();
+		if (old != null) {
+			for (File f : old) {
+				if (f.getName().endsWith(".png")) {
+					//noinspection ResultOfMethodCallIgnored
+					f.delete();
+				}
+			}
+		}
+		for (String id : PROFILE_IMG_IDS) {
+			for (boolean pressed : new boolean[]{false, true}) {
+				File src = imageFile(id, pressed);
+				if (src.isFile()) {
+					ImportStore.copy(src, new File(dstDir, imageName(id, pressed)));
+				}
+			}
+		}
+	}
+
+	/** Traz as imagens gravadas no perfil para a pasta do tipo de jogo {@code type}. */
+	public static synchronized void importImages(File srcDir, String type) {
+		boolean any = false;
+		for (String id : PROFILE_IMG_IDS) {
+			for (boolean pressed : new boolean[]{false, true}) {
+				File src = new File(srcDir, imageName(id, pressed));
+				if (!src.isFile()) {
+					continue;
+				}
+				File out = imageFile(type, id, pressed);
+				//noinspection ResultOfMethodCallIgnored
+				out.delete();
+				ImportStore.copy(src, out);
+				any = true;
+			}
+		}
+		if (any) {
+			invalidateCache();
+			ImportStore.sync();
+		}
 	}
 }

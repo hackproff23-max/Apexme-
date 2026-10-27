@@ -81,7 +81,7 @@ public class LoadProfileDialog extends DialogFragment {
 							return;
 						}
 						ProfilesManager.load((Profile) binding.list.getItemAtPosition(pos), configPath,
-								configChecked, vkChecked);
+								configChecked, vkChecked, true);
 						((ConfigActivity) requireActivity()).loadParams(true);
 					} catch (Exception e) {
 						e.printStackTrace();
@@ -108,7 +108,7 @@ public class LoadProfileDialog extends DialogFragment {
 	private void onItemClick(AdapterView<?> adapterView, View view, int pos, long l) {
 		final Profile profile = profiles.get(pos);
 		final boolean hasConfig = profile.hasConfig() || profile.hasOldConfig();
-		final boolean hasVk = profile.hasKeyLayout();
+		final boolean hasVk = profile.hasKeyLayout() || profile.hasApexExtras();
 		binding.cbConfig.setEnabled(hasConfig && hasVk);
 		binding.cbConfig.setChecked(hasConfig);
 		binding.cbKeyboard.setEnabled(hasVk && hasConfig);

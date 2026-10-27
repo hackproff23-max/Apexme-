@@ -80,32 +80,47 @@ public final class ImportStore {
 		return d != null ? d : internalDir(sub);
 	}
 
-	private static String internalName(String sub) {
-		return BOTOES.equals(sub) ? "buttons" : sub;
+	/** Subpasta das imagens de botoes de um tipo de jogo: botoes/padrao, botoes/tiro, botoes/futebol. */
+	public static String botoesSub(String type) {
+		return BOTOES + "/" + type;
+	}
+
+	/** Move os arquivos de src para dst (sem entrar em subpastas). */
+	private static void moveFiles(File src, File dst) {
+		if (src == null || dst == null || src.equals(dst)) {
+			return;
+		}
+		File[] old = src.listFiles();
+		if (old == null) {
+			return;
+		}
+		for (File f : old) {
+			if (!f.isFile()) {
+				continue;
+			}
+			File out = new File(dst, f.getName());
+			if (out.exists() || copy(f, out)) {
+				//noinspection ResultOfMethodCallIgnored
+				f.delete();
+			}
+		}
 	}
 
 	/** Leva arquivos da pasta interna (versoes antigas ou sem permissao) para importacao/ e atualiza o JSON. */
 	public static synchronized void migrate() {
-		for (String sub : new String[]{BOTOES, SHADERS}) {
-			File dst = externalDir(sub);
-			if (dst == null) {
-				continue;
-			}
-			File[] old = new File(ContextHolder.getAppContext().getFilesDir(), "apex/" + internalName(sub)).listFiles();
-			if (old == null) {
-				continue;
-			}
-			for (File f : old) {
-				if (!f.isFile()) {
-					continue;
-				}
-				File out = new File(dst, f.getName());
-				if (out.exists() || copy(f, out)) {
-					//noinspection ResultOfMethodCallIgnored
-					f.delete();
-				}
-			}
+		File internal = new File(ContextHolder.getAppContext().getFilesDir(), "apex");
+		File padrao = externalDir(botoesSub(ApexPrefs.GAME_PADRAO));
+		if (padrao != null) {
+			// pastas internas antigas e imagens soltas direto em importacao/botoes/ viram "padrao"
+			moveFiles(new File(internal, "buttons"), padrao);
+			moveFiles(new File(internal, BOTOES), padrao);
+			moveFiles(externalDir(BOTOES), padrao);
 		}
+		for (String type : ApexPrefs.GAME_TYPES) {
+			// cria as pastas de cada tipo e leva o que ficou na reserva interna
+			moveFiles(new File(internal, botoesSub(type)), externalDir(botoesSub(type)));
+		}
+		moveFiles(new File(internal, SHADERS), externalDir(SHADERS));
 		sync();
 	}
 
@@ -127,15 +142,22 @@ public final class ImportStore {
 			o.put("atualizado_em", new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ROOT).format(new Date()));
 			o.put("pasta", root.getPath());
 
-			// botoes: todos os ids, com o arquivo quando existir
+			// botoes: um grupo por tipo de jogo, todos os ids, com o arquivo quando existir
 			JSONObject botoes = new JSONObject();
-			o.put("dica_botoes", "Para trocar na mao, coloque ID_normal.png em importacao/botoes/ e reabra o app.");
-			for (String[] b : ApexPrefs.allButtons()) {
-				JSONObject e = new JSONObject();
-				e.put("nome", b[1]);
-				File f = new File(imp, b[0].replaceAll("[^A-Za-z0-9_]", "_") + "_normal.png");
-				e.put("arquivo", f.isFile() ? f.getName() : JSONObject.NULL);
-				botoes.put(b[0], e);
+			o.put("tipo_em_uso", ApexPrefs.gameType());
+			o.put("dica_botoes", "Para trocar na mao, coloque ID_normal.png em importacao/botoes/TIPO/ "
+					+ "(padrao, tiro ou futebol) e reabra o app.");
+			for (String type : ApexPrefs.GAME_TYPES) {
+				File td = externalDir(botoesSub(type));
+				JSONObject grupo = new JSONObject();
+				for (String[] b : ApexPrefs.allButtons()) {
+					JSONObject e = new JSONObject();
+					e.put("nome", b[1]);
+					File f = td != null ? new File(td, b[0].replaceAll("[^A-Za-z0-9_]", "_") + "_normal.png") : null;
+					e.put("arquivo", f != null && f.isFile() ? f.getName() : JSONObject.NULL);
+					grupo.put(b[0], e);
+				}
+				botoes.put(type, grupo);
 			}
 			o.put("botoes", botoes);
 
@@ -193,11 +215,11 @@ public final class ImportStore {
 
 	private static void writeReadme(File root) {
 		File f = new File(root, README_FILE);
-		if (f.exists()) {
-			return;
-		}
 		String t = "Pasta de importacoes do Apexme\n\n"
-				+ "botoes/   imagens dos botoes do teclado virtual (nome: ID_normal.png)\n"
+				+ "botoes/padrao/   imagens dos botoes do tipo Padrao (nome: ID_normal.png)\n"
+				+ "botoes/tiro/     imagens dos botoes do tipo Tiro\n"
+				+ "botoes/futebol/  imagens dos botoes do tipo Futebol\n"
+				+ "                 (o tipo ativo e escolhido no Teclado virtual)\n"
 				+ "fundos/   fundo do app e fundo das janelas\n"
 				+ "fontes/   fonte .ttf ou .otf\n"
 				+ "shaders/  shaders importados (.fsh, .frag, .glsl)\n\n"
@@ -209,7 +231,7 @@ public final class ImportStore {
 		}
 	}
 
-	private static boolean copy(File src, File dst) {
+	public static boolean copy(File src, File dst) {
 		try (InputStream in = new FileInputStream(src); OutputStream os = new FileOutputStream(dst)) {
 			byte[] buf = new byte[16 * 1024];
 			int n;

@@ -61,6 +61,18 @@ public class Profile implements Comparable<Profile> {
 		return new File(Config.getProfilesDir(), name + Config.MIDLET_KEY_LAYOUT_FILE);
 	}
 
+	public File getApexExtras() {
+		return new File(Config.getProfilesDir(), name + Config.PROFILE_APEX_EXTRAS_FILE);
+	}
+
+	public File getApexImagesDir() {
+		return new File(Config.getProfilesDir(), name + Config.PROFILE_APEX_IMAGES_DIR);
+	}
+
+	public boolean hasApexExtras() {
+		return getApexExtras().exists();
+	}
+
 	@Override
 	public String toString() {
 		return name;

@@ -71,6 +71,14 @@ public final class VkDialog {
 					"as letras na tela, abra um jogo e use o Modo edição.", 12));
 		}
 
+		root.addView(ApexUi.section(a, "Tipo de jogo"));
+		root.addView(ApexUi.text(a, "Cada tipo usa as próprias imagens de botões, guardadas em " +
+				"importacao/botoes/padrao, tiro ou futebol. O tipo escolhido também é salvo no perfil.", 12));
+		root.addView(ApexUi.button(a, "Tipo: " + ApexPrefs.gameTypeName(), v -> {
+			holder[0].dismiss();
+			showGameType(a);
+		}));
+
 		root.addView(ApexUi.section(a, "Tamanhos"));
 		root.addView(ApexUi.slider(a, "Tamanho dos botões", 50, 200,
 				Math.round(ApexPrefs.buttonScale() * 100), "%", v -> {
@@ -118,15 +126,15 @@ public final class VkDialog {
 			relayout(vk);
 		}));
 
-		root.addView(ApexUi.section(a, "Imagem de cada botão"));
+		root.addView(ApexUi.section(a, "Imagem de cada botão (" + ApexPrefs.gameTypeName() + ")"));
 		root.addView(ApexUi.button(a, "Escolher imagem por botão", v -> {
 			holder[0].dismiss();
 			showButtonList(a, vk, 0);
 		}));
-		root.addView(ApexUi.button(a, "Remover todas as imagens", v -> {
+		root.addView(ApexUi.button(a, "Remover todas as imagens deste tipo", v -> {
 			ApexPrefs.clearAllButtonImages();
 			relayout(vk);
-			Toast.makeText(a, "Imagens removidas", Toast.LENGTH_SHORT).show();
+			Toast.makeText(a, "Imagens removidas (" + ApexPrefs.gameTypeName() + ")", Toast.LENGTH_SHORT).show();
 		}));
 
 		root.addView(ApexUi.section(a, "Opacidade das imagens"));
@@ -164,6 +172,28 @@ public final class VkDialog {
 		holder[0].show();
 	}
 
+	/** Escolhe o tipo de jogo (Padrao, Tiro ou Futebol): troca o conjunto de imagens dos botoes. */
+	private static void showGameType(Activity a) {
+		String cur = ApexPrefs.gameType();
+		int sel = 0;
+		for (int i = 0; i < ApexPrefs.GAME_TYPES.length; i++) {
+			if (ApexPrefs.GAME_TYPES[i].equals(cur)) {
+				sel = i;
+			}
+		}
+		new AlertDialog.Builder(a)
+				.setTitle("Tipo de jogo")
+				.setSingleChoiceItems(ApexPrefs.GAME_NAMES, sel, (d, which) -> {
+					ApexPrefs.setGameType(ApexPrefs.GAME_TYPES[which]);
+					d.dismiss();
+					relayout(a instanceof MicroActivity ? ContextHolder.getVk() : null);
+					show(a);
+				})
+				.setNegativeButton(android.R.string.cancel, (d, w) -> show(a))
+				.setOnCancelListener(d -> show(a))
+				.show();
+	}
+
 	/** Lista todos os botoes; toque em um para definir a imagem so dele. */
 	private static void showButtonList(Activity a, VirtualKeyboard vk, int scrollTo) {
 		String[][] all = ApexPrefs.allButtons();
@@ -172,7 +202,7 @@ public final class VkDialog {
 			items[i] = all[i][1] + (ApexPrefs.hasButtonImage(all[i][0], false) ? "  ✓" : "");
 		}
 		AlertDialog d = new AlertDialog.Builder(a)
-				.setTitle("Imagem de qual botão?")
+				.setTitle("Imagem de qual botão? (" + ApexPrefs.gameTypeName() + ")")
 				.setItems(items, (dlg, which) -> showButtonOptions(a, vk, all[which], which))
 				.setNegativeButton(R.string.apex_close, null)
 				.create();

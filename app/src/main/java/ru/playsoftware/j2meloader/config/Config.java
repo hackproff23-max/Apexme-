@@ -51,6 +51,10 @@ public class Config {
 	public static final String MIDLET_DEX_FILE = "/converted.dex";
 	public static final String MIDLET_ICON_FILE = "/icon.png";
 	public static final String MIDLET_KEY_LAYOUT_FILE = "/VirtualKeyboardLayout";
+	/** Analogico e D-pad do perfil: tamanho, opacidade, mapeamento, posicao e tipo de jogo. */
+	public static final String PROFILE_APEX_EXTRAS_FILE = "/apex_extras.json";
+	/** Imagens do analogico e do D-pad do perfil. */
+	public static final String PROFILE_APEX_IMAGES_DIR = "/apex_botoes";
 	public static final String MIDLET_MANIFEST_FILE = MIDLET_DEX_FILE + ".conf";
 	public static final String MIDLET_RES_DIR = "/res";
 	public static final String MIDLET_RES_FILE = "/res.jar";

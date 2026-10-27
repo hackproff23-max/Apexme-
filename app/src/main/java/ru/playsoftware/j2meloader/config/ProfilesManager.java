@@ -26,6 +26,7 @@ import com.google.gson.JsonElement;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -36,8 +37,11 @@ import java.util.HashMap;
 import javax.microedition.lcdui.keyboard.VirtualKeyboard;
 import javax.microedition.util.ContextHolder;
 
+import org.json.JSONObject;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import ru.playsoftware.j2meloader.apex.ApexPrefs;
 import ru.playsoftware.j2meloader.util.FileUtils;
 import ru.playsoftware.j2meloader.util.XmlUtils;
 
@@ -67,6 +71,12 @@ public class ProfilesManager {
 
 	public static void load(Profile from, String toPath, boolean config, boolean keyboard)
 			throws IOException {
+		load(from, toPath, config, keyboard, false);
+	}
+
+	/** Com {@code apexExtras} true, o teclado tambem traz analogico e D-pad gravados no perfil. */
+	public static void load(Profile from, String toPath, boolean config, boolean keyboard,
+							boolean apexExtras) throws IOException {
 		if (!config && !keyboard) {
 			return;
 		}
@@ -85,9 +95,38 @@ public class ProfilesManager {
 					}
 				}
 			}
-			if (keyboard) FileUtils.copyFileUsingChannel(from.getKeyLayout(), dstKeyLayout);
+			if (keyboard && from.hasKeyLayout()) {
+				FileUtils.copyFileUsingChannel(from.getKeyLayout(), dstKeyLayout);
+			}
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
+		}
+		if (keyboard && apexExtras) loadApexExtras(from);
+	}
+
+	/** Grava analogico e D-pad (valores e imagens) dentro da pasta do perfil. */
+	private static void saveApexExtras(Profile profile) {
+		try {
+			JSONObject o = ApexPrefs.exportExtras();
+			try (FileOutputStream os = new FileOutputStream(profile.getApexExtras())) {
+				os.write(o.toString(2).getBytes("UTF-8"));
+			}
+			ApexPrefs.exportImages(profile.getApexImagesDir());
+		} catch (Throwable e) {
+			Log.e(TAG, "saveApexExtras: ", e);
+		}
+	}
+
+	private static void loadApexExtras(Profile from) {
+		File file = from.getApexExtras();
+		if (!file.isFile()) {
+			return;
+		}
+		try {
+			ApexPrefs.importExtras(new JSONObject(FileUtils.getText(file.getPath())));
+			ApexPrefs.importImages(from.getApexImagesDir(), ApexPrefs.gameType());
+		} catch (Throwable e) {
+			Log.e(TAG, "loadApexExtras: ", e);
 		}
 	}
 
@@ -97,6 +136,7 @@ public class ProfilesManager {
 			return;
 		}
 		profile.create();
+		if (keyboard) saveApexExtras(profile);
 		File srcConfig = new File(fromPath, Config.MIDLET_CONFIG_FILE);
 		File srcKeyLayout = new File(fromPath, Config.MIDLET_KEY_LAYOUT_FILE);
 		try {
