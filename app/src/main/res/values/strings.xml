@@ -282,4 +282,8 @@
     <string name="apex_preview_body" translatable="false">Assim ficam os textos e menus do app</string>
     <string name="apex_preview_pressed" translatable="false">Item pressionado</string>
     <string name="apex_pref_colors" translatable="false">Cores</string>
+    <string name="apex_add_folder" translatable="false">Adicionar pasta</string>
+    <string name="apex_folder_found" translatable="false">Jogos encontrados na pasta</string>
+    <string name="apex_folder_none" translatable="false">Nenhum jogo compatível nesta pasta</string>
+    <string name="apex_folder_scanning" translatable="false">Procurando jogos…</string>
 </resources>

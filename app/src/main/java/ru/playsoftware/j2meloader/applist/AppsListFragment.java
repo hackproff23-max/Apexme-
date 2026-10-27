@@ -111,6 +111,126 @@ public class AppsListFragment extends Fragment {
 			FileUtils.getFilePicker(),
 			this::onPickFileResult);
 
+	private final java.util.ArrayDeque<Uri> installQueue = new java.util.ArrayDeque<>();
+	private final ActivityResultLauncher<Uri> folderPicker = registerForActivityResult(
+			new ActivityResultContracts.OpenDocumentTree(),
+			this::onFolderPicked);
+
+	/** Procura jogos (.jar) so nos arquivos da pasta escolhida, sem entrar nas subpastas. */
+	private void onFolderPicked(Uri tree) {
+		if (tree == null) {
+			return;
+		}
+		Toast.makeText(requireContext(), R.string.apex_folder_scanning, Toast.LENGTH_SHORT).show();
+		android.content.Context app = requireContext().getApplicationContext();
+		new Thread(() -> {
+			java.util.List<String> names = new java.util.ArrayList<>();
+			java.util.List<Uri> uris = new java.util.ArrayList<>();
+			scanFolder(app, tree, names, uris);
+			Activity a = getActivity();
+			if (a == null) {
+				return;
+			}
+			a.runOnUiThread(() -> showFolderResult(names, uris));
+		}).start();
+	}
+
+	private static void scanFolder(android.content.Context c, Uri tree, java.util.List<String> names,
+								   java.util.List<Uri> uris) {
+		android.content.ContentResolver cr = c.getContentResolver();
+		Uri children = android.provider.DocumentsContract.buildChildDocumentsUriUsingTree(
+				tree, android.provider.DocumentsContract.getTreeDocumentId(tree));
+		java.util.List<String> jarNames = new java.util.ArrayList<>();
+		java.util.List<Uri> jarUris = new java.util.ArrayList<>();
+		java.util.HashSet<String> jads = new java.util.HashSet<>();
+		try (android.database.Cursor cur = cr.query(children, new String[]{
+				android.provider.DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+				android.provider.DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+				android.provider.DocumentsContract.Document.COLUMN_MIME_TYPE}, null, null, null)) {
+			while (cur != null && cur.moveToNext()) {
+				String mime = cur.getString(2);
+				String name = cur.getString(1);
+				if (name == null || android.provider.DocumentsContract.Document.MIME_TYPE_DIR.equals(mime)) {
+					continue; // nao entra em subpastas
+				}
+				String low = name.toLowerCase(java.util.Locale.ROOT);
+				if (low.endsWith(".jad")) {
+					jads.add(low.substring(0, low.length() - 4));
+				} else if (low.endsWith(".jar")) {
+					jarNames.add(name);
+					jarUris.add(android.provider.DocumentsContract.buildDocumentUriUsingTree(tree, cur.getString(0)));
+				}
+			}
+		} catch (Exception e) {
+			Log.e(TAG, "scan folder", e);
+		}
+		for (int i = 0; i < jarNames.size(); i++) {
+			String name = jarNames.get(i);
+			String base = name.substring(0, name.length() - 4).toLowerCase(java.util.Locale.ROOT);
+			if (jads.contains(base) || isMidlet(cr, jarUris.get(i))) {
+				names.add(name);
+				uris.add(jarUris.get(i));
+			}
+		}
+	}
+
+	/** Um .jar compativel tem "MIDlet-1" no META-INF/MANIFEST.MF. */
+	private static boolean isMidlet(android.content.ContentResolver cr, Uri uri) {
+		try (java.io.InputStream in = cr.openInputStream(uri)) {
+			if (in == null) {
+				return false;
+			}
+			java.util.zip.ZipInputStream zip = new java.util.zip.ZipInputStream(in);
+			java.util.zip.ZipEntry e;
+			while ((e = zip.getNextEntry()) != null) {
+				if ("META-INF/MANIFEST.MF".equalsIgnoreCase(e.getName())) {
+					java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+					byte[] buf = new byte[4096];
+					int n;
+					while ((n = zip.read(buf)) > 0 && out.size() < 64 * 1024) {
+						out.write(buf, 0, n);
+					}
+					return out.toString("UTF-8").contains("MIDlet-1");
+				}
+			}
+		} catch (Exception ignored) {
+		}
+		return false;
+	}
+
+	private void showFolderResult(java.util.List<String> names, java.util.List<Uri> uris) {
+		if (!isAdded()) {
+			return;
+		}
+		if (uris.isEmpty()) {
+			Toast.makeText(requireContext(), R.string.apex_folder_none, Toast.LENGTH_LONG).show();
+			return;
+		}
+		boolean[] checked = new boolean[uris.size()];
+		java.util.Arrays.fill(checked, true);
+		new AlertDialog.Builder(requireActivity())
+				.setTitle(getString(R.string.apex_folder_found) + " (" + uris.size() + ")")
+				.setMultiChoiceItems(names.toArray(new String[0]), checked, (d, which, on) -> checked[which] = on)
+				.setNegativeButton(android.R.string.cancel, null)
+				.setPositiveButton(R.string.install, (d, w) -> {
+					installQueue.clear();
+					for (int i = 0; i < uris.size(); i++) {
+						if (checked[i]) {
+							installQueue.add(uris.get(i));
+						}
+					}
+					installNext();
+				})
+				.show();
+	}
+
+	private void installNext() {
+		Uri next = installQueue.poll();
+		if (next != null && isAdded()) {
+			InstallerDialog.newInstance(next).show(getParentFragmentManager(), "installer");
+		}
+	}
+
 	private int pendingThemeTarget;
 	private final ActivityResultLauncher<String[]> themePicker = registerForActivityResult(
 			new ActivityResultContracts.OpenDocument(),
@@ -177,6 +297,18 @@ public class AppsListFragment extends Fragment {
 		binding.floatingActionButton.setBackgroundTintList(new ColorStateList(
 				new int[][]{{android.R.attr.state_pressed}, {}},
 				new int[]{ApexTheme.pressedColor(requireContext()), ApexTheme.outlineColor(requireContext())}));
+		binding.folderActionButton.setBackgroundTintList(new ColorStateList(
+				new int[][]{{android.R.attr.state_pressed}, {}},
+				new int[]{ApexTheme.pressedColor(requireContext()), ApexTheme.outlineColor(requireContext())}));
+		binding.folderActionButton.setOnClickListener(v -> {
+			try {
+				folderPicker.launch(null);
+			} catch (ActivityNotFoundException e) {
+				Toast.makeText(getContext(), R.string.error_no_picker, Toast.LENGTH_SHORT).show();
+			}
+		});
+		getParentFragmentManager().setFragmentResultListener("installer_done", getViewLifecycleOwner(),
+				(key, result) -> installNext());
 		binding.list.setAdapter(adapter);
 		binding.list.setOnItemClickListener((parent, v, position, id) -> onListItemClick(position));
 		binding.floatingActionButton.setOnClickListener(v -> {

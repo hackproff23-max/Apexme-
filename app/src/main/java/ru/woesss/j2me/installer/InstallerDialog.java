@@ -129,6 +129,16 @@ public class InstallerDialog extends DialogFragment {
 	}
 
 	@Override
+	public void onDismiss(@NonNull DialogInterface dialog) {
+		super.onDismiss(dialog);
+		// avisa a lista: se houver mais jogos na fila (Adicionar pasta), instala o proximo
+		try {
+			getParentFragmentManager().setFragmentResult("installer_done", new Bundle());
+		} catch (Exception ignored) {
+		}
+	}
+
+	@Override
 	public void onDestroy() {
 		compositeDisposable.dispose();
 		super.onDestroy();

@@ -30,6 +30,17 @@
         android:textSize="18sp" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/folder_action_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end|bottom"
+        android:layout_marginEnd="24dp"
+        android:layout_marginBottom="88dp"
+        android:contentDescription="@string/apex_add_folder"
+        app:fabSize="mini"
+        app:srcCompat="@drawable/ic_add_folder" />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/floating_action_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
