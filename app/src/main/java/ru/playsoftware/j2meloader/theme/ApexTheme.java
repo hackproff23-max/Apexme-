@@ -247,10 +247,9 @@ public final class ApexTheme {
 
 	/** Copia o arquivo escolhido para a pasta interna do app e passa a usa-lo. */
 	public static boolean importFile(Context c, int target, Uri uri) {
-		File dir = new File(Config.getImportDir());
-		if (!dir.isDirectory() && !dir.mkdirs()) {
-			return false;
-		}
+		File dir = ru.playsoftware.j2meloader.apex.ImportStore.dir(
+				target == TARGET_FONT ? ru.playsoftware.j2meloader.apex.ImportStore.FONTES
+						: ru.playsoftware.j2meloader.apex.ImportStore.FUNDOS);
 		File out = new File(dir, target == TARGET_FONT ? "font_" + System.currentTimeMillis() + fontExt(c, uri)
 				: (target == TARGET_APP_BG ? "app_bg_" : "window_bg_") + System.currentTimeMillis());
 		try (InputStream in = c.getContentResolver().openInputStream(uri);
@@ -303,6 +302,7 @@ public final class ApexTheme {
 		prefs(c).edit().putString(keyFor(target), out.getPath()).apply();
 		invalidate();
 		syncToFile(c);
+		ru.playsoftware.j2meloader.apex.ImportStore.sync();
 		return true;
 	}
 
@@ -329,6 +329,19 @@ public final class ApexTheme {
 		prefs(c).edit().remove(keyFor(target)).apply();
 		invalidate();
 		syncToFile(c);
+		ru.playsoftware.j2meloader.apex.ImportStore.sync();
+	}
+
+	/** Subpasta de importacao/ onde fica o arquivo desta chave. */
+	private static String subFor(String key) {
+		return K_FONT.equals(key) ? ru.playsoftware.j2meloader.apex.ImportStore.FONTES
+				: ru.playsoftware.j2meloader.apex.ImportStore.FUNDOS;
+	}
+
+	/** Nome do arquivo importado em uso para este alvo, ou null. */
+	public static String inUseName(Context c, int target) {
+		String path = prefs(c).getString(keyFor(target), null);
+		return path != null ? new File(path).getName() : null;
 	}
 
 	public static void resetAll(Context c) {
@@ -386,9 +399,10 @@ public final class ApexTheme {
 				if (path == null) {
 					continue;
 				}
+				File sub = ru.playsoftware.j2meloader.apex.ImportStore.dir(subFor(k));
 				File f = new File(path);
-				if (f.exists() && !imp.equals(f.getParentFile())) {
-					File dst = new File(imp, f.getName());
+				if (f.exists() && !sub.equals(f.getParentFile())) {
+					File dst = new File(sub, f.getName());
 					if (copyFile(f, dst)) {
 						//noinspection ResultOfMethodCallIgnored
 						f.delete();
@@ -427,7 +441,10 @@ public final class ApexTheme {
 			for (String k : FILE_KEYS) {
 				String want = null;
 				if (o.has(k)) {
-					File f = new File(imp, o.getString(k));
+					File f = new File(ru.playsoftware.j2meloader.apex.ImportStore.dir(subFor(k)), o.getString(k));
+					if (!f.exists()) {
+						f = new File(imp, o.getString(k));
+					}
 					if (f.exists()) {
 						want = f.getPath();
 					}

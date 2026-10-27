@@ -40,13 +40,6 @@ public final class ApexPrefs {
 		return sp;
 	}
 
-	private static File dir(String sub) {
-		File d = new File(ContextHolder.getAppContext().getFilesDir(), "apex/" + sub);
-		//noinspection ResultOfMethodCallIgnored
-		d.mkdirs();
-		return d;
-	}
-
 	// ---------------- shaders ----------------
 	public static String shaderSel() {
 		return sp().getString("shader_sel", SEL_AUTO);
@@ -86,11 +79,11 @@ public final class ApexPrefs {
 	}
 
 	public static File userShaderFile(String name) {
-		return new File(dir("shaders"), name);
+		return new File(ImportStore.dir(ImportStore.SHADERS), name);
 	}
 
 	public static String[] listUserShaders() {
-		String[] names = dir("shaders").list();
+		String[] names = ImportStore.dir(ImportStore.SHADERS).list();
 		if (names == null) {
 			return new String[0];
 		}
@@ -132,6 +125,7 @@ public final class ApexPrefs {
 			out.delete();
 			return null;
 		}
+		ImportStore.sync();
 		return name;
 	}
 
@@ -351,7 +345,7 @@ public final class ApexPrefs {
 	}
 
 	private static File imageFile(String id, boolean pressed) {
-		return new File(dir("buttons"), id.replaceAll("[^A-Za-z0-9_]", "_")
+		return new File(ImportStore.dir(ImportStore.BOTOES), id.replaceAll("[^A-Za-z0-9_]", "_")
 				+ (pressed ? "_pressed.png" : "_normal.png"));
 	}
 
@@ -450,6 +444,7 @@ public final class ApexPrefs {
 		out.delete();
 		boolean ok = tmp.renameTo(out);
 		invalidateCache();
+		ImportStore.sync();
 		return ok;
 	}
 
@@ -460,17 +455,22 @@ public final class ApexPrefs {
 		//noinspection ResultOfMethodCallIgnored
 		imageFile(id, true).delete();
 		invalidateCache();
+		ImportStore.sync();
 	}
 
 	/** Remove as imagens de todos os botoes. */
 	public static synchronized void clearAllButtonImages() {
-		File[] files = dir("buttons").listFiles();
+		File[] files = ImportStore.dir(ImportStore.BOTOES).listFiles();
 		if (files != null) {
 			for (File f : files) {
-				//noinspection ResultOfMethodCallIgnored
-				f.delete();
+				String n = f.getName();
+				if (n.endsWith(".png") || n.endsWith(".tmp")) {
+					//noinspection ResultOfMethodCallIgnored
+					f.delete();
+				}
 			}
 		}
 		invalidateCache();
+		ImportStore.sync();
 	}
 }

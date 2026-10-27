@@ -165,6 +165,7 @@ public class MainActivity extends BaseActivity {
 		if (dir.isDirectory() && dir.canWrite()) {
 			FileUtils.initWorkDir(dir);
 			ru.playsoftware.j2meloader.theme.ApexTheme.restoreFromFile(this);
+			ru.playsoftware.j2meloader.apex.ImportStore.migrate();
 			appListModel.getAppRepository().onWorkDirReady();
 			return;
 		}
