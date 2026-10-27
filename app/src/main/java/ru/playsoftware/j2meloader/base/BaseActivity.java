@@ -30,6 +30,9 @@ import android.graphics.drawable.ColorDrawable;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
+import android.view.View;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
@@ -60,11 +63,34 @@ public class BaseActivity extends AppCompatActivity {
 	@Override
 	protected void onPostCreate(@Nullable Bundle savedInstanceState) {
 		super.onPostCreate(savedInstanceState);
+		removeTopInset();
 		ActionBar bar = getSupportActionBar();
 		if (bar != null) {
 			bar.setBackgroundDrawable(new ColorDrawable(ApexTheme.hasAppImage(this)
 					? Color.TRANSPARENT : ApexTheme.bgColor(this)));
 		}
+	}
+
+	/** Sobe a barra superior: ignora a folga que o sistema reserva no topo (recorte/barra de status). */
+	private void removeTopInset() {
+		View root = findViewById(androidx.appcompat.R.id.decor_content_parent);
+		if (root == null) {
+			return;
+		}
+		ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
+			Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+			Insets cut = insets.getInsets(WindowInsetsCompat.Type.displayCutout());
+			@SuppressWarnings("deprecation")
+			Insets sw = insets.getSystemWindowInsets();
+			@SuppressWarnings("deprecation")
+			WindowInsetsCompat changed = new WindowInsetsCompat.Builder(insets)
+					.setInsets(WindowInsetsCompat.Type.systemBars(), Insets.of(bars.left, 0, bars.right, bars.bottom))
+					.setInsets(WindowInsetsCompat.Type.displayCutout(), Insets.of(cut.left, 0, cut.right, cut.bottom))
+					.setSystemWindowInsets(Insets.of(sw.left, 0, sw.right, sw.bottom))
+					.build();
+			return ViewCompat.onApplyWindowInsets(v, changed);
+		});
+		ViewCompat.requestApplyInsets(root);
 	}
 
 	@Override

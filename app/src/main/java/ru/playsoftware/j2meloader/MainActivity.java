@@ -117,6 +117,16 @@ public class MainActivity extends BaseActivity {
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
+		androidx.appcompat.app.ActionBar bar = getSupportActionBar();
+		if (bar != null) {
+			// logo + nome completo do app (com contorno) no lugar do titulo
+			bar.setDisplayShowTitleEnabled(false);
+			bar.setDisplayShowCustomEnabled(true);
+			bar.setCustomView(R.layout.action_bar_title, new androidx.appcompat.app.ActionBar.LayoutParams(
+					android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+					android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+					android.view.Gravity.START | android.view.Gravity.CENTER_VERTICAL));
+		}
 		appListModel = new ViewModelProvider(this).get(AppListModel.class);
 		if (savedInstanceState == null) {
 			Intent intent = getIntent();
