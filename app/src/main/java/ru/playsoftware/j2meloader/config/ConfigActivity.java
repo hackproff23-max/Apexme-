@@ -91,6 +91,68 @@ public class ConfigActivity extends BaseActivity implements View.OnClickListener
 	private File configDir;
 	private String defProfile;
 	private ArrayAdapter<ShaderInfo> spShaderAdapter;
+	private int lastShaderPos;
+	private static final String AX_BUILTIN = "apex-builtin";
+	private static final String AX_USER = "apex-user";
+	private static final String AX_IMPORT = "apex-import";
+	private final androidx.activity.result.ActivityResultLauncher<String[]> shaderImport = registerForActivityResult(
+			new androidx.activity.result.contract.ActivityResultContracts.OpenDocument(), this::onShaderImported);
+
+	private static boolean isApexItem(ShaderInfo i) {
+		return AX_BUILTIN.equals(i.author) || AX_USER.equals(i.author) || AX_IMPORT.equals(i.author);
+	}
+
+	/** Shaders do Apexme: o do LCD, os importados e a opcao de importar. */
+	private void addApexShaderItems(ArrayList<ShaderInfo> infos) {
+		infos.add(new ShaderInfo("Apex (LCD + cores)", AX_BUILTIN));
+		for (String n : ru.playsoftware.j2meloader.apex.ApexPrefs.listUserShaders()) {
+			infos.add(new ShaderInfo("★ " + n, AX_USER));
+		}
+		infos.add(new ShaderInfo("＋ Importar shader…", AX_IMPORT));
+	}
+
+	private void onShaderImported(Uri uri) {
+		if (uri == null || spShaderAdapter == null) {
+			return;
+		}
+		String name = ru.playsoftware.j2meloader.apex.ApexPrefs.importShader(this, uri);
+		if (name == null) {
+			Toast.makeText(this, "Arquivo de shader inválido", Toast.LENGTH_LONG).show();
+			return;
+		}
+		ru.playsoftware.j2meloader.apex.ApexPrefs.setShaderSel(
+				ru.playsoftware.j2meloader.apex.ApexPrefs.SEL_USER + name);
+		for (int i = spShaderAdapter.getCount() - 1; i >= 0; i--) {
+			if (isApexItem(spShaderAdapter.getItem(i))) {
+				spShaderAdapter.remove(spShaderAdapter.getItem(i));
+			}
+		}
+		ArrayList<ShaderInfo> extra = new ArrayList<>();
+		addApexShaderItems(extra);
+		for (ShaderInfo i : extra) {
+			spShaderAdapter.add(i);
+		}
+		selectApexShader();
+		Toast.makeText(this, "Shader importado: " + name, Toast.LENGTH_SHORT).show();
+	}
+
+	/** Marca no spinner o shader global escolhido (importado ou Apex), se houver. */
+	private boolean selectApexShader() {
+		String sel = ru.playsoftware.j2meloader.apex.ApexPrefs.shaderSel();
+		for (int i = 0; i < spShaderAdapter.getCount(); i++) {
+			ShaderInfo it = spShaderAdapter.getItem(i);
+			boolean match = (sel.startsWith(ru.playsoftware.j2meloader.apex.ApexPrefs.SEL_USER)
+					&& AX_USER.equals(it.author)
+					&& it.name.equals("★ " + sel.substring(ru.playsoftware.j2meloader.apex.ApexPrefs.SEL_USER.length())))
+					|| (ru.playsoftware.j2meloader.apex.ApexPrefs.SEL_BUILTIN.equals(sel) && AX_BUILTIN.equals(it.author));
+			if (match) {
+				binding.shaderSelector.setSelection(i);
+				lastShaderPos = i;
+				return true;
+			}
+		}
+		return false;
+	}
 	private String workDir;
 	private boolean needShow;
 
@@ -369,6 +431,7 @@ public class ConfigActivity extends BaseActivity implements View.OnClickListener
 			Collections.sort(infos);
 		}
 		infos.add(0, new ShaderInfo(getString(R.string.identity_filter), "woesss"));
+		addApexShaderItems(infos);
 		spShaderAdapter.notifyDataSetChanged();
 		ShaderInfo selected = params.shader;
 		if (selected != null) {
@@ -376,13 +439,34 @@ public class ConfigActivity extends BaseActivity implements View.OnClickListener
 			if (position > 0) {
 				infos.get(position).values = selected.values;
 				binding.shaderSelector.setSelection(position);
+				lastShaderPos = position;
 			}
 		}
+		selectApexShader();
 		binding.shaderRoot.setVisibility(View.VISIBLE);
 		binding.shaderSelector.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
 			@Override
 			public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
 				ShaderInfo item = (ShaderInfo) parent.getItemAtPosition(position);
+				if (AX_IMPORT.equals(item.author)) {
+					binding.shaderSelector.setSelection(lastShaderPos);
+					try {
+						shaderImport.launch(new String[]{"*/*"});
+					} catch (Exception e) {
+						Toast.makeText(ConfigActivity.this, R.string.error_no_picker, Toast.LENGTH_SHORT).show();
+					}
+					return;
+				}
+				lastShaderPos = position;
+				if (AX_BUILTIN.equals(item.author)) {
+					ru.playsoftware.j2meloader.apex.ApexPrefs.setShaderSel(ru.playsoftware.j2meloader.apex.ApexPrefs.SEL_BUILTIN);
+				} else if (AX_USER.equals(item.author)) {
+					ru.playsoftware.j2meloader.apex.ApexPrefs.setShaderSel(
+							ru.playsoftware.j2meloader.apex.ApexPrefs.SEL_USER + item.name.substring(2));
+				} else if (!ru.playsoftware.j2meloader.apex.ApexPrefs.SEL_AUTO.equals(
+						ru.playsoftware.j2meloader.apex.ApexPrefs.shaderSel())) {
+					ru.playsoftware.j2meloader.apex.ApexPrefs.setShaderSel(ru.playsoftware.j2meloader.apex.ApexPrefs.SEL_AUTO);
+				}
 				ShaderInfo.Setting[] settings = item.settings;
 				float[] values = item.values;
 				if (values == null) {
@@ -635,10 +719,11 @@ public class ConfigActivity extends BaseActivity implements View.OnClickListener
 			int mode = binding.graphicalModeSelector.getSelectedItemPosition();
 			params.graphicsMode = mode;
 			if (mode == 1) {
-				if (binding.shaderSelector.getSelectedItemPosition() == 0)
+				ShaderInfo chosen = (ShaderInfo) binding.shaderSelector.getSelectedItem();
+				if (binding.shaderSelector.getSelectedItemPosition() == 0 || chosen == null || isApexItem(chosen))
 					params.shader = null;
 				else
-					params.shader = (ShaderInfo) binding.shaderSelector.getSelectedItem();
+					params.shader = chosen;
 			}
 			params.parallelRedrawScreen = binding.parallelScreenRedrawingToggle.isChecked();
 			params.forceFullscreen = binding.forceFullscreenToggle.isChecked();
