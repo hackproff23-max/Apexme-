@@ -107,33 +107,44 @@ public class AppsListFragment extends Fragment {
 
 	FragmentAppsListBinding binding;
 
-	/** Explorador do proprio sistema (SAF), varios jogos de uma vez. */
-	private final ActivityResultLauncher<String[]> openFileLauncher = registerForActivityResult(
-			new ActivityResultContracts.OpenMultipleDocuments(),
+	/** Explorador do proprio app, varios jogos de uma vez. */
+	private final ActivityResultLauncher<String> openFileLauncher = registerForActivityResult(
+			new ru.playsoftware.j2meloader.util.PickFilesResultContract(),
 			this::onFilesPicked);
 
 	private final java.util.ArrayDeque<Uri> installQueue = new java.util.ArrayDeque<>();
-	private final ActivityResultLauncher<Uri> folderPicker = registerForActivityResult(
-			new ActivityResultContracts.OpenDocumentTree(),
+	private final ActivityResultLauncher<String> folderPicker = registerForActivityResult(
+			new ru.playsoftware.j2meloader.util.PickDirResultContract(),
 			this::onFolderPicked);
 
-	/** Procura jogos (.jar) so nos arquivos da pasta escolhida, sem entrar nas subpastas. */
-	private void onFolderPicked(Uri tree) {
-		if (tree == null) {
+	private String startPath() {
+		String path = preferences.getString(PREF_LAST_PATH, null);
+		if (path == null) {
+			File dir = Environment.getExternalStorageDirectory();
+			if (dir.canRead()) {
+				path = dir.getAbsolutePath();
+			}
+		}
+		return path;
+	}
+
+	/** Jogos (.jar/.jad/.kjx) direto na pasta escolhida no explorador do app, sem entrar nas subpastas. */
+	private void onFolderPicked(Uri dirUri) {
+		if (dirUri == null || dirUri.getPath() == null || !isAdded()) {
 			return;
 		}
-		Toast.makeText(requireContext(), R.string.apex_folder_scanning, Toast.LENGTH_SHORT).show();
-		android.content.Context app = requireContext().getApplicationContext();
-		new Thread(() -> {
-			java.util.List<String> names = new java.util.ArrayList<>();
-			java.util.List<Uri> uris = new java.util.ArrayList<>();
-			scanFolder(app, tree, names, uris);
-			Activity a = getActivity();
-			if (a == null) {
-				return;
+		preferences.edit().putString(Constants.PREF_LAST_PATH, FilteredFilePickerFragment.getLastPath()).apply();
+		File[] files = new File(dirUri.getPath()).listFiles();
+		java.util.List<Uri> picked = new java.util.ArrayList<>();
+		if (files != null) {
+			java.util.Arrays.sort(files);
+			for (File f : files) {
+				if (f.isFile()) {
+					picked.add(Uri.fromFile(f));
+				}
 			}
-			a.runOnUiThread(() -> showFolderResult(names, uris));
-		}).start();
+		}
+		onFilesPicked(picked);
 	}
 
 	private static void scanFolder(android.content.Context c, Uri tree, java.util.List<String> names,
@@ -215,6 +226,7 @@ public class AppsListFragment extends Fragment {
 		if (picked == null || picked.isEmpty() || !isAdded()) {
 			return;
 		}
+		preferences.edit().putString(Constants.PREF_LAST_PATH, FilteredFilePickerFragment.getLastPath()).apply();
 		android.content.ContentResolver cr = requireContext().getContentResolver();
 		java.util.List<Uri> uris = new java.util.ArrayList<>();
 		java.util.List<String> bases = new java.util.ArrayList<>();
@@ -389,7 +401,7 @@ public class AppsListFragment extends Fragment {
 				new int[]{ApexTheme.pressedColor(requireContext()), ApexTheme.outlineColor(requireContext())}));
 		binding.folderActionButton.setOnClickListener(v -> {
 			try {
-				folderPicker.launch(null);
+				folderPicker.launch(startPath());
 			} catch (ActivityNotFoundException e) {
 				Toast.makeText(getContext(), R.string.error_no_picker, Toast.LENGTH_SHORT).show();
 			}
@@ -400,7 +412,7 @@ public class AppsListFragment extends Fragment {
 		binding.list.setOnItemClickListener((parent, v, position, id) -> onListItemClick(position));
 		binding.floatingActionButton.setOnClickListener(v -> {
 			try {
-				openFileLauncher.launch(new String[]{"*/*"});
+				openFileLauncher.launch(startPath());
 			} catch (ActivityNotFoundException e) {
 				Toast.makeText(getContext(), R.string.error_no_picker, Toast.LENGTH_SHORT).show();
 				e.printStackTrace();

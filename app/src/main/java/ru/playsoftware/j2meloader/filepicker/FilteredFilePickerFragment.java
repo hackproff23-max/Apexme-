@@ -102,4 +102,35 @@ public class FilteredFilePickerFragment extends FilePickerFragment {
 			viewHolder.itemView.setEnabled(false);
 		}
 	}
+
+	/** Android 11+: o acesso vem de "Acesso a todos os arquivos", nao da permissao antiga de leitura/escrita. */
+	@Override
+	protected boolean hasPermission(@NonNull File path) {
+		if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+			return Environment.isExternalStorageManager();
+		}
+		return super.hasPermission(path);
+	}
+
+	@Override
+	protected void handlePermission(@NonNull File path) {
+		if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+			android.content.Context c = requireContext();
+			android.widget.Toast.makeText(c, "Ative \"Acesso a todos os arquivos\" para o Apexme e abra o explorador de novo",
+					android.widget.Toast.LENGTH_LONG).show();
+			try {
+				startActivity(new android.content.Intent(
+						android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+						android.net.Uri.parse("package:" + c.getPackageName())));
+			} catch (Exception e) {
+				try {
+					startActivity(new android.content.Intent(
+							android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION));
+				} catch (Exception ignored) {
+				}
+			}
+			return;
+		}
+		super.handlePermission(path);
+	}
 }
