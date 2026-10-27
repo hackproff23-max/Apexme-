@@ -164,6 +164,7 @@ public class MainActivity extends BaseActivity {
 		File dir = new File(emulatorDir);
 		if (dir.isDirectory() && dir.canWrite()) {
 			FileUtils.initWorkDir(dir);
+			ru.playsoftware.j2meloader.theme.ApexTheme.restoreFromFile(this);
 			appListModel.getAppRepository().onWorkDirReady();
 			return;
 		}

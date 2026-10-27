@@ -329,12 +329,6 @@ public class AppInstaller {
 			app.setTitle(currentApp.getTitle());
 			String path = currentApp.getPath();
 			if (!path.equals(appDirName)) {
-				File rms = new File(Config.getDataDir(), path);
-				if (rms.exists()) {
-					File newRms = new File(Config.getDataDir(), appDirName);
-					FileUtils.deleteDirectory(newRms);
-					rms.renameTo(newRms);
-				}
 				File config = new File(Config.getConfigsDir(), path);
 				if (config.exists()) {
 					File newConfig = new File(Config.getConfigsDir(), appDirName);

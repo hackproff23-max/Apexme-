@@ -216,7 +216,8 @@ public class MicroLoader {
 				+ (country.length() == 2 ? "-" + country : ""));
 		// FIXME: 21.10.2020 Config.getDataDir() may be in different storage
 		final String primaryStoragePath = Environment.getExternalStorageDirectory().getPath();
-		String dataUri = "file:///c:" + Config.getDataDir().substring(primaryStoragePath.length()) + appDirName;
+		String dataUri = "file:///c:" + (workDir + Config.MIDLET_CONFIGS_DIR + appDirName + Config.MIDLET_SAVES_DIR)
+				.substring(primaryStoragePath.length());
 		String musicUri = "file:///c:" + Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC)
 				.getPath().substring(primaryStoragePath.length());
 		System.setProperty("fileconn.dir.cache", dataUri + "/cache");

@@ -205,7 +205,7 @@ public class ConfigActivity extends BaseActivity implements View.OnClickListener
 						.show();
 				return;
 			}
-			dataDir = new File(workDir + Config.MIDLET_DATA_DIR + appDir.getName());
+			dataDir = new File(workDir + Config.MIDLET_CONFIGS_DIR + appDir.getName() + Config.MIDLET_SAVES_DIR);
 			dataDir.mkdirs();
 			configDir = new File(workDir + Config.MIDLET_CONFIGS_DIR + appDir.getName());
 		}

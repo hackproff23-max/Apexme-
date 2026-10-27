@@ -63,7 +63,7 @@ public class AppCenterSender implements ReportSender {
 				response -> Log.d(TAG, "send success: " + response),
 				error -> {
 					Log.e(TAG, "Response error", error);
-					String logFile = Config.getEmulatorDir() + "/crash.txt";
+					String logFile = Config.getEmulatorDir() + Config.SETTINGS_DIR + "crash.txt";
 					try (FileOutputStream fos = new FileOutputStream(logFile)) {
 						String logcat = report.getString(ReportField.LOGCAT);
 						if (logcat != null) {

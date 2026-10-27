@@ -39,10 +39,15 @@ import ru.playsoftware.j2meloader.util.FileUtils;
 
 public class Config {
 	public static final String DEX_OPT_CACHE_DIR = "dex_opt";
-	public static final String FS_DIR = "/fs/";
+	public static final String SETTINGS_DIR = "/configuracoes/";
+	public static final String IMPORT_DIR = "/importacao/";
+	public static final String PROFILES_DIR = "/perfil/";
+	public static final String APPS_DIR = "/data/";
+	public static final String FS_DIR = SETTINGS_DIR + "fs/";
 	public static final String MIDLET_CONFIG_FILE = "/config.json";
-	public static final String MIDLET_CONFIGS_DIR = "/configs/";
-	public static final String MIDLET_DATA_DIR = "/data/";
+	/** Pasta de cada jogo: config.json, teclado virtual e saves. */
+	public static final String MIDLET_CONFIGS_DIR = "/jogos/";
+	public static final String MIDLET_SAVES_DIR = "/saves";
 	public static final String MIDLET_DEX_FILE = "/converted.dex";
 	public static final String MIDLET_ICON_FILE = "/icon.png";
 	public static final String MIDLET_KEY_LAYOUT_FILE = "/VirtualKeyboardLayout";
@@ -53,7 +58,6 @@ public class Config {
 	public static final String SHADERS_DIR = "/shaders/";
 
 	private static String emulatorDir;
-	private static String dataDir;
 	private static String configsDir;
 	private static String profilesDir;
 	private static String appDir;
@@ -88,8 +92,17 @@ public class Config {
 		return emulatorDir;
 	}
 
-	public static String getDataDir() {
-		return dataDir;
+	/** Pasta de saves (RMS e arquivos privados) de um jogo: jogos/NOME/saves. */
+	public static String getSavesDir(String appName) {
+		return configsDir + appName + MIDLET_SAVES_DIR;
+	}
+
+	public static String getSettingsDir() {
+		return emulatorDir + SETTINGS_DIR;
+	}
+
+	public static String getImportDir() {
+		return emulatorDir + IMPORT_DIR;
 	}
 
 	public static String getConfigsDir() {
@@ -145,9 +158,8 @@ public class Config {
 
 	private static void initDirs(String path) {
 		emulatorDir = path;
-		dataDir = emulatorDir + MIDLET_DATA_DIR;
 		configsDir = emulatorDir + MIDLET_CONFIGS_DIR;
-		profilesDir = emulatorDir + "/templates/";
-		appDir = emulatorDir + "/converted/";
+		profilesDir = emulatorDir + PROFILES_DIR;
+		appDir = emulatorDir + APPS_DIR;
 	}
 }

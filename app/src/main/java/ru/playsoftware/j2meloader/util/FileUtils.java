@@ -207,7 +207,7 @@ public class FileUtils {
 	public static boolean initWorkDir(File dir) {
 		if ((dir.isDirectory() || dir.mkdirs()) && dir.canWrite()) {
 			//noinspection ResultOfMethodCallIgnored
-			new File(dir, Config.SHADERS_DIR).mkdir();
+			FolderLayout.prepare(dir);
 			try {
 				File nomedia = new File(dir, ".nomedia");
 				//noinspection ResultOfMethodCallIgnored

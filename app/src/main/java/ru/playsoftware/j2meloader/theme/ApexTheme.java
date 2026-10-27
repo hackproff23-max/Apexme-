@@ -13,7 +13,12 @@ import android.util.DisplayMetrics;
 
 import androidx.preference.PreferenceManager;
 
+import ru.playsoftware.j2meloader.config.Config;
+
+import org.json.JSONObject;
+
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -37,6 +42,10 @@ public final class ApexTheme {
 	public static final int DEF_OUTLINE = 0xFF0099FF;
 	public static final int DEF_BG = 0xFF000000;
 	public static final int DEF_PRESSED = 0x660099FF;
+
+	private static final String SETTINGS_FILE = "tema.json";
+	private static final String[] COLOR_KEYS = {K_TEXT, K_OUTLINE, K_BG, K_PRESSED, K_WINDOW};
+	private static final String[] FILE_KEYS = {K_APP_BG, K_WIN_BG, K_FONT};
 
 	private static Bitmap appBitmap;
 	private static boolean appLoaded;
@@ -68,6 +77,7 @@ public final class ApexTheme {
 		synchronized (ApexTheme.class) {
 			version++;
 		}
+		syncToFile(c);
 	}
 
 	public static int textColor(Context c) {
@@ -237,7 +247,7 @@ public final class ApexTheme {
 
 	/** Copia o arquivo escolhido para a pasta interna do app e passa a usa-lo. */
 	public static boolean importFile(Context c, int target, Uri uri) {
-		File dir = new File(c.getFilesDir(), "theme");
+		File dir = new File(Config.getImportDir());
 		if (!dir.isDirectory() && !dir.mkdirs()) {
 			return false;
 		}
@@ -277,9 +287,22 @@ public final class ApexTheme {
 			out.delete();
 			return false;
 		}
+		if (target != TARGET_FONT) {
+			// da a extensao certa ao arquivo (png, jpg)
+			BitmapFactory.Options o2 = new BitmapFactory.Options();
+			o2.inJustDecodeBounds = true;
+			BitmapFactory.decodeFile(out.getPath(), o2);
+			String ext = "image/png".equals(o2.outMimeType) ? ".png"
+					: "image/jpeg".equals(o2.outMimeType) ? ".jpg" : ".img";
+			File renamed = new File(dir, out.getName() + ext);
+			if (out.renameTo(renamed)) {
+				out = renamed;
+			}
+		}
 		clear(c, target);
 		prefs(c).edit().putString(keyFor(target), out.getPath()).apply();
 		invalidate();
+		syncToFile(c);
 		return true;
 	}
 
@@ -305,6 +328,7 @@ public final class ApexTheme {
 		}
 		prefs(c).edit().remove(keyFor(target)).apply();
 		invalidate();
+		syncToFile(c);
 	}
 
 	public static void resetAll(Context c) {
@@ -313,6 +337,142 @@ public final class ApexTheme {
 		clear(c, TARGET_FONT);
 		prefs(c).edit().remove(K_TEXT).remove(K_OUTLINE).remove(K_BG).remove(K_WINDOW).remove(K_PRESSED).apply();
 		invalidate();
+		syncToFile(c);
+	}
+
+	/** Grava as cores e os nomes dos arquivos importados em configuracoes/tema.json. */
+	public static void syncToFile(Context c) {
+		try {
+			SharedPreferences p = prefs(c);
+			JSONObject o = new JSONObject();
+			for (String k : COLOR_KEYS) {
+				if (p.contains(k)) {
+					o.put(k, p.getInt(k, 0));
+				}
+			}
+			for (String k : FILE_KEYS) {
+				String path = p.getString(k, null);
+				if (path != null) {
+					o.put(k, new File(path).getName());
+				}
+			}
+			File dir = new File(Config.getSettingsDir());
+			if (!dir.isDirectory() && !dir.mkdirs()) {
+				return;
+			}
+			try (FileOutputStream os = new FileOutputStream(new File(dir, SETTINGS_FILE))) {
+				os.write(o.toString(2).getBytes("UTF-8"));
+			}
+		} catch (Throwable ignored) {
+		}
+	}
+
+	/**
+	 * Chamado quando as pastas ficam prontas: leva arquivos importados antigos para importacao/
+	 * e carrega o tema salvo em configuracoes/tema.json (ele vale sobre as preferencias).
+	 */
+	public static void restoreFromFile(Context c) {
+		try {
+			SharedPreferences p = prefs(c);
+			File imp = new File(Config.getImportDir());
+			if (!imp.isDirectory() && !imp.mkdirs()) {
+				return;
+			}
+			// 1. arquivos importados em versoes anteriores (pasta interna) -> importacao/
+			SharedPreferences.Editor e1 = p.edit();
+			boolean moved = false;
+			for (String k : FILE_KEYS) {
+				String path = p.getString(k, null);
+				if (path == null) {
+					continue;
+				}
+				File f = new File(path);
+				if (f.exists() && !imp.equals(f.getParentFile())) {
+					File dst = new File(imp, f.getName());
+					if (copyFile(f, dst)) {
+						//noinspection ResultOfMethodCallIgnored
+						f.delete();
+						e1.putString(k, dst.getPath());
+						moved = true;
+					}
+				}
+			}
+			if (moved) {
+				e1.apply();
+			}
+			// 2. tema salvo em arquivo
+			File settings = new File(Config.getSettingsDir(), SETTINGS_FILE);
+			if (!settings.isFile()) {
+				syncToFile(c);
+				if (moved) {
+					invalidate();
+				}
+				return;
+			}
+			JSONObject o = new JSONObject(readText(settings));
+			SharedPreferences.Editor e = p.edit();
+			boolean changed = moved;
+			for (String k : COLOR_KEYS) {
+				if (o.has(k)) {
+					int v = o.getInt(k);
+					if (!p.contains(k) || p.getInt(k, 0) != v) {
+						e.putInt(k, v);
+						changed = true;
+					}
+				} else if (p.contains(k)) {
+					e.remove(k);
+					changed = true;
+				}
+			}
+			for (String k : FILE_KEYS) {
+				String want = null;
+				if (o.has(k)) {
+					File f = new File(imp, o.getString(k));
+					if (f.exists()) {
+						want = f.getPath();
+					}
+				}
+				String cur = p.getString(k, null);
+				if (want == null ? cur != null : !want.equals(cur)) {
+					if (want == null) {
+						e.remove(k);
+					} else {
+						e.putString(k, want);
+					}
+					changed = true;
+				}
+			}
+			if (changed) {
+				e.apply();
+				invalidate();
+			}
+		} catch (Throwable ignored) {
+		}
+	}
+
+	private static boolean copyFile(File src, File dst) {
+		try (InputStream in = new FileInputStream(src); OutputStream os = new FileOutputStream(dst)) {
+			byte[] buf = new byte[16 * 1024];
+			int n;
+			while ((n = in.read(buf)) > 0) {
+				os.write(buf, 0, n);
+			}
+			return true;
+		} catch (Exception e) {
+			return false;
+		}
+	}
+
+	private static String readText(File f) throws java.io.IOException {
+		try (InputStream in = new FileInputStream(f)) {
+			java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+			byte[] buf = new byte[4096];
+			int n;
+			while ((n = in.read(buf)) > 0) {
+				bos.write(buf, 0, n);
+			}
+			return bos.toString("UTF-8");
+		}
 	}
 
 	public static boolean hasAppImage(Context c) {

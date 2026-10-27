@@ -57,7 +57,7 @@ public class MigrationUtils {
 				e.printStackTrace();
 			}
 		}
-		File srcDataDir = new File(Config.getDataDir());
+		File srcDataDir = new File(Config.getEmulatorDir(), "data");
 		if (!srcDataDir.exists()) {
 			return;
 		}
