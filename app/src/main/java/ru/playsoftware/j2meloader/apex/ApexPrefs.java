@@ -148,9 +148,9 @@ public final class ApexPrefs {
 		return uri.getLastPathSegment();
 	}
 
-	/** D-pad de 8 direcoes no lugar das setas (padrao: ligado). */
+	/** D-pad de 8 direcoes no lugar das setas (padrao: desligado). */
 	public static boolean dpadEnabled() {
-		return sp().getBoolean("dpad_on", true);
+		return sp().getBoolean("dpad_on", false);
 	}
 
 	public static void setDpadEnabled(boolean v) {
@@ -236,8 +236,9 @@ public final class ApexPrefs {
 		sp().edit().putFloat("btn_scale", v).apply();
 	}
 
+	/** Analogico (padrao: desligado). */
 	public static boolean analogEnabled() {
-		return sp().getBoolean("analog_on", true);
+		return sp().getBoolean("analog_on", false);
 	}
 
 	public static void setAnalogEnabled(boolean v) {
