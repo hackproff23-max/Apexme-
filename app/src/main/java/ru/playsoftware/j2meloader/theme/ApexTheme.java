@@ -136,10 +136,46 @@ public final class ApexTheme {
 		}
 	}
 
+	private static final java.util.Map<android.widget.TextView, Boolean> OUTLINED =
+			new java.util.WeakHashMap<>();
+
+	/** Garante contorno em textos que nao sao OutlinedTextView (titulo da barra, menus, botoes, switches...). */
+	public static void applyOutline(android.widget.TextView tv) {
+		if (tv instanceof ru.playsoftware.j2meloader.applist.OutlinedTextView || OUTLINED.containsKey(tv)) {
+			return;
+		}
+		OUTLINED.put(tv, Boolean.TRUE);
+		final int color = outlineColor(tv.getContext());
+		tv.getOverlay().add(new android.graphics.drawable.Drawable() {
+			@Override
+			public void draw(Canvas canvas) {
+				if (tv.getText() != null && tv.getText().length() > 0) {
+					ru.playsoftware.j2meloader.applist.OutlinedTextView.drawOutline(tv, canvas, color, true);
+				}
+			}
+
+			@Override
+			public void setAlpha(int alpha) {
+			}
+
+			@Override
+			public void setColorFilter(android.graphics.ColorFilter colorFilter) {
+			}
+
+			@Override
+			public int getOpacity() {
+				return android.graphics.PixelFormat.TRANSLUCENT;
+			}
+		});
+		tv.invalidate();
+	}
+
 	/** Aplica a fonte do app em todos os textos da hierarquia. */
 	public static void applyFontTree(android.view.View v) {
 		if (v instanceof android.widget.TextView) {
-			applyFont((android.widget.TextView) v);
+			android.widget.TextView tv = (android.widget.TextView) v;
+			applyFont(tv);
+			applyOutline(tv);
 		}
 		if (v instanceof android.view.ViewGroup) {
 			android.view.ViewGroup g = (android.view.ViewGroup) v;

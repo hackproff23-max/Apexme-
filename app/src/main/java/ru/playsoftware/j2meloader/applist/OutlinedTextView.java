@@ -8,6 +8,7 @@ import android.text.Layout;
 import android.text.TextPaint;
 import android.util.AttributeSet;
 import android.view.Gravity;
+import android.widget.TextView;
 
 import androidx.appcompat.widget.AppCompatTextView;
 
@@ -33,40 +34,64 @@ public class OutlinedTextView extends AppCompatTextView {
 		outlineColor = ApexTheme.outlineColor(context);
 		setTextColor(ApexTheme.textColor(context));
 		ApexTheme.applyFont(this);
+		// folga em volta do texto para o contorno nunca ser cortado nas bordas
+		float d = context.getResources().getDisplayMetrics().density;
+		int h = Math.round(3 * d);
+		int v = Math.round(2 * d);
+		setPaddingRelative(getPaddingStart() + h, getPaddingTop() + v, getPaddingEnd() + h, getPaddingBottom() + v);
+	}
+
+	@Override
+	public void setTextAppearance(Context context, int resId) {
+		super.setTextAppearance(context, resId);
+		ApexTheme.applyFont(this);
+	}
+
+	@Override
+	protected void onDraw(Canvas canvas) {
+		drawOutline(this, canvas, outlineColor, false);
+		super.onDraw(canvas);
+	}
+
+	/**
+	 * Desenha o contorno do texto de qualquer TextView. Com fill=true desenha tambem o preenchimento
+	 * por cima (usado na sobreposicao dos textos que nao sao OutlinedTextView).
+	 */
+	public static void drawOutline(TextView tv, Canvas canvas, int outlineColor, boolean fill) {
+		Layout layout = tv.getLayout();
+		if (layout == null) {
+			return;
+		}
+		TextPaint paint = tv.getPaint();
+		int save = canvas.save();
+		canvas.translate(tv.getCompoundPaddingLeft(), tv.getExtendedPaddingTop() + verticalOffset(tv, layout));
+		paint.setStyle(Paint.Style.STROKE);
+		paint.setStrokeJoin(Paint.Join.ROUND);
+		paint.setStrokeWidth(Math.max(tv.getResources().getDisplayMetrics().density, tv.getTextSize() * 0.14f));
+		paint.setColor(outlineColor);
+		layout.draw(canvas);
+		paint.setStyle(Paint.Style.FILL);
+		paint.setStrokeWidth(0f);
+		if (fill) {
+			paint.setColor(tv.getCurrentTextColor());
+			layout.draw(canvas);
+		}
+		canvas.restoreToCount(save);
 	}
 
 	/** Mesmo deslocamento vertical que o TextView usa ao centralizar/alinhar embaixo. */
-	private int textVerticalOffset(Layout layout) {
-		int box = getMeasuredHeight() - getExtendedPaddingTop() - getExtendedPaddingBottom();
+	private static int verticalOffset(TextView tv, Layout layout) {
+		int box = tv.getMeasuredHeight() - tv.getExtendedPaddingTop() - tv.getExtendedPaddingBottom();
 		int text = layout.getHeight();
 		if (text >= box) {
 			return 0;
 		}
-		int g = getGravity() & Gravity.VERTICAL_GRAVITY_MASK;
+		int g = tv.getGravity() & Gravity.VERTICAL_GRAVITY_MASK;
 		if (g == Gravity.CENTER_VERTICAL) {
 			return (box - text) / 2;
 		} else if (g == Gravity.BOTTOM) {
 			return box - text;
 		}
 		return 0;
-	}
-
-	@Override
-	protected void onDraw(Canvas canvas) {
-		Layout layout = getLayout();
-		if (layout != null) {
-			TextPaint paint = getPaint();
-			int save = canvas.save();
-			canvas.translate(getCompoundPaddingLeft(), getExtendedPaddingTop() + textVerticalOffset(layout));
-			paint.setStyle(Paint.Style.STROKE);
-			paint.setStrokeJoin(Paint.Join.ROUND);
-			paint.setStrokeWidth(Math.max(getResources().getDisplayMetrics().density, getTextSize() * 0.14f));
-			paint.setColor(outlineColor);
-			layout.draw(canvas);
-			paint.setStyle(Paint.Style.FILL);
-			paint.setStrokeWidth(0f);
-			canvas.restoreToCount(save);
-		}
-		super.onDraw(canvas);
 	}
 }
