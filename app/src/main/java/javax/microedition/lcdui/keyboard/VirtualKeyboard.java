@@ -209,8 +209,8 @@ public class VirtualKeyboard implements Overlay, Runnable {
 		keypad[KEY_SOFT_LEFT] = new VirtualKey(Canvas.KEY_SOFT_LEFT, "L");
 		keypad[KEY_SOFT_RIGHT] = new VirtualKey(Canvas.KEY_SOFT_RIGHT, "R");
 
-		keypad[KEY_A] = new VirtualKey(SE_KEY_SPECIAL_GAMING_A, "A");
-		keypad[KEY_B] = new VirtualKey(SE_KEY_SPECIAL_GAMING_B, "B");
+		keypad[KEY_A] = new EditKey(SE_KEY_SPECIAL_GAMING_A, "A");
+		keypad[KEY_B] = new EditKey(SE_KEY_SPECIAL_GAMING_B, "B");
 		keypad[KEY_C] = new VirtualKey(Canvas.KEY_END, "C");
 		keypad[KEY_D] = new VirtualKey(Canvas.KEY_SEND, "D");
 
@@ -838,6 +838,19 @@ public class VirtualKeyboard implements Overlay, Runnable {
 		}
 	}
 
+	private int abPressed = -1;
+	private boolean abMoved;
+	private float abDownX;
+	private float abDownY;
+
+	/** A = modo mover; B = modo tamanho. Toque de novo no mesmo botao salva; no outro, troca de modo. */
+	private void abToggle(int key) {
+		MicroActivity activity = ContextHolder.getActivity();
+		if (activity != null) {
+			activity.apexVkToggleEdit(key == KEY_A ? LAYOUT_KEYS : LAYOUT_SCALES);
+		}
+	}
+
 	public int getLayoutEditMode() {
 		return layoutEditMode;
 	}
@@ -866,7 +879,14 @@ public class VirtualKeyboard implements Overlay, Runnable {
 		float sizeX = keySize * keyScales[group * 2];
 		float sizeY = keySize * keyScales[group * 2 + 1];
 		for (int key = 0; key < keyScaleGroups[group].length; key++) {
-			resizeKey(keyScaleGroups[group][key], sizeX, sizeY);
+			int idx = keyScaleGroups[group][key];
+			if (idx == KEY_A || idx == KEY_B) {
+				// A e B tem tamanho proprio (fixo, a menos que o usuario libere na janela do teclado)
+				float s = ApexPrefs.abEditable() ? ApexPrefs.abScale() : 1f;
+				resizeKey(idx, keySize * s, keySize * s);
+			} else {
+				resizeKey(idx, sizeX, sizeY);
+			}
 		}
 	}
 
@@ -953,6 +973,27 @@ public class VirtualKeyboard implements Overlay, Runnable {
 				return false;
 			}
 		}
+		if (layoutEditMode != LAYOUT_EOF) {
+			abPressed = -1;
+			int[] ab = {KEY_A, KEY_B};
+			for (int k : ab) {
+				if (keypad[k].contains(x, y)) {
+					abPressed = k;
+					abMoved = false;
+					abDownX = x;
+					abDownY = y;
+					if (layoutEditMode == LAYOUT_KEYS && ApexPrefs.abEditable()) {
+						editedIndex = k;
+						RectF r = keypad[k].rect;
+						offsetX = x - r.left;
+						offsetY = y - r.top;
+					} else if (layoutEditMode == LAYOUT_KEYS) {
+						editedIndex = -1;
+					}
+					return false;
+				}
+			}
+		}
 		switch (layoutEditMode) {
 			case LAYOUT_EOF:
 				if (pointer > associatedKeys.length) {
@@ -1016,6 +1057,16 @@ public class VirtualKeyboard implements Overlay, Runnable {
 			}
 			if (letterPad.isEditing()) {
 				letterPad.editDrag(x, y);
+				return false;
+			}
+		}
+		if (abPressed >= 0) {
+			float slop = Math.min(screen.width(), screen.height()) * 0.03f;
+			if (Math.abs(x - abDownX) > slop || Math.abs(y - abDownY) > slop) {
+				abMoved = true;
+			}
+			if (layoutEditMode == LAYOUT_SCALES
+					|| (layoutEditMode == LAYOUT_KEYS && !ApexPrefs.abEditable())) {
 				return false;
 			}
 		}
@@ -1096,6 +1147,18 @@ public class VirtualKeyboard implements Overlay, Runnable {
 			if (letterPad.isEditing()) letterPad.editEnd();
 			return false;
 		}
+		if (abPressed >= 0) {
+			int k = abPressed;
+			boolean movable = layoutEditMode == LAYOUT_KEYS && ApexPrefs.abEditable();
+			if (!abMoved || !movable) {
+				abPressed = -1;
+				if (!abMoved) {
+					abToggle(k);
+				}
+				return false;
+			}
+			abPressed = -1;
+		}
 		if (layoutEditMode == LAYOUT_EOF) {
 			letterPad.release(pointer);
 			analog.release(pointer);
@@ -1106,6 +1169,9 @@ public class VirtualKeyboard implements Overlay, Runnable {
 			if (key != null) {
 				associatedKeys[pointer] = null;
 				key.onUp();
+				if (key instanceof EditKey && key.contains(x, y)) {
+					abToggle(key == keypad[KEY_A] ? KEY_A : KEY_B);
+				}
 				overlayView.postInvalidate();
 			}
 		} else if (layoutEditMode == LAYOUT_KEYS) {
@@ -1381,6 +1447,23 @@ public class VirtualKeyboard implements Overlay, Runnable {
 			handler.removeCallbacks(this);
 			target.postKeyReleased(sentCode != 0 ? sentCode : keyCode);
 			sentCode = 0;
+		}
+	}
+
+	/** Botoes A e B (Sony): nao enviam tecla ao jogo, abrem os modos de edicao do teclado. */
+	private class EditKey extends VirtualKey {
+		EditKey(int keyCode, String label) {
+			super(keyCode, label);
+		}
+
+		@Override
+		protected void onDown() {
+			selected = true;
+		}
+
+		@Override
+		public void onUp() {
+			selected = false;
 		}
 	}
 

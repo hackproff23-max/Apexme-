@@ -445,6 +445,22 @@ public class MicroActivity extends AppCompatActivity {
 		Toast.makeText(this, R.string.layout_edit_mode, Toast.LENGTH_SHORT).show();
 	}
 
+	/** Botoes A/B do teclado: abre o modo (mover/tamanho); no mesmo modo salva; em outro modo, troca. */
+	public void apexVkToggleEdit(int mode) {
+		VirtualKeyboard vk = ContextHolder.getVk();
+		if (vk == null) return;
+		if (vk.getLayoutEditMode() == mode) {
+			vk.setLayoutEditMode(VirtualKeyboard.LAYOUT_EOF);
+			vk.onLayoutChanged(VirtualKeyboard.TYPE_CUSTOM);
+			Toast.makeText(this, "Layout salvo", Toast.LENGTH_SHORT).show();
+		} else {
+			vk.setLayoutEditMode(mode);
+			Toast.makeText(this, mode == VirtualKeyboard.LAYOUT_KEYS
+					? getString(R.string.layout_edit_mode)
+					: "Modo tamanho dos botões", Toast.LENGTH_SHORT).show();
+		}
+	}
+
 	/** Conclui o modo edicao e pergunta se deve salvar o layout. */
 	public void apexVkEditFinish() {
 		VirtualKeyboard vk = ContextHolder.getVk();

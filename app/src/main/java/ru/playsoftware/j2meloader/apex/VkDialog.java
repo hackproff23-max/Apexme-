@@ -83,6 +83,19 @@ public final class VkDialog {
 					relayout(vk);
 				}));
 
+		root.addView(ApexUi.section(a, "Botões A e B (Sony)"));
+		root.addView(ApexUi.text(a, "Toque em A: modo mover. Toque em B: modo tamanho. Toque no mesmo botão " +
+				"de novo para salvar. A e B não enviam tecla ao jogo.", 12));
+		root.addView(ApexUi.toggle(a, "Mover e aumentar A e B", ApexPrefs.abEditable(), on -> {
+			ApexPrefs.setAbEditable(on);
+			relayout(vk);
+		}));
+		root.addView(ApexUi.slider(a, "Tamanho de A e B", 50, 200,
+				Math.round(ApexPrefs.abScale() * 100), "%", v -> {
+					ApexPrefs.setAbScale(v / 100f);
+					relayout(vk);
+				}));
+
 		root.addView(ApexUi.section(a, "Analógico"));
 		root.addView(ApexUi.toggle(a, "Mostrar analógico", ApexPrefs.analogEnabled(), on -> {
 			ApexPrefs.setAnalogEnabled(on);

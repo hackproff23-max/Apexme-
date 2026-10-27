@@ -148,6 +148,24 @@ public final class ApexPrefs {
 		return uri.getLastPathSegment();
 	}
 
+	/** Liberar mover/aumentar os botoes A e B (padrao: desativado = ficam fixos). */
+	public static boolean abEditable() {
+		return sp().getBoolean("ab_editable", false);
+	}
+
+	public static void setAbEditable(boolean v) {
+		sp().edit().putBoolean("ab_editable", v).apply();
+	}
+
+	/** Tamanho dos botoes A e B quando liberados: 0.5 .. 2 (padrao 1). */
+	public static float abScale() {
+		return sp().getFloat("ab_scale", 1f);
+	}
+
+	public static void setAbScale(float v) {
+		sp().edit().putFloat("ab_scale", v).apply();
+	}
+
 	// ---------------- teclado virtual ----------------
 	/** Escala global dos botoes: 0.5 .. 2 (padrao 1). */
 	public static float buttonScale() {
