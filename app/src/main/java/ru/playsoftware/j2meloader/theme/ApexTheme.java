@@ -28,6 +28,7 @@ public final class ApexTheme {
 	public static final String K_OUTLINE = "apex_outline_color";
 	public static final String K_BG = "apex_bg_color";
 	public static final String K_PRESSED = "apex_pressed_color";
+	public static final String K_WINDOW = "apex_window_color";
 	private static final String K_APP_BG = "apex_app_bg_file";
 	private static final String K_WIN_BG = "apex_window_bg_file";
 	private static final String K_FONT = "apex_font_file";
@@ -79,6 +80,10 @@ public final class ApexTheme {
 
 	public static int bgColor(Context c) {
 		return getColor(c, K_BG, DEF_BG);
+	}
+
+	public static int windowColor(Context c) {
+		return getColor(c, K_WINDOW, DEF_BG);
 	}
 
 	public static int pressedColor(Context c) {
@@ -306,7 +311,7 @@ public final class ApexTheme {
 		clear(c, TARGET_APP_BG);
 		clear(c, TARGET_WINDOW_BG);
 		clear(c, TARGET_FONT);
-		prefs(c).edit().remove(K_TEXT).remove(K_OUTLINE).remove(K_BG).remove(K_PRESSED).apply();
+		prefs(c).edit().remove(K_TEXT).remove(K_OUTLINE).remove(K_BG).remove(K_WINDOW).remove(K_PRESSED).apply();
 		invalidate();
 	}
 

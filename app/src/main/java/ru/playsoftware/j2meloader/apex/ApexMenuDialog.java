@@ -28,7 +28,7 @@ public final class ApexMenuDialog {
 		d.requestWindowFeature(Window.FEATURE_NO_TITLE);
 		LinearLayout root = new LinearLayout(a);
 		root.setOrientation(LinearLayout.VERTICAL);
-		root.setBackgroundColor(ApexTheme.bgColor(a) | 0xFF000000);
+		root.setBackground(new ru.playsoftware.j2meloader.theme.ApexWindowBackground());
 		int pad = ApexUi.dp(a, 8);
 		root.setPadding(pad, pad * 2, pad, pad * 2);
 
@@ -48,7 +48,7 @@ public final class ApexMenuDialog {
 		d.setContentView(root);
 		Window w = d.getWindow();
 		if (w != null) {
-			w.setBackgroundDrawable(new ColorDrawable(0xFF000000));
+			w.setBackgroundDrawable(new ColorDrawable(android.graphics.Color.TRANSPARENT));
 			w.setGravity(Gravity.START | Gravity.TOP);
 			WindowManager.LayoutParams lp = w.getAttributes();
 			lp.width = ApexUi.dp(a, 260);

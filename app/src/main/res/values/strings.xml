@@ -264,6 +264,7 @@
     <string name="apex_color_text" translatable="false">Cor do texto</string>
     <string name="apex_color_outline" translatable="false">Cor do contorno</string>
     <string name="apex_color_bg" translatable="false">Cor do fundo</string>
+    <string name="apex_color_window" translatable="false">Cor de janelas</string>
     <string name="apex_color_pressed" translatable="false">Cor ao pressionar</string>
     <string name="apex_import_app_bg" translatable="false">Importar fundo do app</string>
     <string name="apex_import_window_bg" translatable="false">Importar fundo de janela</string>

@@ -37,7 +37,7 @@ public class ApexWindowBackground extends Drawable {
 		int save = canvas.save();
 		canvas.clipPath(path);
 		paint.setStyle(Paint.Style.FILL);
-		paint.setColor(ApexTheme.bgColor(c));
+		paint.setColor(ApexTheme.windowColor(c));
 		canvas.drawRect(getBounds(), paint);
 		Bitmap bmp = ApexTheme.windowBitmap(c);
 		if (bmp != null) {

@@ -16,6 +16,10 @@
         android:icon="@drawable/ic_apex_colors"
         android:title="@string/apex_color_bg" />
     <ru.playsoftware.j2meloader.settings.ColorPreference
+        android:key="pref_color_window"
+        android:icon="@drawable/ic_apex_colors"
+        android:title="@string/apex_color_window" />
+    <ru.playsoftware.j2meloader.settings.ColorPreference
         android:key="pref_color_pressed"
         android:icon="@drawable/ic_apex_colors"
         android:title="@string/apex_color_pressed" />

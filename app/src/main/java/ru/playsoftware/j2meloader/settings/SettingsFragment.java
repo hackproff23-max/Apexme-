@@ -72,6 +72,7 @@ public class SettingsFragment extends PreferenceFragmentCompat {
 		((ColorPreference) findPreference("pref_color_text")).setup(ApexTheme.K_TEXT, ApexTheme.DEF_TEXT, refresh);
 		((ColorPreference) findPreference("pref_color_outline")).setup(ApexTheme.K_OUTLINE, ApexTheme.DEF_OUTLINE, refresh);
 		((ColorPreference) findPreference("pref_color_bg")).setup(ApexTheme.K_BG, ApexTheme.DEF_BG, refresh);
+		((ColorPreference) findPreference("pref_color_window")).setup(ApexTheme.K_WINDOW, ApexTheme.DEF_BG, refresh);
 		((ColorPreference) findPreference("pref_color_pressed")).setup(ApexTheme.K_PRESSED, ApexTheme.DEF_PRESSED, refresh);
 		findPreference("pref_reset_theme").setOnPreferenceClickListener(p -> {
 			ApexTheme.resetAll(requireContext());

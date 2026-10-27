@@ -38,6 +38,7 @@ public final class ThemeDialog {
 		addColorRow(root, activity, R.string.apex_color_text, ApexTheme.K_TEXT, ApexTheme.DEF_TEXT, changed);
 		addColorRow(root, activity, R.string.apex_color_outline, ApexTheme.K_OUTLINE, ApexTheme.DEF_OUTLINE, changed);
 		addColorRow(root, activity, R.string.apex_color_bg, ApexTheme.K_BG, ApexTheme.DEF_BG, changed);
+		addColorRow(root, activity, R.string.apex_color_window, ApexTheme.K_WINDOW, ApexTheme.DEF_BG, changed);
 		addColorRow(root, activity, R.string.apex_color_pressed, ApexTheme.K_PRESSED, ApexTheme.DEF_PRESSED, changed);
 
 		addActionRow(root, activity, R.string.apex_import_app_bg, v -> {

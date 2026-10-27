@@ -84,24 +84,68 @@ public class BaseActivity extends AppCompatActivity {
 
 	/** Sobe a barra superior: ignora a folga que o sistema reserva no topo (recorte/barra de status). */
 	private void removeTopInset() {
+		androidx.core.view.OnApplyWindowInsetsListener listener = (v, insets) ->
+				ViewCompat.onApplyWindowInsets(v, withoutTopInset(insets));
+		View decor = getWindow().getDecorView();
+		ViewCompat.setOnApplyWindowInsetsListener(decor, listener);
+		ViewCompat.requestApplyInsets(decor);
 		View root = findViewById(androidx.appcompat.R.id.decor_content_parent);
-		if (root == null) {
-			return;
+		if (root != null) {
+			ViewCompat.setOnApplyWindowInsetsListener(root, listener);
+			ViewCompat.requestApplyInsets(root);
+			pullBarToTop(root);
 		}
-		ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
-			Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-			Insets cut = insets.getInsets(WindowInsetsCompat.Type.displayCutout());
-			@SuppressWarnings("deprecation")
-			Insets sw = insets.getSystemWindowInsets();
-			@SuppressWarnings("deprecation")
-			WindowInsetsCompat changed = new WindowInsetsCompat.Builder(insets)
-					.setInsets(WindowInsetsCompat.Type.systemBars(), Insets.of(bars.left, 0, bars.right, bars.bottom))
-					.setInsets(WindowInsetsCompat.Type.displayCutout(), Insets.of(cut.left, 0, cut.right, cut.bottom))
-					.setSystemWindowInsets(Insets.of(sw.left, 0, sw.right, sw.bottom))
-					.build();
-			return ViewCompat.onApplyWindowInsets(v, changed);
+	}
+
+	/**
+	 * Garantia final: mede onde a barra superior realmente ficou na tela e, se sobrar espaco acima
+	 * (barra de notificacao/recorte), sobe o conteudo exatamente essa diferenca.
+	 */
+	private void pullBarToTop(View root) {
+		root.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
+			View bar = root.findViewById(androidx.appcompat.R.id.action_bar_container);
+			if (bar == null || bar.getVisibility() != View.VISIBLE
+					|| !(root.getLayoutParams() instanceof android.view.ViewGroup.MarginLayoutParams)) {
+				return;
+			}
+			int[] loc = new int[2];
+			bar.getLocationInWindow(loc);
+			int gap = loc[1];
+			int max = Math.round(getResources().getDisplayMetrics().density * 120);
+			if (gap > 0 && gap < max) {
+				android.view.ViewGroup.MarginLayoutParams lp =
+						(android.view.ViewGroup.MarginLayoutParams) root.getLayoutParams();
+				lp.topMargin -= gap;
+				root.setLayoutParams(lp);
+			}
 		});
-		ViewCompat.requestApplyInsets(root);
+	}
+
+	/** Zera o topo de todos os tipos de inset, em qualquer celular (com ou sem recorte de camera). */
+	@SuppressWarnings("deprecation")
+	private static WindowInsetsCompat withoutTopInset(WindowInsetsCompat insets) {
+		int[] types = {
+				WindowInsetsCompat.Type.statusBars(),
+				WindowInsetsCompat.Type.systemBars(),
+				WindowInsetsCompat.Type.displayCutout(),
+				WindowInsetsCompat.Type.captionBar(),
+				WindowInsetsCompat.Type.tappableElement(),
+				WindowInsetsCompat.Type.mandatorySystemGestures(),
+				WindowInsetsCompat.Type.systemGestures()
+		};
+		WindowInsetsCompat.Builder builder = new WindowInsetsCompat.Builder(insets);
+		for (int type : types) {
+			Insets i = insets.getInsets(type);
+			builder.setInsets(type, Insets.of(i.left, 0, i.right, i.bottom));
+			Insets iv = insets.getInsetsIgnoringVisibility(type);
+			builder.setInsetsIgnoringVisibility(type, Insets.of(iv.left, 0, iv.right, iv.bottom));
+		}
+		Insets sw = insets.getSystemWindowInsets();
+		Insets st = insets.getStableInsets();
+		return builder
+				.setSystemWindowInsets(Insets.of(sw.left, 0, sw.right, sw.bottom))
+				.setStableInsets(Insets.of(st.left, 0, st.right, st.bottom))
+				.build();
 	}
 
 	@Override
