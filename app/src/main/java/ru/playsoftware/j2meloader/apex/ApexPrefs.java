@@ -165,6 +165,31 @@ public final class ApexPrefs {
 		sp().edit().putFloat("dpad_scale", v).apply();
 	}
 
+	/** Teclas enviadas por cada direcao do D-pad (cima-esq, cima, cima-dir, esq, dir, baixo-esq, baixo, baixo-dir); 0 = padrao. */
+	public static int[] dpadMap() {
+		int[] m = new int[8];
+		String s = sp().getString("dpad_map", "");
+		if (s != null && !s.isEmpty()) {
+			String[] p = s.split(",");
+			for (int i = 0; i < 8 && i < p.length; i++) {
+				try {
+					m[i] = Integer.parseInt(p[i].trim());
+				} catch (NumberFormatException ignored) {
+				}
+			}
+		}
+		return m;
+	}
+
+	public static void setDpadMap(int[] m) {
+		StringBuilder sb = new StringBuilder();
+		for (int i = 0; i < 8; i++) {
+			if (i > 0) sb.append(',');
+			sb.append(m[i]);
+		}
+		sp().edit().putString("dpad_map", sb.toString()).apply();
+	}
+
 	/** Opacidade da imagem do botao normal: 0 .. 1 (padrao 0.7). */
 	public static float normalOpacity() {
 		return sp().getFloat("op_normal", 0.7f);

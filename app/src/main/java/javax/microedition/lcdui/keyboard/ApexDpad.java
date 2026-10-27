@@ -13,7 +13,6 @@ import ru.playsoftware.j2meloader.config.ProfileModel;
 
 /** D-pad de 8 direcoes (grade 3x3): no lugar das setas do teclado virtual. */
 public class ApexDpad implements Runnable {
-	private static final int UP = 1, DOWN = 2, LEFT = 4, RIGHT = 8;
 	private static final String POS = "dpad";
 	private static final String[] ARROWS = {
 			"↖", "↑", "↗",
@@ -26,7 +25,8 @@ public class ApexDpad implements Runnable {
 	private final RectF rect = new RectF();
 	private float cx, cy, side;
 	private int pointer = -1;
-	private int mask;
+	private int cell = -1;
+	private int[] activeKeys = new int[0];
 	private boolean editing;
 	private float offX, offY;
 	private Canvas target;
@@ -76,47 +76,56 @@ public class ApexDpad implements Runnable {
 		}
 	}
 
+	/** Indice 0..7 da direcao da casa (linha, coluna), ou -1 para o centro. */
+	private static int dirIndex(int row, int col) {
+		int i = row * 3 + col;
+		if (i == 4) return -1;
+		return i > 4 ? i - 1 : i;
+	}
+
+	private RectF cellRect(int row, int col) {
+		float cell = side / 3f;
+		return new RectF(rect.left + col * cell, rect.top + row * cell,
+				rect.left + (col + 1) * cell, rect.top + (row + 1) * cell);
+	}
+
 	public void paint(CanvasWrapper g, boolean opaque) {
 		if (!enabled() || screen.isEmpty()) {
 			return;
 		}
-		int alpha = opaque ? 0xFF : settings.vkAlpha;
-		int a = alpha << 24;
 		android.graphics.Bitmap img = ApexPrefs.buttonBitmap(ApexPrefs.DPAD, false);
 		if (img != null) {
-			// uma imagem so para o D-pad inteiro: normal translucida, pressionado com a opacidade escolhida
-			g.drawBitmap(img, rect, Math.round(255 * (pointer >= 0
-					? ApexPrefs.pressedOpacity() : ApexPrefs.normalOpacity())));
+			// uma imagem so; ao tocar, apenas a parte pressionada fica com a opacidade de "pressionado"
+			RectF part = null;
+			if (pointer >= 0 && cell >= 0) {
+				int i = cell < 4 ? cell : cell + 1;
+				part = cellRect(i / 3, i % 3);
+			}
+			g.drawBitmapHighlight(img, rect, Math.round(255 * ApexPrefs.normalOpacity()),
+					Math.round(255 * ApexPrefs.pressedOpacity()), part);
 			return;
 		}
-		float cell = side / 3f;
-		float gap = cell * 0.06f;
+		int alpha = opaque ? 0xFF : settings.vkAlpha;
+		int a = alpha << 24;
+		float cellSize = side / 3f;
+		float gap = cellSize * 0.06f;
 		for (int r = 0; r < 3; r++) {
 			for (int c = 0; c < 3; c++) {
-				if (r == 1 && c == 1) {
+				int di = dirIndex(r, c);
+				if (di < 0) {
 					continue;
 				}
-				int m = maskOf(r, c);
-				boolean on = pointer >= 0 && (mask & m) == m && m != 0 && mask == m;
-				RectF cellRect = new RectF(rect.left + c * cell + gap, rect.top + r * cell + gap,
-						rect.left + (c + 1) * cell - gap, rect.top + (r + 1) * cell - gap);
+				boolean on = pointer >= 0 && cell == di;
+				RectF cr = cellRect(r, c);
+				cr.inset(gap, gap);
 				g.setFillColor(a | (on ? settings.vkBgColorSelected : settings.vkBgColor));
 				g.setDrawColor(a | settings.vkOutlineColor);
 				g.setTextColor(a | (on ? settings.vkFgColorSelected : settings.vkFgColor));
-				g.fillRoundRect(cellRect, (int) (cell * 0.2f), (int) (cell * 0.2f));
-				g.drawRoundRect(cellRect, (int) (cell * 0.2f), (int) (cell * 0.2f));
-				g.drawString(ARROWS[r * 3 + c], cellRect.centerX(), cellRect.centerY());
+				g.fillRoundRect(cr, (int) (cellSize * 0.2f), (int) (cellSize * 0.2f));
+				g.drawRoundRect(cr, (int) (cellSize * 0.2f), (int) (cellSize * 0.2f));
+				g.drawString(ARROWS[r * 3 + c], cr.centerX(), cr.centerY());
 			}
 		}
-	}
-
-	private static int maskOf(int row, int col) {
-		int m = 0;
-		if (row == 0) m |= UP;
-		if (row == 2) m |= DOWN;
-		if (col == 0) m |= LEFT;
-		if (col == 2) m |= RIGHT;
-		return m;
 	}
 
 	private boolean contains(float x, float y) {
@@ -151,55 +160,70 @@ public class ApexDpad implements Runnable {
 
 	public void cancel() {
 		pointer = -1;
-		setMask(0);
+		setCell(-1);
 		invalidate();
 	}
 
 	private void update(float x, float y) {
-		float cell = side / 3f;
-		int col = Math.max(0, Math.min(2, (int) Math.floor((x - rect.left) / cell)));
-		int row = Math.max(0, Math.min(2, (int) Math.floor((y - rect.top) / cell)));
-		setMask(maskOf(row, col));
+		float cs = side / 3f;
+		int col = Math.max(0, Math.min(2, (int) Math.floor((x - rect.left) / cs)));
+		int row = Math.max(0, Math.min(2, (int) Math.floor((y - rect.top) / cs)));
+		setCell(dirIndex(row, col));
 		invalidate();
 	}
 
-	private void setMask(int m) {
-		if (m == mask) {
-			return;
+	/** Teclas da direcao: a tecla mapeada, ou (padrao) as setas; as diagonais mandam duas setas. */
+	private static int[] keysFor(int dir) {
+		int mapped = ApexPrefs.dpadMap()[dir];
+		if (mapped != 0) {
+			return new int[]{mapped};
 		}
-		int old = mask;
-		mask = m;
-		if (target != null) {
-			change(old, m, UP, Canvas.KEY_UP);
-			change(old, m, DOWN, Canvas.KEY_DOWN);
-			change(old, m, LEFT, Canvas.KEY_LEFT);
-			change(old, m, RIGHT, Canvas.KEY_RIGHT);
-		}
-		handler.removeCallbacks(this);
-		if (m != 0) {
-			handler.postDelayed(this, 350);
-		}
+		int i = dir < 4 ? dir : dir + 1;
+		int row = i / 3, col = i % 3;
+		int[] tmp = new int[2];
+		int n = 0;
+		if (row == 0) tmp[n++] = Canvas.KEY_UP;
+		if (row == 2) tmp[n++] = Canvas.KEY_DOWN;
+		if (col == 0) tmp[n++] = Canvas.KEY_LEFT;
+		if (col == 2) tmp[n++] = Canvas.KEY_RIGHT;
+		return java.util.Arrays.copyOf(tmp, n);
 	}
 
-	private void change(int old, int now, int bit, int key) {
-		boolean was = (old & bit) != 0;
-		boolean is = (now & bit) != 0;
-		if (is && !was) {
-			target.postKeyPressed(key);
-		} else if (was && !is) {
-			target.postKeyReleased(key);
+	private void setCell(int c) {
+		if (c == cell) {
+			return;
+		}
+		int old = cell;
+		cell = c;
+		if (target != null) {
+			if (old >= 0) {
+				for (int k : activeKeys) {
+					target.postKeyReleased(k);
+				}
+			}
+			if (c >= 0) {
+				activeKeys = keysFor(c);
+				for (int k : activeKeys) {
+					target.postKeyPressed(k);
+				}
+			} else {
+				activeKeys = new int[0];
+			}
+		}
+		handler.removeCallbacks(this);
+		if (c >= 0) {
+			handler.postDelayed(this, 350);
 		}
 	}
 
 	@Override
 	public void run() {
-		if (mask == 0 || target == null) {
+		if (cell < 0 || target == null) {
 			return;
 		}
-		if ((mask & UP) != 0) target.postKeyRepeated(Canvas.KEY_UP);
-		if ((mask & DOWN) != 0) target.postKeyRepeated(Canvas.KEY_DOWN);
-		if ((mask & LEFT) != 0) target.postKeyRepeated(Canvas.KEY_LEFT);
-		if ((mask & RIGHT) != 0) target.postKeyRepeated(Canvas.KEY_RIGHT);
+		for (int k : activeKeys) {
+			target.postKeyRepeated(k);
+		}
 		handler.postDelayed(this, 90);
 	}
 

@@ -85,6 +85,24 @@ public class CanvasWrapper {
 		canvas.drawBitmap(bitmap, null, dst, bmpPaint);
 	}
 
+	/** Desenha a imagem inteira com normalAlpha e, so dentro de "part", com pressedAlpha. */
+	public void drawBitmapHighlight(android.graphics.Bitmap bitmap, RectF dst, int normalAlpha,
+									int pressedAlpha, RectF part) {
+		if (part == null) {
+			drawBitmap(bitmap, dst, normalAlpha);
+			return;
+		}
+		int save = canvas.save();
+		//noinspection deprecation
+		canvas.clipRect(part, android.graphics.Region.Op.DIFFERENCE);
+		drawBitmap(bitmap, dst, normalAlpha);
+		canvas.restoreToCount(save);
+		save = canvas.save();
+		canvas.clipRect(part);
+		drawBitmap(bitmap, dst, pressedAlpha);
+		canvas.restoreToCount(save);
+	}
+
 	public void setStrokeWidth(float w) {
 		drawPaint.setStrokeWidth(w);
 	}

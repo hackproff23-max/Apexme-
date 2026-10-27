@@ -107,6 +107,11 @@ public final class VkDialog {
 					relayout(vk);
 				}));
 
+		root.addView(ApexUi.button(a, "Mapear D-pad (setas, letras ou números)", v -> {
+			holder[0].dismiss();
+			showDpadMapping(a, vk);
+		}));
+
 		root.addView(ApexUi.section(a, "Analógico"));
 		root.addView(ApexUi.toggle(a, "Mostrar analógico", ApexPrefs.analogEnabled(), on -> {
 			ApexPrefs.setAnalogEnabled(on);
@@ -247,6 +252,74 @@ public final class VkDialog {
 					ApexPrefs.setNumberMap(new SparseIntArray());
 					relayout(vk);
 				})
+				.show();
+	}
+
+	private static final String[] DPAD_DIRS = {"↖ Cima-esquerda", "↑ Cima", "↗ Cima-direita", "← Esquerda",
+			"→ Direita", "↙ Baixo-esquerda", "↓ Baixo", "↘ Baixo-direita"};
+
+	/** Para cada direcao do D-pad, escolhe a tecla enviada: setas, letras A-Z ou numeros. */
+	private static void showDpadMapping(Activity a, VirtualKeyboard vk) {
+		java.util.ArrayList<String> names = new java.util.ArrayList<>();
+		java.util.ArrayList<Integer> codes = new java.util.ArrayList<>();
+		names.add("Padrão (setas)");
+		codes.add(0);
+		names.add("Seta cima");
+		codes.add(javax.microedition.lcdui.Canvas.KEY_UP);
+		names.add("Seta baixo");
+		codes.add(javax.microedition.lcdui.Canvas.KEY_DOWN);
+		names.add("Seta esquerda");
+		codes.add(javax.microedition.lcdui.Canvas.KEY_LEFT);
+		names.add("Seta direita");
+		codes.add(javax.microedition.lcdui.Canvas.KEY_RIGHT);
+		for (char c = 'A'; c <= 'Z'; c++) {
+			names.add("Letra " + c);
+			codes.add((int) Character.toLowerCase(c));
+		}
+		for (int i = 0; i <= 9; i++) {
+			names.add("Número " + i);
+			codes.add(javax.microedition.lcdui.Canvas.KEY_NUM0 + i);
+		}
+		names.add("Tecla *");
+		codes.add(javax.microedition.lcdui.Canvas.KEY_STAR);
+		names.add("Tecla #");
+		codes.add(javax.microedition.lcdui.Canvas.KEY_POUND);
+
+		ScrollView sv = new ScrollView(a);
+		LinearLayout root = ApexUi.column(a);
+		sv.addView(root);
+		root.addView(ApexUi.text(a, "Escolha a tecla que cada direção do D-pad envia ao jogo. " +
+				"Padrão = setas (as diagonais enviam duas setas).", 12));
+		int[] cur = ApexPrefs.dpadMap();
+		Spinner[] spinners = new Spinner[8];
+		for (int i = 0; i < 8; i++) {
+			LinearLayout row = new LinearLayout(a);
+			row.setOrientation(LinearLayout.HORIZONTAL);
+			row.setPadding(0, ApexUi.dp(a, 4), 0, ApexUi.dp(a, 4));
+			row.addView(ApexUi.text(a, DPAD_DIRS[i], 14),
+					new LinearLayout.LayoutParams(ApexUi.dp(a, 130), LinearLayout.LayoutParams.WRAP_CONTENT));
+			Spinner sp = new Spinner(a);
+			ArrayAdapter<String> ad = new ArrayAdapter<>(a, android.R.layout.simple_spinner_item, names);
+			ad.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+			sp.setAdapter(ad);
+			int pos = codes.indexOf(cur[i]);
+			sp.setSelection(Math.max(pos, 0));
+			spinners[i] = sp;
+			row.addView(sp, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+			root.addView(row);
+		}
+		new AlertDialog.Builder(a)
+				.setTitle("Mapear D-pad")
+				.setView(sv)
+				.setPositiveButton(android.R.string.ok, (d, w) -> {
+					int[] m = new int[8];
+					for (int i = 0; i < 8; i++) {
+						m[i] = codes.get(spinners[i].getSelectedItemPosition());
+					}
+					ApexPrefs.setDpadMap(m);
+				})
+				.setNegativeButton(android.R.string.cancel, null)
+				.setNeutralButton("Limpar", (d, w) -> ApexPrefs.setDpadMap(new int[8]))
 				.show();
 	}
 
