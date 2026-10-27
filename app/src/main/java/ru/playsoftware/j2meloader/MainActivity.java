@@ -122,7 +122,7 @@ public class MainActivity extends BaseActivity {
 			// logo + nome completo do app (com contorno) no lugar do titulo
 			bar.setDisplayShowTitleEnabled(false);
 			bar.setDisplayShowCustomEnabled(true);
-			bar.setCustomView(R.layout.action_bar_title, new androidx.appcompat.app.ActionBar.LayoutParams(
+			bar.setCustomView(getLayoutInflater().inflate(R.layout.action_bar_title, null), new androidx.appcompat.app.ActionBar.LayoutParams(
 					android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
 					android.view.ViewGroup.LayoutParams.MATCH_PARENT,
 					android.view.Gravity.START | android.view.Gravity.CENTER_VERTICAL));
