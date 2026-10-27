@@ -71,11 +71,11 @@ public class Profile implements Comparable<Profile> {
 		return name.toLowerCase().compareTo(o.name.toLowerCase());
 	}
 
-	boolean hasConfig() {
+	public boolean hasConfig() {
 		return getConfig().exists();
 	}
 
-	boolean hasKeyLayout() {
+	public boolean hasKeyLayout() {
 		return getKeyLayout().exists();
 	}
 

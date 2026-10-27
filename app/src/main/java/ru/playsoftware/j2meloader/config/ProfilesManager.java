@@ -46,7 +46,7 @@ public class ProfilesManager {
 	private static final String TAG = ProfilesManager.class.getName();
 	private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
-	static ArrayList<Profile> getProfiles() {
+	public static ArrayList<Profile> getProfiles() {
 		File root = new File(Config.getProfilesDir());
 		return getList(root);
 	}
@@ -65,7 +65,7 @@ public class ProfilesManager {
 		return new ArrayList<>(Arrays.asList(profiles));
 	}
 
-	static void load(Profile from, String toPath, boolean config, boolean keyboard)
+	public static void load(Profile from, String toPath, boolean config, boolean keyboard)
 			throws IOException {
 		if (!config && !keyboard) {
 			return;

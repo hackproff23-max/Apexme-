@@ -107,9 +107,10 @@ public class AppsListFragment extends Fragment {
 
 	FragmentAppsListBinding binding;
 
-	private final ActivityResultLauncher<String> openFileLauncher = registerForActivityResult(
-			FileUtils.getFilePicker(),
-			this::onPickFileResult);
+	/** Explorador do proprio sistema (SAF), varios jogos de uma vez. */
+	private final ActivityResultLauncher<String[]> openFileLauncher = registerForActivityResult(
+			new ActivityResultContracts.OpenMultipleDocuments(),
+			this::onFilesPicked);
 
 	private final java.util.ArrayDeque<Uri> installQueue = new java.util.ArrayDeque<>();
 	private final ActivityResultLauncher<Uri> folderPicker = registerForActivityResult(
@@ -206,22 +207,108 @@ public class AppsListFragment extends Fragment {
 			Toast.makeText(requireContext(), R.string.apex_folder_none, Toast.LENGTH_LONG).show();
 			return;
 		}
-		boolean[] checked = new boolean[uris.size()];
-		java.util.Arrays.fill(checked, true);
-		new AlertDialog.Builder(requireActivity())
-				.setTitle(getString(R.string.apex_folder_found) + " (" + uris.size() + ")")
-				.setMultiChoiceItems(names.toArray(new String[0]), checked, (d, which, on) -> checked[which] = on)
-				.setNegativeButton(android.R.string.cancel, null)
-				.setPositiveButton(R.string.install, (d, w) -> {
-					installQueue.clear();
-					for (int i = 0; i < uris.size(); i++) {
-						if (checked[i]) {
-							installQueue.add(uris.get(i));
-						}
+		askProfileAndConvert(uris);
+	}
+
+	/** Arquivos escolhidos no explorador: so .jar/.jad/.kjx (jad ignorado se o jar tambem foi escolhido). */
+	private void onFilesPicked(java.util.List<Uri> picked) {
+		if (picked == null || picked.isEmpty() || !isAdded()) {
+			return;
+		}
+		android.content.ContentResolver cr = requireContext().getContentResolver();
+		java.util.List<Uri> uris = new java.util.ArrayList<>();
+		java.util.List<String> bases = new java.util.ArrayList<>();
+		java.util.List<Boolean> isJad = new java.util.ArrayList<>();
+		for (Uri u : picked) {
+			String name = null;
+			try (android.database.Cursor c = cr.query(u, new String[]{android.provider.OpenableColumns.DISPLAY_NAME},
+					null, null, null)) {
+				if (c != null && c.moveToFirst()) {
+					name = c.getString(0);
+				}
+			} catch (Exception ignored) {
+			}
+			if (name == null) {
+				name = String.valueOf(u.getLastPathSegment());
+			}
+			String low = name.toLowerCase(java.util.Locale.ROOT);
+			if (low.endsWith(".jar") || low.endsWith(".jad") || low.endsWith(".kjx")) {
+				uris.add(u);
+				bases.add(low.substring(0, low.length() - 4));
+				isJad.add(low.endsWith(".jad"));
+			}
+		}
+		java.util.List<Uri> result = new java.util.ArrayList<>();
+		for (int i = 0; i < uris.size(); i++) {
+			boolean dup = false;
+			if (isJad.get(i)) {
+				for (int j = 0; j < uris.size(); j++) {
+					if (j != i && !isJad.get(j) && bases.get(j).equals(bases.get(i))) {
+						dup = true;
+						break;
 					}
-					installNext();
-				})
+				}
+			}
+			if (!dup) {
+				result.add(uris.get(i));
+			}
+		}
+		if (result.isEmpty()) {
+			Toast.makeText(requireContext(), R.string.apex_folder_none, Toast.LENGTH_LONG).show();
+			return;
+		}
+		askProfileAndConvert(result);
+	}
+
+	/** Unica pergunta: qual perfil usar em todos os jogos. Depois converte tudo sem mais janelas. */
+	private void askProfileAndConvert(java.util.List<Uri> uris) {
+		java.util.ArrayList<ru.playsoftware.j2meloader.config.Profile> profiles =
+				ru.playsoftware.j2meloader.config.ProfilesManager.getProfiles();
+		java.util.Collections.sort(profiles);
+		String[] items = new String[profiles.size() + 1];
+		items[0] = getString(R.string.apex_no_profile);
+		String def = preferences.getString(Constants.PREF_DEFAULT_PROFILE, null);
+		final int[] sel = {0};
+		for (int i = 0; i < profiles.size(); i++) {
+			items[i + 1] = profiles.get(i).getName();
+			if (def != null && def.equals(items[i + 1])) {
+				sel[0] = i + 1;
+			}
+		}
+		new AlertDialog.Builder(requireActivity())
+				.setTitle(getString(R.string.apex_convert_title, uris.size()))
+				.setSingleChoiceItems(items, sel[0], (d, which) -> sel[0] = which)
+				.setNegativeButton(android.R.string.cancel, null)
+				.setPositiveButton(R.string.install, (d, w) -> convertAll(uris,
+						sel[0] == 0 ? null : profiles.get(sel[0] - 1)))
 				.show();
+	}
+
+	private void convertAll(java.util.List<Uri> uris, ru.playsoftware.j2meloader.config.Profile profile) {
+		Activity activity = requireActivity();
+		AlertDialog progress = new AlertDialog.Builder(activity)
+				.setTitle(R.string.apex_converting_title)
+				.setMessage("…")
+				.setCancelable(false)
+				.create();
+		progress.show();
+		ru.woesss.j2me.installer.BatchInstaller.run(activity.getApplication(), appRepository, uris, profile,
+				new ru.woesss.j2me.installer.BatchInstaller.Listener() {
+					@Override
+					public void onProgress(int index, int total, String name) {
+						activity.runOnUiThread(() -> progress.setMessage(
+								activity.getString(R.string.apex_converting, index, total, name)));
+					}
+
+					@Override
+					public void onDone(int installed, int skipped, int failed) {
+						activity.runOnUiThread(() -> {
+							progress.dismiss();
+							Toast.makeText(activity, activity.getString(R.string.apex_convert_done, installed, skipped, failed),
+									Toast.LENGTH_LONG).show();
+						});
+					}
+				});
 	}
 
 	private void installNext() {
@@ -312,15 +399,8 @@ public class AppsListFragment extends Fragment {
 		binding.list.setAdapter(adapter);
 		binding.list.setOnItemClickListener((parent, v, position, id) -> onListItemClick(position));
 		binding.floatingActionButton.setOnClickListener(v -> {
-			String path = preferences.getString(PREF_LAST_PATH, null);
-			if (path == null) {
-				File dir = Environment.getExternalStorageDirectory();
-				if (dir.canRead()) {
-					path = dir.getAbsolutePath();
-				}
-			}
 			try {
-				openFileLauncher.launch(path);
+				openFileLauncher.launch(new String[]{"*/*"});
 			} catch (ActivityNotFoundException e) {
 				Toast.makeText(getContext(), R.string.error_no_picker, Toast.LENGTH_SHORT).show();
 				e.printStackTrace();
