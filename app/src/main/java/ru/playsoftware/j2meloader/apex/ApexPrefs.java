@@ -148,6 +148,23 @@ public final class ApexPrefs {
 		return uri.getLastPathSegment();
 	}
 
+	/** D-pad de 8 direcoes no lugar das setas (padrao: ligado). */
+	public static boolean dpadEnabled() {
+		return sp().getBoolean("dpad_on", true);
+	}
+
+	public static void setDpadEnabled(boolean v) {
+		sp().edit().putBoolean("dpad_on", v).apply();
+	}
+
+	public static float dpadScale() {
+		return sp().getFloat("dpad_scale", 1f);
+	}
+
+	public static void setDpadScale(float v) {
+		sp().edit().putFloat("dpad_scale", v).apply();
+	}
+
 	/** Opacidade da imagem do botao normal: 0 .. 1 (padrao 0.7). */
 	public static float normalOpacity() {
 		return sp().getFloat("op_normal", 0.7f);

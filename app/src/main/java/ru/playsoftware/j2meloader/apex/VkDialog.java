@@ -96,6 +96,17 @@ public final class VkDialog {
 					relayout(vk);
 				}));
 
+		root.addView(ApexUi.section(a, "D-pad de 8 direções"));
+		root.addView(ApexUi.toggle(a, "D-pad no lugar das setas", ApexPrefs.dpadEnabled(), on -> {
+			ApexPrefs.setDpadEnabled(on);
+			relayout(vk);
+		}));
+		root.addView(ApexUi.slider(a, "Tamanho do D-pad", 50, 200,
+				Math.round(ApexPrefs.dpadScale() * 100), "%", v -> {
+					ApexPrefs.setDpadScale(v / 100f);
+					relayout(vk);
+				}));
+
 		root.addView(ApexUi.section(a, "Analógico"));
 		root.addView(ApexUi.toggle(a, "Mostrar analógico", ApexPrefs.analogEnabled(), on -> {
 			ApexPrefs.setAnalogEnabled(on);

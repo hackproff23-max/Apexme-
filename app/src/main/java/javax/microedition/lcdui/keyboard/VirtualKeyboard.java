@@ -173,6 +173,7 @@ public class VirtualKeyboard implements Overlay, Runnable {
 
 	private final Handler handler;
 	private final ApexAnalog analog;
+	private final ApexDpad dpad;
 	private final ApexLetterPad letterPad;
 	private final File saveFile;
 	private final ProfileModel settings;
@@ -229,6 +230,8 @@ public class VirtualKeyboard implements Overlay, Runnable {
 		keypad[KEY_MENU] = new MenuKey();
 		for (int i = 0; i < keypad.length; i++) {
 			keypad[i].imageId = ApexPrefs.KEY_IDS[i];
+			keypad[i].arrow = i == KEY_UP_LEFT || i == KEY_UP || i == KEY_UP_RIGHT || i == KEY_LEFT
+					|| i == KEY_RIGHT || i == KEY_DOWN_LEFT || i == KEY_DOWN || i == KEY_DOWN_RIGHT;
 		}
 
 		layoutVariant = readLayoutType();
@@ -251,6 +254,7 @@ public class VirtualKeyboard implements Overlay, Runnable {
 			}
 		}
 		analog = new ApexAnalog(settings);
+		dpad = new ApexDpad(settings);
 		letterPad = new ApexLetterPad(settings);
 		HandlerThread thread = new HandlerThread("MidletVirtualKeyboard");
 		thread.start();
@@ -741,6 +745,7 @@ public class VirtualKeyboard implements Overlay, Runnable {
 	public void setTarget(Canvas canvas) {
 		target = canvas;
 		analog.setTarget(canvas);
+		dpad.setTarget(canvas);
 		letterPad.setTarget(canvas);
 		highlightGroup(-1);
 	}
@@ -909,6 +914,7 @@ public class VirtualKeyboard implements Overlay, Runnable {
 		}
 		snapKeys();
 		analog.layout(screen);
+		dpad.layout(screen);
 		letterPad.layout(screen);
 		overlayView.postInvalidate();
 		int delay = settings.vkHideDelay;
@@ -951,12 +957,13 @@ public class VirtualKeyboard implements Overlay, Runnable {
 	public void paint(CanvasWrapper g) {
 		if (visible) {
 			for (VirtualKey key : keypad) {
-				if (key.visible) {
+				if (key.visible && !(key.arrow && ApexPrefs.dpadEnabled())) {
 					key.paint(g);
 				}
 			}
 			boolean opaque = layoutEditMode != LAYOUT_EOF;
 			analog.paint(g, opaque);
+			dpad.paint(g, opaque);
 			letterPad.paint(g, opaque);
 		}
 	}
@@ -964,12 +971,12 @@ public class VirtualKeyboard implements Overlay, Runnable {
 	@Override
 	public boolean pointerPressed(int pointer, float x, float y) {
 		if (layoutEditMode == LAYOUT_EOF) {
-			if (letterPad.press(pointer, x, y) || analog.press(pointer, x, y)) {
+			if (letterPad.press(pointer, x, y) || analog.press(pointer, x, y) || dpad.press(pointer, x, y)) {
 				overlayView.postInvalidate();
 				return false;
 			}
 		} else if (layoutEditMode == LAYOUT_KEYS) {
-			if (letterPad.editBegin(x, y) || analog.editBegin(x, y)) {
+			if (letterPad.editBegin(x, y) || analog.editBegin(x, y) || dpad.editBegin(x, y)) {
 				return false;
 			}
 		}
@@ -1047,12 +1054,16 @@ public class VirtualKeyboard implements Overlay, Runnable {
 	@Override
 	public boolean pointerDragged(int pointer, float x, float y) {
 		if (layoutEditMode == LAYOUT_EOF) {
-			if (letterPad.drag(pointer, x, y) || analog.drag(pointer, x, y)) {
+			if (letterPad.drag(pointer, x, y) || analog.drag(pointer, x, y) || dpad.drag(pointer, x, y)) {
 				return false;
 			}
 		} else if (layoutEditMode == LAYOUT_KEYS) {
 			if (analog.isEditing()) {
 				analog.editDrag(x, y);
+				return false;
+			}
+			if (dpad.isEditing()) {
+				dpad.editDrag(x, y);
 				return false;
 			}
 			if (letterPad.isEditing()) {
@@ -1142,7 +1153,8 @@ public class VirtualKeyboard implements Overlay, Runnable {
 
 	@Override
 	public boolean pointerReleased(int pointer, float x, float y) {
-		if (analog.isEditing() || letterPad.isEditing()) {
+		if (analog.isEditing() || letterPad.isEditing() || dpad.isEditing()) {
+			if (dpad.isEditing()) dpad.editEnd();
 			if (analog.isEditing()) analog.editEnd();
 			if (letterPad.isEditing()) letterPad.editEnd();
 			return false;
@@ -1162,6 +1174,7 @@ public class VirtualKeyboard implements Overlay, Runnable {
 		if (layoutEditMode == LAYOUT_EOF) {
 			letterPad.release(pointer);
 			analog.release(pointer);
+			dpad.release(pointer);
 			if (pointer > associatedKeys.length) {
 				return false;
 			}
@@ -1225,6 +1238,7 @@ public class VirtualKeyboard implements Overlay, Runnable {
 	@Override
 	public void cancel() {
 		analog.cancel();
+		dpad.cancel();
 		letterPad.cancel();
 		for (VirtualKey key : keypad) {
 			key.selected = false;
@@ -1276,6 +1290,7 @@ public class VirtualKeyboard implements Overlay, Runnable {
 	public void setView(View view) {
 		overlayView = view;
 		analog.setView(view);
+		dpad.setView(view);
 		letterPad.setView(view);
 	}
 
@@ -1340,6 +1355,7 @@ public class VirtualKeyboard implements Overlay, Runnable {
 		boolean snapValid;
 		boolean selected;
 		boolean visible = true;
+		boolean arrow;
 		boolean opaque = true;
 		int corners;
 		private final int hashCode;
@@ -1358,7 +1374,7 @@ public class VirtualKeyboard implements Overlay, Runnable {
 		}
 
 		boolean contains(float x, float y) {
-			return visible && rect.contains(x, y);
+			return visible && !(arrow && ApexPrefs.dpadEnabled()) && rect.contains(x, y);
 		}
 
 		/** Rotulo mostrado: se o numero estiver mapeado, mostra a letra. */
