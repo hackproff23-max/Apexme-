@@ -134,7 +134,22 @@ public class AppsListFragment extends Fragment {
 			return;
 		}
 		preferences.edit().putString(Constants.PREF_LAST_PATH, FilteredFilePickerFragment.getLastPath()).apply();
-		File[] files = new File(dirUri.getPath()).listFiles();
+		File dir = new File(dirUri.getPath());
+		File[] files = dir.listFiles();
+		if (files == null) {
+			// sem acesso a pasta: normalmente falta "Acesso a todos os arquivos"
+			Toast.makeText(requireContext(), "Sem acesso à pasta " + dir.getPath()
+					+ ". Ative \"Acesso a todos os arquivos\" para o Apexme.", Toast.LENGTH_LONG).show();
+			if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R
+					&& !Environment.isExternalStorageManager()) {
+				try {
+					startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+							Uri.parse("package:" + requireContext().getPackageName())));
+				} catch (Exception ignored) {
+				}
+			}
+			return;
+		}
 		java.util.List<Uri> picked = new java.util.ArrayList<>();
 		if (files != null) {
 			java.util.Arrays.sort(files);
@@ -223,7 +238,11 @@ public class AppsListFragment extends Fragment {
 
 	/** Arquivos escolhidos no explorador: so .jar/.jad/.kjx (jad ignorado se o jar tambem foi escolhido). */
 	private void onFilesPicked(java.util.List<Uri> picked) {
-		if (picked == null || picked.isEmpty() || !isAdded()) {
+		if (!isAdded()) {
+			return;
+		}
+		if (picked == null || picked.isEmpty()) {
+			Toast.makeText(requireContext(), R.string.apex_folder_none, Toast.LENGTH_LONG).show();
 			return;
 		}
 		preferences.edit().putString(Constants.PREF_LAST_PATH, FilteredFilePickerFragment.getLastPath()).apply();
