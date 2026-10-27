@@ -85,7 +85,7 @@ public class ApexAnalog implements Runnable {
 		boolean active = pointer >= 0;
 		Bitmap baseImg = ApexPrefs.buttonBitmap(ApexPrefs.ANALOG_BASE, active);
 		if (baseImg != null) {
-			g.drawBitmap(baseImg, rect, active ? 0xFF : Math.round(alpha * 0.7f));
+			g.drawBitmap(baseImg, rect, Math.round(255 * (active ? ApexPrefs.pressedOpacity() : ApexPrefs.normalOpacity())));
 		} else {
 			g.setFillColor(a | settings.vkBgColor);
 			g.setDrawColor(a | settings.vkOutlineColor);
@@ -96,7 +96,7 @@ public class ApexAnalog implements Runnable {
 		RectF knob = new RectF(knobX - kr, knobY - kr, knobX + kr, knobY + kr);
 		Bitmap knobImg = ApexPrefs.buttonBitmap(ApexPrefs.ANALOG_KNOB, active);
 		if (knobImg != null) {
-			g.drawBitmap(knobImg, knob, active ? 0xFF : Math.round(alpha * 0.7f));
+			g.drawBitmap(knobImg, knob, Math.round(255 * (active ? ApexPrefs.pressedOpacity() : ApexPrefs.normalOpacity())));
 		} else {
 			g.setFillColor(a | (active ? settings.vkBgColorSelected : settings.vkFgColor));
 			g.setDrawColor(a | settings.vkOutlineColor);

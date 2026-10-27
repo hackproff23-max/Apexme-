@@ -148,6 +148,24 @@ public final class ApexPrefs {
 		return uri.getLastPathSegment();
 	}
 
+	/** Opacidade da imagem do botao normal: 0 .. 1 (padrao 0.7). */
+	public static float normalOpacity() {
+		return sp().getFloat("op_normal", 0.7f);
+	}
+
+	public static void setNormalOpacity(float v) {
+		sp().edit().putFloat("op_normal", v).apply();
+	}
+
+	/** Opacidade da imagem do botao pressionado: 0 .. 1 (padrao 1). */
+	public static float pressedOpacity() {
+		return sp().getFloat("op_pressed", 1f);
+	}
+
+	public static void setPressedOpacity(float v) {
+		sp().edit().putFloat("op_pressed", v).apply();
+	}
+
 	/** Liberar mover/aumentar os botoes A e B (padrao: desativado = ficam fixos). */
 	public static boolean abEditable() {
 		return sp().getBoolean("ab_editable", false);

@@ -113,6 +113,22 @@ public final class VkDialog {
 			Toast.makeText(a, "Imagens removidas", Toast.LENGTH_SHORT).show();
 		}));
 
+		root.addView(ApexUi.section(a, "Opacidade das imagens"));
+		OpacityPreview preview = new OpacityPreview(a);
+		root.addView(preview, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, ApexUi.dp(a, 96)));
+		root.addView(ApexUi.slider(a, "Opacidade do botão normal", 0, 100,
+				Math.round(ApexPrefs.normalOpacity() * 100), "%", v -> {
+					ApexPrefs.setNormalOpacity(v / 100f);
+					preview.invalidate();
+					relayout(vk);
+				}));
+		root.addView(ApexUi.slider(a, "Opacidade do botão pressionado", 0, 100,
+				Math.round(ApexPrefs.pressedOpacity() * 100), "%", v -> {
+					ApexPrefs.setPressedOpacity(v / 100f);
+					preview.invalidate();
+					relayout(vk);
+				}));
+
 		root.addView(ApexUi.section(a, "Teclado de letras"));
 		root.addView(ApexUi.toggle(a, "Mostrar teclado de letras", ApexPrefs.lettersEnabled(), on -> {
 			ApexPrefs.setLettersEnabled(on);
@@ -221,5 +237,67 @@ public final class VkDialog {
 					relayout(vk);
 				})
 				.show();
+	}
+
+	/** Exemplo ao vivo: o mesmo botao normal e pressionado com as opacidades escolhidas. */
+	private static final class OpacityPreview extends android.view.View {
+		private final android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+
+		OpacityPreview(Activity a) {
+			super(a);
+		}
+
+		private android.graphics.Bitmap sample() {
+			for (String[] b : ApexPrefs.allButtons()) {
+				android.graphics.Bitmap bmp = ApexPrefs.buttonBitmap(b[0], false);
+				if (bmp != null) {
+					return bmp;
+				}
+			}
+			return null;
+		}
+
+		@Override
+		protected void onDraw(android.graphics.Canvas c) {
+			float d = getResources().getDisplayMetrics().density;
+			int w = getWidth();
+			int h = getHeight();
+			// fundo xadrez para a transparencia ficar visivel
+			float cell = 8 * d;
+			for (int y = 0; y * cell < h; y++) {
+				for (int x = 0; x * cell < w; x++) {
+					p.setStyle(android.graphics.Paint.Style.FILL);
+					p.setColor(((x + y) & 1) == 0 ? 0xFF555555 : 0xFF777777);
+					c.drawRect(x * cell, y * cell, (x + 1) * cell, (y + 1) * cell, p);
+				}
+			}
+			float size = Math.min(h - 28 * d, w / 2f - 24 * d);
+			android.graphics.Bitmap bmp = sample();
+			for (int i = 0; i < 2; i++) {
+				float cx = w * (i == 0 ? 0.27f : 0.73f);
+				float top = 6 * d;
+				android.graphics.RectF r = new android.graphics.RectF(cx - size / 2, top, cx + size / 2, top + size);
+				int alpha = Math.round(255 * (i == 0 ? ApexPrefs.normalOpacity() : ApexPrefs.pressedOpacity()));
+				p.setAlpha(alpha);
+				if (bmp != null) {
+					c.drawBitmap(bmp, null, r, p);
+				} else {
+					p.setStyle(android.graphics.Paint.Style.FILL);
+					p.setColor(0xFF0099FF);
+					p.setAlpha(alpha);
+					c.drawRoundRect(r, 12 * d, 12 * d, p);
+					p.setColor(0xFFFFFFFF);
+					p.setAlpha(alpha);
+					p.setTextSize(size * 0.4f);
+					p.setTextAlign(android.graphics.Paint.Align.CENTER);
+					c.drawText("A", cx, r.centerY() + size * 0.14f, p);
+				}
+				p.setAlpha(255);
+				p.setColor(0xFFFFFFFF);
+				p.setTextSize(12 * d);
+				p.setTextAlign(android.graphics.Paint.Align.CENTER);
+				c.drawText(i == 0 ? "Normal" : "Pressionado", cx, h - 6 * d, p);
+			}
+		}
 	}
 }
