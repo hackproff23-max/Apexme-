@@ -278,4 +278,8 @@
     <string name="apex_close" translatable="false">Fechar</string>
     <string name="apex_pref_import_hint" translatable="false">Toque para importar ou remover</string>
     <string name="apex_import_choose" translatable="false">Escolher arquivo</string>
+    <string name="apex_preview_title" translatable="false">Exemplo de texto</string>
+    <string name="apex_preview_body" translatable="false">Assim ficam os textos e menus do app</string>
+    <string name="apex_preview_pressed" translatable="false">Item pressionado</string>
+    <string name="apex_pref_colors" translatable="false">Cores</string>
 </resources>

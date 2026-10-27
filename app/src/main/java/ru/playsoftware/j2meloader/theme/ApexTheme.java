@@ -43,6 +43,7 @@ public final class ApexTheme {
 	private static boolean winLoaded;
 	private static Typeface typeface;
 	private static Typeface boldFace;
+	private static int version;
 	private static boolean fontLoaded;
 
 	private ApexTheme() {
@@ -56,8 +57,16 @@ public final class ApexTheme {
 		return prefs(c).getInt(key, def);
 	}
 
+	/** Muda a cada alteracao de cor, fundo ou fonte; as telas comparam para se recriar. */
+	public static synchronized int version() {
+		return version;
+	}
+
 	public static void setColor(Context c, String key, int color) {
 		prefs(c).edit().putInt(key, color).apply();
+		synchronized (ApexTheme.class) {
+			version++;
+		}
 	}
 
 	public static int textColor(Context c) {
@@ -182,6 +191,7 @@ public final class ApexTheme {
 		winBitmap = null;
 		typeface = null;
 		boldFace = null;
+		version++;
 	}
 
 	/** Copia o arquivo escolhido para a pasta interna do app e passa a usa-lo. */

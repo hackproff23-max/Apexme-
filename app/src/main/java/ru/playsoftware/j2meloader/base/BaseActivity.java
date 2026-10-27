@@ -43,6 +43,16 @@ import ru.playsoftware.j2meloader.theme.ApexTheme;
 
 @SuppressLint("Registered")
 public class BaseActivity extends AppCompatActivity {
+	private int themeVersion;
+
+	@Override
+	protected void onResume() {
+		super.onResume();
+		// cores, fundos ou fonte mudaram em outra tela (Configuracoes): recria para aplicar
+		if (themeVersion != ApexTheme.version()) {
+			recreate();
+		}
+	}
 
 	@Override
 	protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -50,6 +60,7 @@ public class BaseActivity extends AppCompatActivity {
 			getSupportActionBar().setElevation(getResources().getDisplayMetrics().density * 2);
 		}
 		super.onCreate(savedInstanceState);
+		themeVersion = ApexTheme.version();
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
 			// desenha tambem sobre o recorte (notch/camera)
 			WindowManager.LayoutParams lp = getWindow().getAttributes();

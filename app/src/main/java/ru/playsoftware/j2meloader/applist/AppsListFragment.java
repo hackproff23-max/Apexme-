@@ -360,8 +360,6 @@ public class AppsListFragment extends Fragment {
 			return true;
 		} else if (itemId == R.id.action_exit_app) {
 			activity.finish();
-		} else if (itemId == R.id.action_colors) {
-			showThemeDialog();
 		}
 		return false;
 	}

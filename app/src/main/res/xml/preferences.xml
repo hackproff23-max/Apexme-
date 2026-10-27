@@ -2,6 +2,23 @@
 <androidx.preference.PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools">
+    <ru.playsoftware.j2meloader.settings.PreviewPreference android:key="pref_preview" />
+    <ru.playsoftware.j2meloader.settings.ColorPreference
+        android:key="pref_color_text"
+        android:icon="@drawable/ic_apex_colors"
+        android:title="@string/apex_color_text" />
+    <ru.playsoftware.j2meloader.settings.ColorPreference
+        android:key="pref_color_outline"
+        android:icon="@drawable/ic_apex_colors"
+        android:title="@string/apex_color_outline" />
+    <ru.playsoftware.j2meloader.settings.ColorPreference
+        android:key="pref_color_bg"
+        android:icon="@drawable/ic_apex_colors"
+        android:title="@string/apex_color_bg" />
+    <ru.playsoftware.j2meloader.settings.ColorPreference
+        android:key="pref_color_pressed"
+        android:icon="@drawable/ic_apex_colors"
+        android:title="@string/apex_color_pressed" />
     <Preference
         android:key="pref_default_settings"
         android:icon="@drawable/ic_setting_default"
@@ -26,4 +43,8 @@
         android:icon="@drawable/ic_setting_font"
         android:summary="@string/apex_pref_import_hint"
         android:title="@string/apex_import_font" />
+    <Preference
+        android:key="pref_reset_theme"
+        android:icon="@drawable/ic_setting_default"
+        android:title="@string/apex_reset" />
 </androidx.preference.PreferenceScreen>
