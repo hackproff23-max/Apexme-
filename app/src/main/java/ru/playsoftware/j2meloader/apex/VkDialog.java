@@ -97,7 +97,7 @@ public final class VkDialog {
 				}));
 
 		root.addView(ApexUi.section(a, "D-pad de 8 direções"));
-		root.addView(ApexUi.toggle(a, "D-pad no lugar das setas", ApexPrefs.dpadEnabled(), on -> {
+		root.addView(ApexUi.toggle(a, "Mostrar D-pad (as setas continuam)", ApexPrefs.dpadEnabled(), on -> {
 			ApexPrefs.setDpadEnabled(on);
 			relayout(vk);
 		}));

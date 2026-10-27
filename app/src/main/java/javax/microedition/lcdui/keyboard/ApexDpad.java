@@ -55,7 +55,7 @@ public class ApexDpad implements Runnable {
 		screen.set(scr);
 		float min = Math.min(scr.width(), scr.height());
 		side = min * 0.34f * ApexPrefs.dpadScale();
-		float[] p = ApexPrefs.pos(POS, landscape(), 0.17f, 0.68f);
+		float[] p = ApexPrefs.pos(POS, landscape(), 0.80f, 0.55f);
 		place(scr.left + scr.width() * p[0], scr.top + scr.height() * p[1]);
 	}
 
@@ -82,6 +82,13 @@ public class ApexDpad implements Runnable {
 		}
 		int alpha = opaque ? 0xFF : settings.vkAlpha;
 		int a = alpha << 24;
+		android.graphics.Bitmap img = ApexPrefs.buttonBitmap(ApexPrefs.DPAD, false);
+		if (img != null) {
+			// uma imagem so para o D-pad inteiro: normal translucida, pressionado com a opacidade escolhida
+			g.drawBitmap(img, rect, Math.round(255 * (pointer >= 0
+					? ApexPrefs.pressedOpacity() : ApexPrefs.normalOpacity())));
+			return;
+		}
 		float cell = side / 3f;
 		float gap = cell * 0.06f;
 		for (int r = 0; r < 3; r++) {

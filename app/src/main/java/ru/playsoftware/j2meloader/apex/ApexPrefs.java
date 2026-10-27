@@ -298,6 +298,7 @@ public final class ApexPrefs {
 			"Tecla 9", "Tecla 0", "Tecla *", "Tecla #", "Soft esquerda (L)", "Soft direita (R)",
 			"Tecla D", "Tecla C", "Cima-esquerda", "Cima", "Cima-direita", "Esquerda", "Direita",
 			"Baixo-esquerda", "Baixo", "Baixo-direita", "Fire (F)", "Tecla A", "Tecla B", "Menu (M)"};
+	public static final String DPAD = "dpad";
 	public static final String ANALOG_BASE = "analog_base";
 	public static final String ANALOG_KNOB = "analog_knob";
 	public static final String LETTER_PREFIX = "letter_";
@@ -313,6 +314,7 @@ public final class ApexPrefs {
 		}
 		l.add(new String[]{ANALOG_BASE, "Analógico (base)"});
 		l.add(new String[]{ANALOG_KNOB, "Analógico (bolinha)"});
+		l.add(new String[]{DPAD, "D-pad (8 direções)"});
 		for (char ch = 'a'; ch <= 'z'; ch++) {
 			l.add(new String[]{LETTER_PREFIX + ch, "Letra " + Character.toUpperCase(ch)});
 		}

@@ -510,14 +510,23 @@ public class MicroActivity extends AppCompatActivity {
 
 	private void showHideButtonDialog() {
 		final VirtualKeyboard vk = ContextHolder.getVk();
-		boolean[] states = vk.getKeysVisibility();
+		boolean[] keyStates = vk.getKeysVisibility();
+		int n = keyStates.length;
+		// ultimo item: D-pad (marcado = oculto)
+		boolean[] states = Arrays.copyOf(keyStates, n + 1);
+		states[n] = !ru.playsoftware.j2meloader.apex.ApexPrefs.dpadEnabled();
 		boolean[] changed = states.clone();
+		String[] keyNames = vk.getKeyNames();
+		String[] names = Arrays.copyOf(keyNames, n + 1);
+		names[n] = "D-pad (8 direções)";
 		new AlertDialog.Builder(this)
 				.setTitle(R.string.hide_buttons)
-				.setMultiChoiceItems(vk.getKeyNames(), changed, (dialog, which, isChecked) -> {})
+				.setMultiChoiceItems(names, changed, (dialog, which, isChecked) -> {})
 				.setPositiveButton(android.R.string.ok, (dialog, which) -> {
 					if (!Arrays.equals(states, changed)) {
-						vk.setKeysVisibility(changed);
+						ru.playsoftware.j2meloader.apex.ApexPrefs.setDpadEnabled(!changed[n]);
+						vk.setKeysVisibility(Arrays.copyOf(changed, n));
+						vk.apexRelayout();
 						showSaveVkAlert(true);
 					}
 				}).show();

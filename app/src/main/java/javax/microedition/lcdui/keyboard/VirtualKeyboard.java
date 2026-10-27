@@ -957,7 +957,7 @@ public class VirtualKeyboard implements Overlay, Runnable {
 	public void paint(CanvasWrapper g) {
 		if (visible) {
 			for (VirtualKey key : keypad) {
-				if (key.visible && !(key.arrow && ApexPrefs.dpadEnabled())) {
+				if (key.visible) {
 					key.paint(g);
 				}
 			}
@@ -1374,7 +1374,7 @@ public class VirtualKeyboard implements Overlay, Runnable {
 		}
 
 		boolean contains(float x, float y) {
-			return visible && !(arrow && ApexPrefs.dpadEnabled()) && rect.contains(x, y);
+			return visible && rect.contains(x, y);
 		}
 
 		/** Rotulo mostrado: se o numero estiver mapeado, mostra a letra. */
