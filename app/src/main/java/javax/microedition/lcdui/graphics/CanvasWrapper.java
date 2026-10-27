@@ -103,6 +103,11 @@ public class CanvasWrapper {
 		canvas.restoreToCount(save);
 	}
 
+	/** Varias linhas de uma vez: {x1,y1,x2,y2, x1,y1,x2,y2, ...}. */
+	public void drawLines(float[] pts, int count) {
+		canvas.drawLines(pts, 0, count, drawPaint);
+	}
+
 	public void setStrokeWidth(float w) {
 		drawPaint.setStrokeWidth(w);
 	}

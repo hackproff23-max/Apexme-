@@ -243,7 +243,7 @@ public class ApexDpad implements Runnable {
 	}
 
 	public void editDrag(float x, float y) {
-		place(x - offX, y - offY);
+		place(ApexPrefs.gridSnap(x - offX, screen.left), ApexPrefs.gridSnap(y - offY, screen.top));
 		invalidate();
 	}
 

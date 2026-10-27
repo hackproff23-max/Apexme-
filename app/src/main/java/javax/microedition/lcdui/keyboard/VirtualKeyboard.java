@@ -194,6 +194,14 @@ public class VirtualKeyboard implements Overlay, Runnable {
 			Math.min(ContextHolder.getDisplayWidth(), ContextHolder.getDisplayHeight()) / 6.0f;
 	private float snapRadius;
 	private int layoutVariant;
+	// dedo que esta editando (so um por vez) e dedo da barra de grade
+	private int editPointer = -1;
+	private int barPointer = -1;
+	private final RectF barGrid = new RectF();
+	private final RectF barMinus = new RectF();
+	private final RectF barValue = new RectF();
+	private final RectF barPlus = new RectF();
+	private float[] gridLines = new float[0];
 
 	public VirtualKeyboard(ProfileModel settings) {
 		this.settings = settings;
@@ -862,6 +870,11 @@ public class VirtualKeyboard implements Overlay, Runnable {
 
 	public void setLayoutEditMode(int mode) {
 		layoutEditMode = mode;
+		editPointer = -1;
+		barPointer = -1;
+		if (mode == LAYOUT_KEYS) {
+			detachAllKeys();
+		}
 		int group = -1;
 		if (mode == LAYOUT_SCALES) {
 			editedIndex = 0;
@@ -872,6 +885,18 @@ public class VirtualKeyboard implements Overlay, Runnable {
 		visible = true;
 		overlayView.postInvalidate();
 		hide();
+	}
+
+	/** Solta todas as teclas umas das outras: cada uma passa a depender so da tela. */
+	private void detachAllKeys() {
+		if (screen == null) {
+			return;
+		}
+		for (VirtualKey key : keypad) {
+			key.snapMode = RectSnap.getSnap(key.rect, screen, key.snapOffset);
+			key.snapOrigin = SCREEN;
+		}
+		snapKeys();
 	}
 
 	private void resizeKey(int key, float w, float h) {
@@ -956,6 +981,10 @@ public class VirtualKeyboard implements Overlay, Runnable {
 	@Override
 	public void paint(CanvasWrapper g) {
 		if (visible) {
+			boolean grid = layoutEditMode == LAYOUT_KEYS && screen != null;
+			if (grid && ApexPrefs.gridOn()) {
+				paintGrid(g);
+			}
 			for (VirtualKey key : keypad) {
 				if (key.visible) {
 					key.paint(g);
@@ -965,11 +994,114 @@ public class VirtualKeyboard implements Overlay, Runnable {
 			analog.paint(g, opaque);
 			dpad.paint(g, opaque);
 			letterPad.paint(g, opaque);
+			if (grid) {
+				paintGridBar(g);
+			}
 		}
+	}
+
+	/** Desenha a grade (linhas finas, a cada 5 casas mais fortes, cruz no centro). */
+	private void paintGrid(CanvasWrapper g) {
+		float cell = ApexPrefs.gridCell();
+		// se a casa for muito pequena na tela, desenha so algumas linhas (o encaixe continua exato)
+		int every = Math.max(1, (int) Math.ceil(7f / cell));
+		float step = cell * every;
+		int nx = (int) (screen.width() / step) + 1;
+		int ny = (int) (screen.height() / step) + 1;
+		int need = (nx + ny + 4) * 4;
+		if (gridLines.length < need) {
+			gridLines = new float[need];
+		}
+		g.setStrokeWidth(1f);
+		// linhas finas
+		int n = 0;
+		for (int i = 0; i <= nx; i++) {
+			float x = screen.left + i * step;
+			if (x > screen.right) break;
+			gridLines[n++] = x; gridLines[n++] = screen.top;
+			gridLines[n++] = x; gridLines[n++] = screen.bottom;
+		}
+		for (int i = 0; i <= ny; i++) {
+			float y = screen.top + i * step;
+			if (y > screen.bottom) break;
+			gridLines[n++] = screen.left; gridLines[n++] = y;
+			gridLines[n++] = screen.right; gridLines[n++] = y;
+		}
+		g.setDrawColor(0x38FFFFFF);
+		g.drawLines(gridLines, n);
+		// cruz no centro da tela
+		g.setStrokeWidth(2f);
+		g.setDrawColor(0x90FFFFFF);
+		float[] cross = {screen.centerX(), screen.top, screen.centerX(), screen.bottom,
+				screen.left, screen.centerY(), screen.right, screen.centerY()};
+		g.drawLines(cross, 8);
+		g.setStrokeWidth(1f);
+	}
+
+	private void layoutGridBar() {
+		float h = Math.max(keySize * 0.55f, 44f * ContextHolder.getAppContext()
+				.getResources().getDisplayMetrics().density);
+		float gap = h * 0.12f;
+		float wGrid = h * 2.6f, wBtn = h, wVal = h * 1.2f;
+		float total = wGrid + wBtn + wVal + wBtn + gap * 3;
+		float left = screen.centerX() - total / 2f;
+		float top = screen.top + gap;
+		barGrid.set(left, top, left + wGrid, top + h);
+		barMinus.set(barGrid.right + gap, top, barGrid.right + gap + wBtn, top + h);
+		barValue.set(barMinus.right + gap, top, barMinus.right + gap + wVal, top + h);
+		barPlus.set(barValue.right + gap, top, barValue.right + gap + wBtn, top + h);
+	}
+
+	private void paintBarButton(CanvasWrapper g, RectF r, String text, boolean active) {
+		g.setFillColor(active ? 0xF0206A9E : 0xE0102030);
+		g.setDrawColor(0xFFFFFFFF);
+		g.setStrokeWidth(2f);
+		g.fillRoundRect(r, 12, 12);
+		g.drawRoundRect(r, 12, 12);
+		g.setTextColor(0xFFFFFFFF);
+		g.drawString(text, r.centerX(), r.centerY());
+	}
+
+	private void paintGridBar(CanvasWrapper g) {
+		layoutGridBar();
+		boolean on = ApexPrefs.gridOn();
+		paintBarButton(g, barGrid, on ? "Grade: ON" : "Grade: OFF", on);
+		paintBarButton(g, barMinus, "-", false);
+		paintBarButton(g, barValue, String.valueOf(ApexPrefs.gridSize()), false);
+		paintBarButton(g, barPlus, "+", false);
+		g.setStrokeWidth(1f);
+	}
+
+	/** Toque na barra de grade. Devolve true se o toque foi dela. */
+	private boolean barPress(float x, float y) {
+		layoutGridBar();
+		if (barGrid.contains(x, y)) {
+			ApexPrefs.setGridOn(!ApexPrefs.gridOn());
+		} else if (barMinus.contains(x, y)) {
+			int v = ApexPrefs.gridSize();
+			ApexPrefs.setGridSize(v > 16 ? v - 4 : v - 2);
+		} else if (barPlus.contains(x, y)) {
+			int v = ApexPrefs.gridSize();
+			ApexPrefs.setGridSize(v >= 16 ? v + 4 : v + 2);
+		} else if (!barValue.contains(x, y)) {
+			return false;
+		}
+		overlayView.postInvalidate();
+		return true;
 	}
 
 	@Override
 	public boolean pointerPressed(int pointer, float x, float y) {
+		if (layoutEditMode == LAYOUT_KEYS && screen != null) {
+			if (barPointer < 0 && editPointer < 0 && barPress(x, y)) {
+				barPointer = pointer;
+				return false;
+			}
+			if (barPointer >= 0 || (editPointer >= 0 && editPointer != pointer)) {
+				return false; // so um dedo por vez edita
+			}
+			editPointer = pointer;
+		}
 		if (layoutEditMode == LAYOUT_EOF) {
 			if (letterPad.press(pointer, x, y) || analog.press(pointer, x, y) || dpad.press(pointer, x, y)) {
 				overlayView.postInvalidate();
@@ -1053,6 +1185,9 @@ public class VirtualKeyboard implements Overlay, Runnable {
 
 	@Override
 	public boolean pointerDragged(int pointer, float x, float y) {
+		if (layoutEditMode == LAYOUT_KEYS && pointer != editPointer) {
+			return false;
+		}
 		if (layoutEditMode == LAYOUT_EOF) {
 			if (letterPad.drag(pointer, x, y) || analog.drag(pointer, x, y) || dpad.drag(pointer, x, y)) {
 				return false;
@@ -1100,16 +1235,23 @@ public class VirtualKeyboard implements Overlay, Runnable {
 				if (editedIndex >= 0) {
 					VirtualKey key = keypad[editedIndex];
 					RectF rect = key.rect;
-					rect.offsetTo(x - offsetX, y - offsetY);
-					key.snapMode = RectSnap.NO_SNAP;
-					for (int i = 0; i < keypad.length; i++) {
-						if (i != editedIndex && findSnap(editedIndex, i)) {
-							break;
-						}
+					float w = rect.width();
+					float h = rect.height();
+					float nx = x - offsetX;
+					float ny = y - offsetY;
+					boolean grid = ApexPrefs.gridOn();
+					if (grid) {
+						// o centro do botao encaixa nas linhas da grade
+						nx = ApexPrefs.gridSnap(nx + w / 2f, screen.left) - w / 2f;
+						ny = ApexPrefs.gridSnap(ny + h / 2f, screen.top) - h / 2f;
 					}
-					if (key.snapMode == RectSnap.NO_SNAP) {
-						key.snapMode = RectSnap.getSnap(rect, screen, key.snapOffset);
-						key.snapOrigin = SCREEN;
+					nx = Math.max(screen.left, Math.min(screen.right - w, nx));
+					ny = Math.max(screen.top, Math.min(screen.bottom - h, ny));
+					rect.offsetTo(nx, ny);
+					// move SO este botao: ele depende apenas da tela, nunca de outro botao
+					key.snapOrigin = SCREEN;
+					key.snapMode = RectSnap.getSnap(rect, screen, key.snapOffset);
+					if (!grid) {
 						if (Math.abs(key.snapOffset.x) <= snapRadius) {
 							key.snapOffset.x = 0;
 						}
@@ -1153,6 +1295,20 @@ public class VirtualKeyboard implements Overlay, Runnable {
 
 	@Override
 	public boolean pointerReleased(int pointer, float x, float y) {
+		if (layoutEditMode == LAYOUT_KEYS) {
+			if (pointer == barPointer) {
+				barPointer = -1;
+				return false;
+			}
+			if (pointer != editPointer) {
+				return false;
+			}
+			editPointer = -1;
+		}
+		return releaseImpl(pointer, x, y);
+	}
+
+	private boolean releaseImpl(int pointer, float x, float y) {
 		if (analog.isEditing() || letterPad.isEditing() || dpad.isEditing()) {
 			if (dpad.isEditing()) dpad.editEnd();
 			if (analog.isEditing()) analog.editEnd();
@@ -1188,28 +1344,6 @@ public class VirtualKeyboard implements Overlay, Runnable {
 				overlayView.postInvalidate();
 			}
 		} else if (layoutEditMode == LAYOUT_KEYS) {
-			for (int key = 0; key < keypad.length; key++) {
-				VirtualKey vKey = keypad[key];
-				if (vKey.snapOrigin == editedIndex) {
-					vKey.snapMode = RectSnap.NO_SNAP;
-					for (int i = 0; i < KEYBOARD_SIZE; i++) {
-						if (i != key && findSnap(key, i)) {
-							break;
-						}
-					}
-					if (vKey.snapMode == RectSnap.NO_SNAP) {
-						vKey.snapMode = RectSnap.getSnap(vKey.rect, screen, vKey.snapOffset);
-						vKey.snapOrigin = SCREEN;
-						if (Math.abs(vKey.snapOffset.x) <= snapRadius) {
-							vKey.snapOffset.x = 0;
-						}
-						if (Math.abs(vKey.snapOffset.y) <= snapRadius) {
-							vKey.snapOffset.y = 0;
-						}
-					}
-					snapKey(key, 0);
-				}
-			}
 			snapKeys();
 			editedIndex = -1;
 		}

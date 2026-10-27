@@ -298,6 +298,40 @@ public final class ApexPrefs {
 		sp().edit().putBoolean("letters_on", v).apply();
 	}
 
+	// ---------------- grade do editor de teclado ----------------
+	/** Grade ligada no modo mover (padrao: ligada). */
+	public static boolean gridOn() {
+		return sp().getBoolean("grid_on", true);
+	}
+
+	public static void setGridOn(boolean v) {
+		sp().edit().putBoolean("grid_on", v).apply();
+	}
+
+	/** Tamanho da casa da grade (4..64, padrao 8). */
+	public static int gridSize() {
+		return Math.max(4, Math.min(64, sp().getInt("grid_size", 8)));
+	}
+
+	public static void setGridSize(int v) {
+		sp().edit().putInt("grid_size", Math.max(4, Math.min(64, v))).apply();
+	}
+
+	/** Tamanho da casa em pixels. */
+	public static float gridCell() {
+		float d = ContextHolder.getAppContext().getResources().getDisplayMetrics().density;
+		return Math.max(2f, gridSize() * d);
+	}
+
+	/** Alinha um valor a grade (a partir de origin); sem grade devolve o proprio valor. */
+	public static float gridSnap(float v, float origin) {
+		if (!gridOn()) {
+			return v;
+		}
+		float c = gridCell();
+		return origin + Math.round((v - origin) / c) * c;
+	}
+
 	public static float[] pos(String name, boolean landscape, float defX, float defY) {
 		String k = name + (landscape ? "_l" : "_p");
 		return new float[]{sp().getFloat(k + "x", defX), sp().getFloat(k + "y", defY)};

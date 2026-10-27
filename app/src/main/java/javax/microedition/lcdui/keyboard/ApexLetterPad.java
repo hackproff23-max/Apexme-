@@ -208,7 +208,9 @@ public class ApexLetterPad {
 	}
 
 	public void editDrag(float x, float y) {
-		moveTo(x - offX, y - offY);
+		float hw = bounds.width() / 2f, hh = bounds.height() / 2f;
+		moveTo(ApexPrefs.gridSnap(x - offX + hw, screen.left) - hw,
+				ApexPrefs.gridSnap(y - offY + hh, screen.top) - hh);
 		invalidate();
 	}
 
