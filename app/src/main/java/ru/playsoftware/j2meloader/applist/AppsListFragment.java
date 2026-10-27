@@ -134,7 +134,17 @@ public class AppsListFragment extends Fragment {
 			return;
 		}
 		preferences.edit().putString(Constants.PREF_LAST_PATH, FilteredFilePickerFragment.getLastPath()).apply();
-		File dir = new File(dirUri.getPath());
+		File dir;
+		try {
+			// o explorador devolve content://.../root/storage/...: converte de volta para o caminho real
+			dir = com.nononsenseapps.filepicker.Utils.getFileForUri(dirUri);
+		} catch (Exception e) {
+			String path = dirUri.getPath();
+			if ("content".equals(dirUri.getScheme()) && path.startsWith("/root/")) {
+				path = path.substring(5);
+			}
+			dir = new File(path);
+		}
 		File[] files = dir.listFiles();
 		if (files == null) {
 			// sem acesso a pasta: normalmente falta "Acesso a todos os arquivos"
