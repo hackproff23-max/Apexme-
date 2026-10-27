@@ -276,4 +276,6 @@
 
     <string name="apex_shaders" translatable="false">Shaders</string>
     <string name="apex_close" translatable="false">Fechar</string>
+    <string name="apex_pref_import_hint" translatable="false">Toque para importar ou remover</string>
+    <string name="apex_import_choose" translatable="false">Escolher arquivo</string>
 </resources>

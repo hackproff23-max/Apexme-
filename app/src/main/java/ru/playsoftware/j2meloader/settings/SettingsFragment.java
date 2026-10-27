@@ -22,12 +22,14 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.DocumentsContract;
+import android.widget.Toast;
 
 import com.nononsenseapps.filepicker.Utils;
 
 import java.io.File;
 
 import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
 import androidx.preference.Preference;
@@ -35,14 +37,18 @@ import androidx.preference.PreferenceFragmentCompat;
 import ru.playsoftware.j2meloader.R;
 import ru.playsoftware.j2meloader.config.Config;
 import ru.playsoftware.j2meloader.config.ProfilesActivity;
+import ru.playsoftware.j2meloader.theme.ApexTheme;
 import ru.playsoftware.j2meloader.util.FileUtils;
 import ru.playsoftware.j2meloader.util.PickDirResultContract;
 
-import static ru.playsoftware.j2meloader.util.Constants.PREF_ADD_CUTOUT_AREA;
 import static ru.playsoftware.j2meloader.util.Constants.PREF_EMULATOR_DIR;
 
 public class SettingsFragment extends PreferenceFragmentCompat {
 	private Preference prefFolder;
+	private int pendingTarget;
+	private final ActivityResultLauncher<String[]> themePicker = registerForActivityResult(
+			new ActivityResultContracts.OpenDocument(),
+			this::onThemeFilePicked);
 	private final ActivityResultLauncher<String> openDirLauncher = registerForActivityResult(
 			new PickDirResultContract(),
 			this::onPickDirResult);
@@ -61,8 +67,44 @@ public class SettingsFragment extends PreferenceFragmentCompat {
 			}
 			return true;
 		});
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-			findPreference(PREF_ADD_CUTOUT_AREA).setVisible(true);
+		setupImport("pref_import_app_bg", ApexTheme.TARGET_APP_BG, "image/*");
+		setupImport("pref_import_window_bg", ApexTheme.TARGET_WINDOW_BG, "image/*");
+		setupImport("pref_import_font", ApexTheme.TARGET_FONT, "*/*");
+	}
+
+	private void setupImport(String key, int target, String mime) {
+		findPreference(key).setOnPreferenceClickListener(p -> {
+			new AlertDialog.Builder(requireActivity())
+					.setTitle(p.getTitle())
+					.setItems(new String[]{getString(R.string.apex_import_choose),
+							getString(R.string.apex_remove)}, (d, which) -> {
+						if (which == 0) {
+							pendingTarget = target;
+							try {
+								themePicker.launch(new String[]{mime});
+							} catch (ActivityNotFoundException e) {
+								Toast.makeText(requireContext(), R.string.error_no_picker,
+										Toast.LENGTH_SHORT).show();
+							}
+						} else {
+							ApexTheme.clear(requireContext(), target);
+							requireActivity().recreate();
+						}
+					})
+					.show();
+			return true;
+		});
+	}
+
+	private void onThemeFilePicked(Uri uri) {
+		if (uri == null) {
+			return;
+		}
+		boolean ok = ApexTheme.importFile(requireContext(), pendingTarget, uri);
+		Toast.makeText(requireContext(), ok ? R.string.apex_import_ok : R.string.apex_import_fail,
+				Toast.LENGTH_SHORT).show();
+		if (ok) {
+			requireActivity().recreate();
 		}
 	}
 

@@ -43,10 +43,6 @@ public class BaseActivity extends AppCompatActivity {
 
 	@Override
 	protected void onCreate(@Nullable Bundle savedInstanceState) {
-		SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-		if (sp.getBoolean(PREF_BLACK_BACKGROUND, false)) {
-			setTheme(R.style.ThemeOverlay_App_Dark);
-		}
 		if (getSupportActionBar() != null) {
 			getSupportActionBar().setElevation(getResources().getDisplayMetrics().density * 2);
 		}

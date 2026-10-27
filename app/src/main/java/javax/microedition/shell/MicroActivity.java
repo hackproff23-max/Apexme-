@@ -119,18 +119,15 @@ public class MicroActivity extends AppCompatActivity {
 		setContentView(view);
 		setSupportActionBar(binding.toolbar);
 
-		SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-		actionBarEnabled = sp.getBoolean(PREF_TOOLBAR, false);
-		statusBarEnabled = sp.getBoolean(PREF_STATUSBAR, false);
-		if (sp.getBoolean(PREF_ADD_CUTOUT_AREA, false) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+		// sem barra de acao nem barra de status; area do recorte sempre usada; vibracao ligada
+		actionBarEnabled = false;
+		statusBarEnabled = false;
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
 			getWindow().getAttributes().layoutInDisplayCutoutMode =
 					WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
 		}
-		if (sp.getBoolean(PREF_KEEP_SCREEN, false)) {
-			getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-		}
-		ContextHolder.setVibration(sp.getBoolean(PREF_VIBRATION, true));
-		Canvas.setScreenshotRawMode(sp.getBoolean(PREF_SCREENSHOT_SWITCH, false));
+		ContextHolder.setVibration(true);
+		Canvas.setScreenshotRawMode(false);
 		Intent intent = getIntent();
 		if (BuildConfig.FULL_EMULATOR) {
 			appName = intent.getStringExtra(KEY_MIDLET_NAME);
