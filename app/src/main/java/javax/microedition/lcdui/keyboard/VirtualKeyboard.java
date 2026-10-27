@@ -1381,7 +1381,8 @@ public class VirtualKeyboard implements Overlay, Runnable {
 			int alpha = (opaque || layoutEditMode != LAYOUT_EOF ? 0xFF : settings.vkAlpha) << 24;
 			Bitmap png = ApexPrefs.buttonBitmap(imageId, selected);
 			if (png != null) {
-				g.drawBitmap(png, rect, alpha >>> 24);
+				// normal: levemente transparente; pressionado: cor normal, sem transparencia
+				g.drawBitmap(png, rect, selected ? 0xFF : Math.round((alpha >>> 24) * 0.7f));
 				g.setTextColor(alpha | fgColor);
 				g.drawString(shown, rect.centerX(), rect.centerY());
 				return;

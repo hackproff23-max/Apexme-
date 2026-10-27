@@ -300,12 +300,7 @@ public final class ApexPrefs {
 		if (id == null) {
 			return null;
 		}
-		if (pressed) {
-			Bitmap b = load(id, true);
-			if (b != null) {
-				return b;
-			}
-		}
+		// uma imagem so: o estado pressionado e o proprio desenho, sem a transparencia do estado normal
 		return load(id, false);
 	}
 

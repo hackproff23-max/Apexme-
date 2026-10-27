@@ -137,9 +137,7 @@ public final class VkDialog {
 		String[][] all = ApexPrefs.allButtons();
 		String[] items = new String[all.length];
 		for (int i = 0; i < all.length; i++) {
-			boolean n = ApexPrefs.hasButtonImage(all[i][0], false);
-			boolean p = ApexPrefs.hasButtonImage(all[i][0], true);
-			items[i] = all[i][1] + (n || p ? "  ✓" + (n ? " normal" : "") + (p ? " pressionado" : "") : "");
+			items[i] = all[i][1] + (ApexPrefs.hasButtonImage(all[i][0], false) ? "  ✓" : "");
 		}
 		AlertDialog d = new AlertDialog.Builder(a)
 				.setTitle("Imagem de qual botão?")
@@ -154,14 +152,13 @@ public final class VkDialog {
 		String id = btn[0];
 		new AlertDialog.Builder(a)
 				.setTitle(btn[1])
-				.setItems(new String[]{"Importar imagem normal", "Importar imagem pressionada",
-						"Remover imagens deste botão"}, (dlg, which) -> {
-					if (which == 2) {
+				.setItems(new String[]{"Importar imagem", "Remover imagem deste botão"}, (dlg, which) -> {
+					if (which == 1) {
 						ApexPrefs.clearButtonImage(id);
 						relayout(vk);
 						showButtonList(a, vk, index);
 					} else {
-						importImage(a, vk, id, which == 1, index);
+						importImage(a, vk, id, false, index);
 					}
 				})
 				.setNegativeButton(android.R.string.cancel, (dlg, w) -> showButtonList(a, vk, index))
