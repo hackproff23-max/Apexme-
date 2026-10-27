@@ -62,6 +62,10 @@ public final class VkDialog {
 					((MicroActivity) a).apexVkEditStart();
 				}
 			}));
+			root.addView(ApexUi.button(a, "Ocultar botões", v -> {
+				holder[0].dismiss();
+				((MicroActivity) a).apexVkHideButtons();
+			}));
 		} else {
 			root.addView(ApexUi.text(a, "Estas opções valem para todos os jogos. Para arrastar o analógico e " +
 					"as letras na tela, abra um jogo e use o Modo edição.", 12));

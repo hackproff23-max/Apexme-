@@ -485,6 +485,13 @@ public class MicroActivity extends AppCompatActivity {
 		}
 	}
 
+	/** Abre a lista "Ocultar botoes" do teclado virtual (usada pela janela do Apexme). */
+	public void apexVkHideButtons() {
+		if (ContextHolder.getVk() != null) {
+			showHideButtonDialog();
+		}
+	}
+
 	private void showHideButtonDialog() {
 		final VirtualKeyboard vk = ContextHolder.getVk();
 		boolean[] states = vk.getKeysVisibility();
