@@ -114,6 +114,12 @@ public class MainActivity extends BaseActivity {
 	}
 
 	@Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+		super.onActivityResult(requestCode, resultCode, data);
+		javax.microedition.util.ContextHolder.notifyOnActivityResult(requestCode, resultCode, data);
+	}
+
+	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);

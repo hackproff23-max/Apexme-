@@ -791,6 +791,7 @@ public abstract class Canvas extends Displayable {
 		private boolean isStarted;
 		private int surfaceW;
 		private int surfaceH;
+		private int frameCount;
 
 		@Override
 		public void onSurfaceCreated(GL10 gl, EGLConfig config) {
@@ -836,6 +837,7 @@ public abstract class Canvas extends Displayable {
 				}
 				if (surfaceW > 0 && surfaceH > 0) {
 					glUniform2f(program.uPixelDelta, 1.0f / surfaceW, 1.0f / surfaceH);
+					glUniform2f(program.uOutputSize, surfaceW, surfaceH);
 				}
 				applyUniforms();
 				mView.requestRender();
@@ -848,6 +850,7 @@ public abstract class Canvas extends Displayable {
 			surfaceH = height;
 			glViewport(0, 0, width, height);
 			glUniform2f(program.uPixelDelta, 1.0f / width, 1.0f / height);
+			glUniform2f(program.uOutputSize, width, height);
 		}
 
 		@Override
@@ -856,6 +859,7 @@ public abstract class Canvas extends Displayable {
 			synchronized (bufferLock) {
 				GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, offscreenCopy.getBitmap(), 0);
 			}
+			glUniform1i(program.uFrameCount, ++frameCount);
 			glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 			if (fpsCounter != null) {
 				fpsCounter.increment();

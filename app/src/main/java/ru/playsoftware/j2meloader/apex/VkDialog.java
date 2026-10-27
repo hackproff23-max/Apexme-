@@ -12,6 +12,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog;
 
 import javax.microedition.lcdui.keyboard.VirtualKeyboard;
+import android.app.Activity;
 import javax.microedition.shell.MicroActivity;
 import javax.microedition.util.ContextHolder;
 
@@ -33,9 +34,16 @@ public final class VkDialog {
 	private VkDialog() {
 	}
 
-	public static void show(MicroActivity a) {
-		VirtualKeyboard vk = ContextHolder.getVk();
-		if (vk == null) {
+	/** Aplica na hora se houver jogo rodando (vk != null); fora do jogo so grava as opcoes. */
+	private static void relayout(VirtualKeyboard vk) {
+		if (vk != null) {
+			vk.apexRelayout();
+		}
+	}
+
+	public static void show(Activity a) {
+		VirtualKeyboard vk = a instanceof MicroActivity ? ContextHolder.getVk() : null;
+		if (a instanceof MicroActivity && vk == null) {
 			Toast.makeText(a, "Ative o teclado virtual nas configurações do app", Toast.LENGTH_LONG).show();
 			return;
 		}
@@ -44,32 +52,37 @@ public final class VkDialog {
 		sv.addView(root);
 		AlertDialog[] holder = new AlertDialog[1];
 
-		boolean editing = vk.getLayoutEditMode() != VirtualKeyboard.LAYOUT_EOF;
-		root.addView(ApexUi.button(a, editing ? "Concluir edição" : "Modo edição", v -> {
-			holder[0].dismiss();
-			if (editing) {
-				a.apexVkEditFinish();
-			} else {
-				a.apexVkEditStart();
-			}
-		}));
+		if (vk != null) {
+			boolean editing = vk.getLayoutEditMode() != VirtualKeyboard.LAYOUT_EOF;
+			root.addView(ApexUi.button(a, editing ? "Concluir edição" : "Modo edição", v -> {
+				holder[0].dismiss();
+				if (editing) {
+					((MicroActivity) a).apexVkEditFinish();
+				} else {
+					((MicroActivity) a).apexVkEditStart();
+				}
+			}));
+		} else {
+			root.addView(ApexUi.text(a, "Estas opções valem para todos os jogos. Para arrastar o analógico e " +
+					"as letras na tela, abra um jogo e use o Modo edição.", 12));
+		}
 
 		root.addView(ApexUi.section(a, "Tamanhos"));
 		root.addView(ApexUi.slider(a, "Tamanho dos botões", 50, 200,
 				Math.round(ApexPrefs.buttonScale() * 100), "%", v -> {
 					ApexPrefs.setButtonScale(v / 100f);
-					vk.apexRelayout();
+					relayout(vk);
 				}));
 		root.addView(ApexUi.slider(a, "Tamanho do analógico", 50, 200,
 				Math.round(ApexPrefs.analogScale() * 100), "%", v -> {
 					ApexPrefs.setAnalogScale(v / 100f);
-					vk.apexRelayout();
+					relayout(vk);
 				}));
 
 		root.addView(ApexUi.section(a, "Analógico"));
 		root.addView(ApexUi.toggle(a, "Mostrar analógico", ApexPrefs.analogEnabled(), on -> {
 			ApexPrefs.setAnalogEnabled(on);
-			vk.apexRelayout();
+			relayout(vk);
 		}));
 
 		root.addView(ApexUi.section(a, "Imagem de cada botão"));
@@ -79,14 +92,14 @@ public final class VkDialog {
 		}));
 		root.addView(ApexUi.button(a, "Remover todas as imagens", v -> {
 			ApexPrefs.clearAllButtonImages();
-			vk.apexRelayout();
+			relayout(vk);
 			Toast.makeText(a, "Imagens removidas", Toast.LENGTH_SHORT).show();
 		}));
 
 		root.addView(ApexUi.section(a, "Teclado de letras"));
 		root.addView(ApexUi.toggle(a, "Mostrar teclado de letras", ApexPrefs.lettersEnabled(), on -> {
 			ApexPrefs.setLettersEnabled(on);
-			vk.apexRelayout();
+			relayout(vk);
 		}));
 		root.addView(ApexUi.button(a, "Mapear números nas letras", v -> {
 			holder[0].dismiss();
@@ -103,7 +116,7 @@ public final class VkDialog {
 	}
 
 	/** Lista todos os botoes; toque em um para definir a imagem so dele. */
-	private static void showButtonList(MicroActivity a, VirtualKeyboard vk, int scrollTo) {
+	private static void showButtonList(Activity a, VirtualKeyboard vk, int scrollTo) {
 		String[][] all = ApexPrefs.allButtons();
 		String[] items = new String[all.length];
 		for (int i = 0; i < all.length; i++) {
@@ -120,7 +133,7 @@ public final class VkDialog {
 		d.getListView().setSelection(scrollTo);
 	}
 
-	private static void showButtonOptions(MicroActivity a, VirtualKeyboard vk, String[] btn, int index) {
+	private static void showButtonOptions(Activity a, VirtualKeyboard vk, String[] btn, int index) {
 		String id = btn[0];
 		new AlertDialog.Builder(a)
 				.setTitle(btn[1])
@@ -128,7 +141,7 @@ public final class VkDialog {
 						"Remover imagens deste botão"}, (dlg, which) -> {
 					if (which == 2) {
 						ApexPrefs.clearButtonImage(id);
-						vk.apexRelayout();
+						relayout(vk);
 						showButtonList(a, vk, index);
 					} else {
 						importImage(a, vk, id, which == 1, index);
@@ -139,16 +152,16 @@ public final class VkDialog {
 				.show();
 	}
 
-	private static void importImage(MicroActivity a, VirtualKeyboard vk, String id, boolean pressed, int index) {
+	private static void importImage(Activity a, VirtualKeyboard vk, String id, boolean pressed, int index) {
 		ApexUi.pick(a, "image/*", uri -> {
 			boolean ok = ApexPrefs.importButtonImage(a, uri, id, pressed);
 			Toast.makeText(a, ok ? "Imagem importada" : "Imagem inválida", Toast.LENGTH_SHORT).show();
-			vk.apexRelayout();
+			relayout(vk);
 			showButtonList(a, vk, index);
 		});
 	}
 
-	private static void showMapping(MicroActivity a, VirtualKeyboard vk) {
+	private static void showMapping(Activity a, VirtualKeyboard vk) {
 		ScrollView sv = new ScrollView(a);
 		LinearLayout root = ApexUi.column(a);
 		sv.addView(root);
@@ -186,12 +199,12 @@ public final class VkDialog {
 						}
 					}
 					ApexPrefs.setNumberMap(map);
-					vk.apexRelayout();
+					relayout(vk);
 				})
 				.setNegativeButton(android.R.string.cancel, null)
 				.setNeutralButton("Limpar", (d, w) -> {
 					ApexPrefs.setNumberMap(new SparseIntArray());
-					vk.apexRelayout();
+					relayout(vk);
 				})
 				.show();
 	}

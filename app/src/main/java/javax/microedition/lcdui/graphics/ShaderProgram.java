@@ -45,20 +45,41 @@ public class ShaderProgram {
 	public int uSetting;
 	public int uPixelDelta;
 	public int uColor;
+	// nomes no estilo RetroArch (GLSL ES 2.0)
+	public int uTextureSize;
+	public int uInputSize;
+	public int uOutputSize;
+	public int uFrameCount;
+	public int uMvp;
+	/** Ultimo erro de compilacao de um shader importado (para mostrar ao usuario). */
+	static volatile String lastError;
+	private static final float[] IDENTITY = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
 
 	public ShaderProgram(ShaderInfo shader) {
 		String sel = ApexPrefs.shaderSel();
 		if (sel.startsWith(ApexPrefs.SEL_USER)) {
 			File f = ApexPrefs.userShaderFile(sel.substring(ApexPrefs.SEL_USER.length()));
 			if (f.exists()) {
-				String vertexCode = ContextHolder.getAssetAsString(VERTEX);
-				String fragmentCode = FileUtils.getText(f.getPath());
+				String src = FileUtils.getText(f.getPath());
+				String vertexCode;
+				String fragmentCode;
+				if (isCombined(src)) {
+					// arquivo unico (RetroArch): o mesmo codigo compilado como vertex e como fragment
+					vertexCode = prepare(src, "VERTEX");
+					fragmentCode = prepare(src, "FRAGMENT");
+				} else {
+					vertexCode = ContextHolder.getAssetAsString(VERTEX);
+					fragmentCode = src;
+				}
+				lastError = null;
 				if (createProgram(vertexCode, fragmentCode) != -1) {
 					glReleaseShaderCompiler();
 					return;
 				}
+				final String err = lastError;
 				ViewHandler.postEvent(() -> Toast.makeText(ContextHolder.getActivity(),
-						"Erro no shader importado - usando o padrao!",
+						"Erro no shader importado - usando o padrao!"
+								+ (err == null ? "" : "\n" + (err.length() > 160 ? err.substring(0, 160) : err)),
 						Toast.LENGTH_LONG).show());
 			}
 		} else if (ApexPrefs.SEL_BUILTIN.equals(sel) || shader == null) {
@@ -93,6 +114,32 @@ public class ShaderProgram {
 		}
 	}
 
+	/** Shader de arquivo unico: usa #if defined(VERTEX) / FRAGMENT. */
+	private static boolean isCombined(String src) {
+		return src.contains("VERTEX") && src.contains("FRAGMENT")
+				&& java.util.regex.Pattern.compile("#\\s*(if|ifdef|ifndef|elif)[^\\n]*\\b(VERTEX|FRAGMENT)\\b")
+				.matcher(src).find();
+	}
+
+	/** Adiciona o define do estagio (e precisao) depois da linha #version, se houver. GLSL ES 2.0 = #version 100. */
+	private static String prepare(String src, String stage) {
+		String version = "";
+		String body = src;
+		java.util.regex.Matcher m = java.util.regex.Pattern.compile("(?m)^\\s*#version[^\\n]*\\n").matcher(src);
+		if (m.find()) {
+			String v = m.group().trim();
+			// versoes de desktop (110/120/...) nao compilam no Android: remove; 100 e 300 es ficam
+			if (v.matches("#version\\s+(100|300\\s+es)")) {
+				version = m.group();
+			}
+			body = src.substring(0, m.start()) + src.substring(m.end());
+		}
+		StringBuilder sb = new StringBuilder(version);
+		sb.append("#define ").append(stage).append(" 1\n");
+		sb.append("#ifdef GL_ES\nprecision mediump float;\n#endif\n");
+		return sb.append(body).toString();
+	}
+
 	public int createProgram(String vertex, String fragment) {
 		int vertexId = loadShader(GL_VERTEX_SHADER, vertex);
 		int fragmentId = loadShader(GL_FRAGMENT_SHADER, fragment);
@@ -114,13 +161,24 @@ public class ShaderProgram {
 			Log.e(TAG, "init program: glError " + errorString);
 		}
 		aPosition = glGetAttribLocation(program, "a_position");
+		if (aPosition == -1) aPosition = glGetAttribLocation(program, "VertexCoord");
 		aTexCoord = glGetAttribLocation(program, "a_texcoord0");
+		if (aTexCoord == -1) aTexCoord = glGetAttribLocation(program, "TexCoord");
 		uTextureUnit = glGetUniformLocation(program, "sampler0");
+		if (uTextureUnit == -1) uTextureUnit = glGetUniformLocation(program, "Texture");
+		uTextureSize = glGetUniformLocation(program, "TextureSize");
+		uInputSize = glGetUniformLocation(program, "InputSize");
+		uOutputSize = glGetUniformLocation(program, "OutputSize");
+		uFrameCount = glGetUniformLocation(program, "FrameCount");
+		uMvp = glGetUniformLocation(program, "MVPMatrix");
 		uTexelDelta = glGetUniformLocation(program, "u_texelDelta");
 		uPixelDelta = glGetUniformLocation(program, "u_pixelDelta");
 		uSetting = glGetUniformLocation(program, "u_setting");
 		uColor = glGetUniformLocation(program, "u_color");
 		glUseProgram(program);
+		if (uMvp != -1) {
+			glUniformMatrix4fv(uMvp, 1, false, IDENTITY, 0);
+		}
 		int error1 = glGetError();
 		if (error1 != GL_NO_ERROR) {
 			String s1 = GLU.gluErrorString(error1);
@@ -147,6 +205,7 @@ public class ShaderProgram {
 		if (status[0] == 0) {
 			String s = glGetShaderInfoLog(shader);
 			Log.e(TAG, "loadShader: " + s);
+			lastError = s;
 			glDeleteShader(shader);
 			return -1;
 		}
@@ -163,5 +222,7 @@ public class ShaderProgram {
 		glVertexAttribPointer(aTexCoord, 2, GL_FLOAT, false, 4 * 4, vbo);
 		glEnableVertexAttribArray(aTexCoord);
 		glUniform2f(uTexelDelta, 1.0f / width, 1.0f / height);
+		glUniform2f(uTextureSize, width, height);
+		glUniform2f(uInputSize, width, height);
 	}
 }

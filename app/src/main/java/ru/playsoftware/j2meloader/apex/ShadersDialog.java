@@ -8,6 +8,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog;
 
 import javax.microedition.lcdui.Canvas;
+import android.app.Activity;
 import javax.microedition.shell.MicroActivity;
 
 import ru.playsoftware.j2meloader.R;
@@ -17,8 +18,12 @@ public final class ShadersDialog {
 	private ShadersDialog() {
 	}
 
-	private static Canvas canvas(MicroActivity a) {
-		return a.getCurrent() instanceof Canvas ? (Canvas) a.getCurrent() : null;
+	private static Canvas canvas(Activity a) {
+		if (!(a instanceof MicroActivity)) {
+			return null;
+		}
+		MicroActivity m = (MicroActivity) a;
+		return m.getCurrent() instanceof Canvas ? (Canvas) m.getCurrent() : null;
 	}
 
 	private static String selLabel() {
@@ -32,23 +37,26 @@ public final class ShadersDialog {
 		return "Automático (do perfil)";
 	}
 
-	private static void apply(MicroActivity a, boolean full) {
+	private static void apply(Activity a, boolean full) {
 		Canvas c = canvas(a);
 		if (c != null) {
 			c.applyApexShader(full);
 		}
 	}
 
-	public static void show(MicroActivity a) {
+	public static void show(Activity a) {
 		Canvas c = canvas(a);
 		ScrollView sv = new ScrollView(a);
 		android.widget.LinearLayout root = ApexUi.column(a);
 		sv.addView(root);
 
-		if (c == null || !c.hasGlRenderer()) {
+		if (a instanceof MicroActivity && (c == null || !c.hasGlRenderer())) {
 			TextView warn = ApexUi.text(a, "Os efeitos só funcionam com Modo gráfico = OpenGL " +
 					"(configurações do app) e com o jogo em execução.", 13);
 			root.addView(warn);
+		} else if (!(a instanceof MicroActivity)) {
+			root.addView(ApexUi.text(a, "O shader escolhido aqui vale para todos os jogos com " +
+					"Modo gráfico = OpenGL.", 13));
 		}
 
 		TextView current = ApexUi.text(a, "Shader atual: " + selLabel(), 14);
@@ -124,7 +132,8 @@ public final class ShadersDialog {
 			save(a, vals);
 		}));
 		root.addView(ApexUi.text(a, "Cores e LCD valem para os shaders Automático (sem shader no perfil) " +
-				"e Apex. Shaders importados devem usar sampler0 e v_texcoord0.", 12));
+				"e Apex. Importe shaders GLSL ES 2.0: arquivo único com #if defined(VERTEX) / " +
+				"FRAGMENT (estilo RetroArch), ou só o fragment usando sampler0 e v_texcoord0.", 12));
 
 		AlertDialog dialog = new AlertDialog.Builder(a)
 				.setTitle(R.string.apex_shaders)
@@ -138,7 +147,7 @@ public final class ShadersDialog {
 		dialog.show();
 	}
 
-	private static void save(MicroActivity a, float[] v) {
+	private static void save(Activity a, float[] v) {
 		ApexPrefs.setColorValues(v[0], v[1], v[2], v[3]);
 		apply(a, false);
 	}

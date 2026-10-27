@@ -4,6 +4,16 @@
     tools:context="ru.playsoftware.j2meloader.MainActivity">
 
     <item
+        android:id="@+id/action_vk"
+        android:icon="@drawable/ic_apex_keyboard"
+        android:title="@string/PREF_VIRTUAL_KEYBOARD_OPTIONS"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/action_shaders"
+        android:icon="@drawable/ic_apex_shaders"
+        android:title="@string/apex_shaders"
+        app:showAsAction="always" />
+    <item
         android:id="@+id/action_settings"
         android:title="@string/action_settings"
         app:showAsAction="never" />

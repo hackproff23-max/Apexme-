@@ -611,6 +611,12 @@ public class AppsListFragment extends Fragment {
 		if (item.getItemId() == R.id.action_settings) {
 			startActivity(new Intent(activity, SettingsActivity.class));
 			return true;
+		} else if (itemId == R.id.action_vk) {
+			ru.playsoftware.j2meloader.apex.VkDialog.show(activity);
+			return true;
+		} else if (itemId == R.id.action_shaders) {
+			ru.playsoftware.j2meloader.apex.ShadersDialog.show(activity);
+			return true;
 		} else if (itemId == R.id.action_exit_app) {
 			activity.finish();
 		}
