@@ -175,6 +175,7 @@ public class VirtualKeyboard implements Overlay, Runnable {
 	private final ApexAnalog analog;
 	private final ApexDpad dpad;
 	private final ApexLetterPad letterPad;
+	private final ApexFastForward ff;
 	private final File saveFile;
 	private final ProfileModel settings;
 	private final RectF virtualScreen = new RectF();
@@ -264,6 +265,7 @@ public class VirtualKeyboard implements Overlay, Runnable {
 		analog = new ApexAnalog(settings);
 		dpad = new ApexDpad(settings);
 		letterPad = new ApexLetterPad(settings);
+		ff = new ApexFastForward(settings);
 		HandlerThread thread = new HandlerThread("MidletVirtualKeyboard");
 		thread.start();
 		handler = new Handler(thread.getLooper());
@@ -758,6 +760,12 @@ public class VirtualKeyboard implements Overlay, Runnable {
 		highlightGroup(-1);
 	}
 
+	/** O menu mudou o fast-forward (ativar/velocidade): aplica e redesenha. */
+	public void apexFastForwardChanged() {
+		ff.applySettings();
+		apexRelayout();
+	}
+
 	/** Recalcula o layout (apos mudar tamanhos/ativar extras). */
 	public void apexRelayout() {
 		if (screen != null && overlayView != null) {
@@ -941,6 +949,7 @@ public class VirtualKeyboard implements Overlay, Runnable {
 		analog.layout(screen);
 		dpad.layout(screen);
 		letterPad.layout(screen);
+		ff.layout(screen);
 		overlayView.postInvalidate();
 		int delay = settings.vkHideDelay;
 		if (delay > 0 && obscuresVirtualScreen && layoutEditMode == LAYOUT_EOF) {
@@ -994,6 +1003,7 @@ public class VirtualKeyboard implements Overlay, Runnable {
 			analog.paint(g, opaque);
 			dpad.paint(g, opaque);
 			letterPad.paint(g, opaque);
+			ff.paint(g, opaque);
 			if (grid) {
 				paintGridBar(g);
 			}
@@ -1103,12 +1113,12 @@ public class VirtualKeyboard implements Overlay, Runnable {
 			editPointer = pointer;
 		}
 		if (layoutEditMode == LAYOUT_EOF) {
-			if (letterPad.press(pointer, x, y) || analog.press(pointer, x, y) || dpad.press(pointer, x, y)) {
+			if (ff.press(pointer, x, y) || letterPad.press(pointer, x, y) || analog.press(pointer, x, y) || dpad.press(pointer, x, y)) {
 				overlayView.postInvalidate();
 				return false;
 			}
 		} else if (layoutEditMode == LAYOUT_KEYS) {
-			if (letterPad.editBegin(x, y) || analog.editBegin(x, y) || dpad.editBegin(x, y)) {
+			if (ff.editBegin(x, y) || letterPad.editBegin(x, y) || analog.editBegin(x, y) || dpad.editBegin(x, y)) {
 				return false;
 			}
 		}
@@ -1189,10 +1199,14 @@ public class VirtualKeyboard implements Overlay, Runnable {
 			return false;
 		}
 		if (layoutEditMode == LAYOUT_EOF) {
-			if (letterPad.drag(pointer, x, y) || analog.drag(pointer, x, y) || dpad.drag(pointer, x, y)) {
+			if (ff.drag(pointer, x, y) || letterPad.drag(pointer, x, y) || analog.drag(pointer, x, y) || dpad.drag(pointer, x, y)) {
 				return false;
 			}
 		} else if (layoutEditMode == LAYOUT_KEYS) {
+			if (ff.isEditing()) {
+				ff.editDrag(x, y);
+				return false;
+			}
 			if (analog.isEditing()) {
 				analog.editDrag(x, y);
 				return false;
@@ -1309,7 +1323,8 @@ public class VirtualKeyboard implements Overlay, Runnable {
 	}
 
 	private boolean releaseImpl(int pointer, float x, float y) {
-		if (analog.isEditing() || letterPad.isEditing() || dpad.isEditing()) {
+		if (ff.isEditing() || analog.isEditing() || letterPad.isEditing() || dpad.isEditing()) {
+			if (ff.isEditing()) ff.editEnd();
 			if (dpad.isEditing()) dpad.editEnd();
 			if (analog.isEditing()) analog.editEnd();
 			if (letterPad.isEditing()) letterPad.editEnd();
@@ -1329,6 +1344,7 @@ public class VirtualKeyboard implements Overlay, Runnable {
 		}
 		if (layoutEditMode == LAYOUT_EOF) {
 			letterPad.release(pointer);
+			ff.release(pointer, x, y);
 			analog.release(pointer);
 			dpad.release(pointer);
 			if (pointer > associatedKeys.length) {
@@ -1374,6 +1390,7 @@ public class VirtualKeyboard implements Overlay, Runnable {
 		analog.cancel();
 		dpad.cancel();
 		letterPad.cancel();
+		ff.cancel();
 		for (VirtualKey key : keypad) {
 			key.selected = false;
 			handler.removeCallbacks(key);
@@ -1426,6 +1443,7 @@ public class VirtualKeyboard implements Overlay, Runnable {
 		analog.setView(view);
 		dpad.setView(view);
 		letterPad.setView(view);
+		ff.setView(view);
 	}
 
 	public int getKeyStatesVodafone() {

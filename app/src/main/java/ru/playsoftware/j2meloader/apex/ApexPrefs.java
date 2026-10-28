@@ -226,6 +226,39 @@ public final class ApexPrefs {
 		sp().edit().putString("dpad_map", sb.toString()).apply();
 	}
 
+	// ---------------- fast-forward ----------------
+	public static final int[] FF_SPEEDS = {1, 2, 3, 4, 6, 8};
+	public static final String FF = "fastforward";
+
+	/** Botao de fast-forward na tela (padrao: desativado). */
+	public static boolean ffEnabled() {
+		return sp().getBoolean("ff_on", false);
+	}
+
+	public static void setFfEnabled(boolean v) {
+		sp().edit().putBoolean("ff_on", v).apply();
+	}
+
+	/** Velocidade do fast-forward: 1, 2, 3, 4, 6 ou 8 (padrao 2). */
+	public static int ffSpeed() {
+		int s = sp().getInt("ff_speed", 2);
+		for (int k : FF_SPEEDS) {
+			if (k == s) {
+				return s;
+			}
+		}
+		return 2;
+	}
+
+	public static void setFfSpeed(int v) {
+		for (int k : FF_SPEEDS) {
+			if (k == v) {
+				sp().edit().putInt("ff_speed", v).apply();
+				return;
+			}
+		}
+	}
+
 	/** Opacidade da imagem do botao normal: 0 .. 1 (padrao 0.7). */
 	public static float normalOpacity() {
 		return sp().getFloat("op_normal", 0.7f);
@@ -411,6 +444,7 @@ public final class ApexPrefs {
 		l.add(new String[]{ANALOG_BASE, "Analógico (base)"});
 		l.add(new String[]{ANALOG_KNOB, "Analógico (bolinha)"});
 		l.add(new String[]{DPAD, "D-pad (8 direções)"});
+		l.add(new String[]{FF, "Fast-forward"});
 		for (char ch = 'a'; ch <= 'z'; ch++) {
 			l.add(new String[]{LETTER_PREFIX + ch, "Letra " + Character.toUpperCase(ch)});
 		}
@@ -560,8 +594,8 @@ public final class ApexPrefs {
 	}
 	// ---------------- perfil: analogico e D-pad ----------------
 	/** Imagens do analogico e do D-pad que vao junto com o perfil. */
-	private static final String[] PROFILE_IMG_IDS = {ANALOG_BASE, ANALOG_KNOB, DPAD};
-	private static final String[] PROFILE_POS_NAMES = {"analog", "dpad"};
+	private static final String[] PROFILE_IMG_IDS = {ANALOG_BASE, ANALOG_KNOB, DPAD, FF};
+	private static final String[] PROFILE_POS_NAMES = {"analog", "dpad", "ff"};
 
 	/** Valores do analogico e do D-pad (tamanho, opacidade, mapeamento, posicao, tipo) para gravar no perfil. */
 	public static synchronized JSONObject exportExtras() throws JSONException {
@@ -573,6 +607,8 @@ public final class ApexPrefs {
 		o.put("dpad_ligado", dpadEnabled());
 		o.put("dpad_tamanho", dpadScale());
 		o.put("dpad_mapa", sp().getString("dpad_map", ""));
+		o.put("ff_ligado", ffEnabled());
+		o.put("ff_velocidade", ffSpeed());
 		o.put("opacidade_normal", normalOpacity());
 		o.put("opacidade_pressionado", pressedOpacity());
 		JSONObject pos = new JSONObject();
@@ -604,6 +640,8 @@ public final class ApexPrefs {
 		if (o.has("dpad_ligado")) e.putBoolean("dpad_on", o.optBoolean("dpad_ligado"));
 		if (o.has("dpad_tamanho")) e.putFloat("dpad_scale", (float) o.optDouble("dpad_tamanho", 1));
 		if (o.has("dpad_mapa")) e.putString("dpad_map", o.optString("dpad_mapa", ""));
+		if (o.has("ff_ligado")) e.putBoolean("ff_on", o.optBoolean("ff_ligado"));
+		if (o.has("ff_velocidade")) e.putInt("ff_speed", o.optInt("ff_velocidade", 2));
 		if (o.has("opacidade_normal")) e.putFloat("op_normal", (float) o.optDouble("opacidade_normal", 0.7));
 		if (o.has("opacidade_pressionado")) e.putFloat("op_pressed", (float) o.optDouble("opacidade_pressionado", 1));
 		JSONObject pos = o.optJSONObject("posicao");

@@ -126,6 +126,19 @@ public final class VkDialog {
 			relayout(vk);
 		}));
 
+		root.addView(ApexUi.section(a, "Fast-forward (avançar rápido)"));
+		root.addView(ApexUi.text(a, "Mostra um botão na tela: toque para acelerar o jogo e toque de novo " +
+				"para voltar ao normal. Arraste o botão no Modo edição. Jogos instalados antes desta " +
+				"versão só aceleram por completo depois de reinstalados.", 12));
+		root.addView(ApexUi.toggle(a, "Ativar botão fast-forward", ApexPrefs.ffEnabled(), on -> {
+			ApexPrefs.setFfEnabled(on);
+			ffChanged(vk);
+		}));
+		root.addView(ApexUi.button(a, "Velocidade: " + ApexPrefs.ffSpeed() + "x", v -> {
+			holder[0].dismiss();
+			showFfSpeed(a, vk);
+		}));
+
 		root.addView(ApexUi.section(a, "Imagem de cada botão (" + ApexPrefs.gameTypeName() + ")"));
 		root.addView(ApexUi.button(a, "Escolher imagem por botão", v -> {
 			holder[0].dismiss();
@@ -170,6 +183,36 @@ public final class VkDialog {
 				.setPositiveButton(R.string.apex_close, null)
 				.create();
 		holder[0].show();
+	}
+
+	private static void ffChanged(VirtualKeyboard vk) {
+		if (vk != null) {
+			vk.apexFastForwardChanged();
+		}
+	}
+
+	/** Escolhe a velocidade do fast-forward: 1x, 2x, 3x, 4x, 6x ou 8x. */
+	private static void showFfSpeed(Activity a, VirtualKeyboard vk) {
+		int[] speeds = ApexPrefs.FF_SPEEDS;
+		String[] names = new String[speeds.length];
+		int sel = 0;
+		for (int i = 0; i < speeds.length; i++) {
+			names[i] = speeds[i] + "x";
+			if (speeds[i] == ApexPrefs.ffSpeed()) {
+				sel = i;
+			}
+		}
+		new AlertDialog.Builder(a)
+				.setTitle("Velocidade do fast-forward")
+				.setSingleChoiceItems(names, sel, (d, which) -> {
+					ApexPrefs.setFfSpeed(speeds[which]);
+					d.dismiss();
+					ffChanged(vk);
+					show(a);
+				})
+				.setNegativeButton(android.R.string.cancel, (d, w) -> show(a))
+				.setOnCancelListener(d -> show(a))
+				.show();
 	}
 
 	/** Escolhe o tipo de jogo (Padrao, Tiro ou Futebol): troca o conjunto de imagens dos botoes. */

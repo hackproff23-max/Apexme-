@@ -266,11 +266,11 @@ public class Timer {
                             // this is a repeating task,
                             if (task.fixedRate) {
                                 // task is scheduled at fixed rate
-                                task.when = task.when + task.period;
+                                task.when = task.when + javax.microedition.shell.ApexClock.scale(task.period);
                             } else {
                                 // task is scheduled at fixed delay
                                 task.when = System.currentTimeMillis()
-                                        + task.period;
+                                        + javax.microedition.shell.ApexClock.scale(task.period);
                             }
 
                             // insert this task into queue
@@ -565,7 +565,7 @@ public class Timer {
                 throw new IllegalStateException("Timer was canceled");
             }
 
-            long when = delay + System.currentTimeMillis();
+            long when = javax.microedition.shell.ApexClock.scale(delay) + System.currentTimeMillis();
 
             if (when < 0) {
                 throw new IllegalArgumentException("Illegal delay to start the TimerTask: " + when);

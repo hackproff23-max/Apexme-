@@ -665,7 +665,7 @@ public abstract class Canvas extends Displayable {
 	private void limitFps() {
 		if (fpsLimit <= 0) return;
 		try {
-			long millis = (1000 / fpsLimit) - (System.currentTimeMillis() - lastFrameTime);
+			long millis = javax.microedition.shell.ApexClock.scale(1000 / fpsLimit) - (System.currentTimeMillis() - lastFrameTime);
 			if (millis > 0) Thread.sleep(millis);
 		} catch (InterruptedException e) {
 			e.printStackTrace();

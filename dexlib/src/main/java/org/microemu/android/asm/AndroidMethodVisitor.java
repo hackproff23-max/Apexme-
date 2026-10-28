@@ -54,6 +54,12 @@ public class AndroidMethodVisitor extends MethodVisitor {
 
 	@Override
 	public void visitMethodInsn(int opcode, String owner, String name, String desc, boolean itf) {
+		// fast-forward: Object.wait(long) e final, entao qualquer invokevirtual wait(J)V e o de Object
+		if (opcode == INVOKEVIRTUAL && name.equals("wait") && desc.equals("(J)V")) {
+			mv.visitMethodInsn(INVOKESTATIC, "javax/microedition/shell/ApexClock", "waitMillis",
+					"(Ljava/lang/Object;J)V", false);
+			return;
+		}
 		switch (owner) {
 			case "java/lang/Class":
 				if (name.equals("getResourceAsStream")) {
@@ -63,6 +69,10 @@ public class AndroidMethodVisitor extends MethodVisitor {
 				}
 				break;
 			case "java/lang/Thread":
+				if (opcode == INVOKESTATIC && name.equals("sleep") && desc.equals("(J)V")) {
+					mv.visitMethodInsn(INVOKESTATIC, "javax/microedition/shell/ApexClock", "sleep", "(J)V", false);
+					return;
+				}
 				if (name.equals("yield")) {
 					mv.visitLdcInsn(1L);
 					mv.visitMethodInsn(opcode, owner, "sleep", "(J)V", false);
@@ -120,6 +130,10 @@ public class AndroidMethodVisitor extends MethodVisitor {
 				}
 				break;
 			case "java/lang/System":
+				if (opcode == INVOKESTATIC && name.equals("currentTimeMillis") && desc.equals("()J")) {
+					mv.visitMethodInsn(INVOKESTATIC, "javax/microedition/shell/ApexClock", name, desc, false);
+					return;
+				}
 				if (opcode == INVOKESTATIC && name.equals("getProperty")) {
 					mv.visitMethodInsn(opcode, "javax/microedition/shell/MidletSystem", name, desc, itf);
 					return;
