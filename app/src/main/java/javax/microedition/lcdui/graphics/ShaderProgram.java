@@ -64,23 +64,9 @@ public class ShaderProgram {
 			File f = ApexPrefs.userShaderFile(sel.substring(ApexPrefs.SEL_USER.length()));
 			if (f.exists()) {
 				String src = clean(FileUtils.getText(f.getPath()));
-				String vertexCode;
-				String fragmentCode;
-				File mate = findMate(f);
-				if (isCombined(src)) {
-					// arquivo unico (RetroArch): o mesmo codigo compilado como vertex e como fragment
-					vertexCode = prepare(src, "VERTEX");
-					fragmentCode = prepare(src, "FRAGMENT");
-				} else if (mate != null) {
-					// par .vsh/.fsh (.vert/.frag, .vs/.fs) com o mesmo nome
-					String a = clean(FileUtils.getText(mate.getPath()));
-					boolean fIsVertex = isVertexName(f.getName());
-					vertexCode = prepare(fIsVertex ? src : a, "VERTEX");
-					fragmentCode = prepare(fIsVertex ? a : src, "FRAGMENT");
-				} else {
-					vertexCode = ContextHolder.getAssetAsString(VERTEX);
-					fragmentCode = prepare(src, "FRAGMENT");
-				}
+				String[] codes = buildCodes(f, src);
+				String vertexCode = codes[0];
+				String fragmentCode = codes[1];
 				lastError = null;
 				int userProgram = createProgram(vertexCode, fragmentCode);
 				if (userProgram != -1) {
@@ -125,6 +111,74 @@ public class ShaderProgram {
 		glReleaseShaderCompiler();
 		if (program == -1) {
 			throw new RuntimeException("Init shader program error: see log for detail");
+		}
+	}
+
+	private ShaderProgram() {
+		// so para testUserShader
+	}
+
+	/** Monta {vertex, fragment} de um shader importado (arquivo unico, par vertex/fragment ou so fragment). */
+	private static String[] buildCodes(File f, String src) {
+		String vertexCode;
+		String fragmentCode;
+		File mate = findMate(f);
+		if (isCombined(src)) {
+			// arquivo unico (RetroArch): o mesmo codigo compilado como vertex e como fragment
+			vertexCode = prepare(src, "VERTEX");
+			fragmentCode = prepare(src, "FRAGMENT");
+		} else if (mate != null) {
+			// par .vsh/.fsh (.vert/.frag, .vs/.fs) com o mesmo nome
+			String a = clean(FileUtils.getText(mate.getPath()));
+			boolean fIsVertex = isVertexName(f.getName());
+			vertexCode = prepare(fIsVertex ? src : a, "VERTEX");
+			fragmentCode = prepare(fIsVertex ? a : src, "FRAGMENT");
+		} else {
+			vertexCode = ContextHolder.getAssetAsString(VERTEX);
+			fragmentCode = prepare(src, "FRAGMENT");
+		}
+		return new String[]{vertexCode, fragmentCode};
+	}
+
+	/** Acompanha o teste de todos os shaders. Chamado na thread do OpenGL. */
+	public interface TestListener {
+		void onProgress(int done, int total, int bad);
+
+		void onDone(int ok, int bad, boolean cancelled);
+
+		boolean isCancelled();
+	}
+
+	/**
+	 * Compila e liga um shader importado so para ver se funciona (sem usa-lo).
+	 * Precisa rodar na thread do OpenGL. Devolve false se der erro ou se faltar posicao/textura.
+	 */
+	public static boolean testUserShader(String name) {
+		try {
+			File f = ApexPrefs.userShaderFile(name);
+			if (!f.isFile()) {
+				return false;
+			}
+			String[] codes = buildCodes(f, clean(FileUtils.getText(f.getPath())));
+			ShaderProgram p = new ShaderProgram();
+			lastError = null;
+			int prog = p.createProgram(codes[0], codes[1]);
+			if (prog == -1) {
+				return false;
+			}
+			boolean ok = p.aPosition != -1 && p.aTexCoord != -1;
+			int[] count = new int[1];
+			int[] ids = new int[4];
+			glGetAttachedShaders(prog, ids.length, count, 0, ids, 0);
+			glUseProgram(0);
+			glDeleteProgram(prog);
+			for (int i = 0; i < count[0]; i++) {
+				glDeleteShader(ids[i]);
+			}
+			glGetError();
+			return ok;
+		} catch (Throwable t) {
+			return false;
 		}
 	}
 

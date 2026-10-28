@@ -8,6 +8,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog;
 
 import javax.microedition.lcdui.Canvas;
+import javax.microedition.lcdui.graphics.ShaderProgram;
 import android.app.Activity;
 import javax.microedition.shell.MicroActivity;
 
@@ -111,6 +112,7 @@ public final class ShadersDialog {
 		root.addView(ApexUi.row(a, importBtn, selectBtn));
 		root.addView(current);
 		root.addView(ApexUi.button(a, "Baixar shaders do libretro", v -> confirmDownload(a, current)));
+		root.addView(ApexUi.button(a, "Testar todos os shaders", v -> confirmTest(a, current)));
 		root.addView(ApexUi.button(a, "Restaurar shaders com erro", v -> {
 			int n = ApexPrefs.badShaders().size();
 			ApexPrefs.clearBadShaders();
@@ -157,6 +159,76 @@ public final class ShadersDialog {
 				.setPositiveButton(R.string.apex_close, null)
 				.create();
 		dialog.show();
+	}
+
+	private static void confirmTest(Activity a, TextView current) {
+		Canvas c = canvas(a);
+		if (c == null || !c.hasGlRenderer()) {
+			Toast.makeText(a, "Abra um jogo com Modo gráfico = OpenGL para testar os shaders",
+					Toast.LENGTH_LONG).show();
+			return;
+		}
+		int total = ApexPrefs.listUserShaders().length;
+		if (total == 0) {
+			Toast.makeText(a, "Nenhum shader importado", Toast.LENGTH_SHORT).show();
+			return;
+		}
+		new AlertDialog.Builder(a)
+				.setTitle("Testar todos os shaders")
+				.setMessage("Compila os " + total + " shaders neste aparelho, um por um, e esconde da lista " +
+						"os que dão erro. A tela do jogo pode piscar durante o teste. Os escondidos podem " +
+						"voltar em \"Restaurar shaders com erro\".")
+				.setPositiveButton("Testar", (d, w) -> startTest(a, c, current))
+				.setNegativeButton(android.R.string.cancel, null)
+				.show();
+	}
+
+	private static void startTest(Activity a, Canvas c, TextView current) {
+		ApexPrefs.clearBadShaders();
+		String[] names = ApexPrefs.listUserShaders();
+		TextView msg = ApexUi.text(a, "Testando…", 14);
+		int pad = ApexUi.dp(a, 20);
+		msg.setPadding(pad, pad, pad, pad);
+		boolean[] cancel = {false};
+		AlertDialog progress = new AlertDialog.Builder(a)
+				.setTitle("Testando shaders")
+				.setView(msg)
+				.setCancelable(false)
+				.setNegativeButton(android.R.string.cancel, (d, w) -> cancel[0] = true)
+				.create();
+		progress.show();
+		c.testShaders(names, new ShaderProgram.TestListener() {
+			@Override
+			public void onProgress(int done, int total, int bad) {
+				a.runOnUiThread(() -> msg.setText(done + " de " + total + " testados · " + bad + " com erro"));
+			}
+
+			@Override
+			public void onDone(int ok, int bad, boolean cancelled) {
+				a.runOnUiThread(() -> {
+					if (a.isFinishing()) {
+						return;
+					}
+					progress.dismiss();
+					String sel = ApexPrefs.shaderSel();
+					if (sel.startsWith(ApexPrefs.SEL_USER)
+							&& ApexPrefs.badShaders().contains(sel.substring(ApexPrefs.SEL_USER.length()))) {
+						ApexPrefs.setShaderSel(ApexPrefs.SEL_AUTO);
+						apply(a, true);
+					}
+					current.setText("Shader atual: " + selLabel());
+					new AlertDialog.Builder(a).setTitle("Teste dos shaders")
+							.setMessage((cancelled ? "Cancelado. " : "") + ok + " funcionam, " + bad +
+									" com erro (escondidos da lista).")
+							.setPositiveButton(R.string.apex_close, null).show();
+				});
+			}
+
+			@Override
+			public boolean isCancelled() {
+				return cancel[0];
+			}
+		});
 	}
 
 	private static void confirmDownload(Activity a, TextView current) {

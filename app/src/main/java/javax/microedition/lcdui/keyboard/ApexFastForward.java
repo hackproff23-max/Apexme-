@@ -78,6 +78,10 @@ public class ApexFastForward {
 		active = !active;
 		ApexClock.setSpeed(active ? ApexPrefs.ffSpeed() : 1);
 		invalidate();
+		// confirma na tela a velocidade realmente aplicada no relogio do jogo
+		final String msg = "Velocidade do jogo: " + ApexPrefs.ffLabel(ApexClock.speed());
+		javax.microedition.lcdui.ViewHandler.postEvent(() -> android.widget.Toast.makeText(
+				javax.microedition.util.ContextHolder.getActivity(), msg, android.widget.Toast.LENGTH_SHORT).show());
 	}
 
 	public void paint(CanvasWrapper g, boolean opaque) {

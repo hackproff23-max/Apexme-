@@ -194,6 +194,12 @@ public abstract class Canvas extends Displayable {
 		else renderer.updateUniforms();
 	}
 
+	/** Testa todos os shaders importados na thread do OpenGL (o jogo precisa estar rodando em OpenGL). */
+	public void testShaders(String[] names, ShaderProgram.TestListener l) {
+		if (renderer == null) return;
+		renderer.testShaders(names, l);
+	}
+
 	public static void setShaderFilter(ShaderInfo shader) {
 		Canvas.shaderFilter = shader;
 	}
@@ -823,6 +829,35 @@ public abstract class Canvas extends Displayable {
 				applyUniforms();
 				mView.requestRender();
 			});
+		}
+
+		/** Testa os shaders em lotes de 5 para nao travar o desenho do jogo. */
+		void testShaders(final String[] names, final ShaderProgram.TestListener l) {
+			if (!isStarted || mView == null) return;
+			mView.queueEvent(() -> runShaderTest(names, 0, 0, l));
+		}
+
+		private void runShaderTest(final String[] names, int from, int badSoFar, final ShaderProgram.TestListener l) {
+			int[] prev = new int[1];
+			glGetIntegerv(GL_CURRENT_PROGRAM, prev, 0);
+			int end = Math.min(names.length, from + 5);
+			int bad = badSoFar;
+			for (int i = from; i < end; i++) {
+				if (!ShaderProgram.testUserShader(names[i])) {
+					ApexPrefs.markShaderBad(names[i]);
+					bad++;
+				}
+			}
+			glUseProgram(prev[0]);
+			l.onProgress(end, names.length, bad);
+			if (end >= names.length || l.isCancelled()) {
+				l.onDone(end - bad, bad, end < names.length);
+				mView.requestRender();
+				return;
+			}
+			final int next = end;
+			final int nbad = bad;
+			mView.queueEvent(() -> runShaderTest(names, next, nbad, l));
 		}
 
 		/** Recria o programa de shader (troca de shader). */
