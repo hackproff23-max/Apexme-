@@ -82,7 +82,9 @@ public class ShaderProgram {
 					fragmentCode = prepare(src, "FRAGMENT");
 				}
 				lastError = null;
-				if (createProgram(vertexCode, fragmentCode) != -1) {
+				int userProgram = createProgram(vertexCode, fragmentCode);
+				if (userProgram != -1) {
+					applyPragmaDefaults(userProgram, src);
 					glReleaseShaderCompiler();
 					return;
 				}
@@ -125,10 +127,32 @@ public class ShaderProgram {
 	}
 
 	/** Shader de arquivo unico: usa #if defined(VERTEX) / FRAGMENT. */
-	private static boolean isCombined(String src) {
+	public static boolean isCombined(String src) {
 		return src.contains("VERTEX") && src.contains("FRAGMENT")
 				&& java.util.regex.Pattern.compile("#\\s*(if|ifdef|ifndef|elif)[^\\n]*\\b(VERTEX|FRAGMENT)\\b")
 				.matcher(src).find();
+	}
+
+	private static final java.util.regex.Pattern PRAGMA_PARAM = java.util.regex.Pattern.compile(
+			"(?m)^[ \\t]*#pragma\\s+parameter\\s+(\\w+)\\s+\"[^\"]*\"\\s+(-?[0-9]*\\.?[0-9]+(?:[eE][-+]?[0-9]+)?)");
+
+	/**
+	 * Shaders do libretro declaram os parametros em "#pragma parameter NOME "texto" padrao min max passo".
+	 * Quando o shader os recebe como uniform, ninguem os preenche aqui, entao ficariam em 0: aplica o padrao.
+	 * O programa precisa estar em uso (createProgram deixa em uso).
+	 */
+	private static void applyPragmaDefaults(int program, String src) {
+		java.util.regex.Matcher m = PRAGMA_PARAM.matcher(src);
+		while (m.find()) {
+			int loc = glGetUniformLocation(program, m.group(1));
+			if (loc == -1) {
+				continue;
+			}
+			try {
+				glUniform1f(loc, Float.parseFloat(m.group(2)));
+			} catch (NumberFormatException ignored) {
+			}
+		}
 	}
 
 	private static boolean isVertexName(String n) {

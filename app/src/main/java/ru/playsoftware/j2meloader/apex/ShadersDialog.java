@@ -110,6 +110,13 @@ public final class ShadersDialog {
 		});
 		root.addView(ApexUi.row(a, importBtn, selectBtn));
 		root.addView(current);
+		root.addView(ApexUi.button(a, "Baixar shaders do libretro", v -> confirmDownload(a, current)));
+		root.addView(ApexUi.button(a, "Remover shaders do libretro", v -> {
+			int n = LibretroShaders.removeAll();
+			current.setText("Shader atual: " + selLabel());
+			apply(a, true);
+			Toast.makeText(a, n + " shaders removidos", Toast.LENGTH_SHORT).show();
+		}));
 
 		root.addView(ApexUi.section(a, "Controle de cores"));
 		float[] vals = {ApexPrefs.brightness(), ApexPrefs.contrast(),
@@ -145,6 +152,63 @@ public final class ShadersDialog {
 				.setPositiveButton(R.string.apex_close, null)
 				.create();
 		dialog.show();
+	}
+
+	private static void confirmDownload(Activity a, TextView current) {
+		new AlertDialog.Builder(a)
+				.setTitle("Shaders do libretro")
+				.setMessage("Baixa o repositório libretro/glsl-shaders do GitHub (use Wi-Fi) e importa só os " +
+						"shaders compatíveis com o emulador: arquivo único que usa apenas a imagem do jogo. " +
+						"Os que dependem de vários passes ou de imagens extras são ignorados. Cada shader " +
+						"tem a licença do repositório de origem.")
+				.setPositiveButton("Baixar", (d, w) -> startDownload(a, current))
+				.setNegativeButton(android.R.string.cancel, null)
+				.show();
+	}
+
+	private static void startDownload(Activity a, TextView current) {
+		TextView msg = ApexUi.text(a, "Conectando…", 14);
+		int pad = ApexUi.dp(a, 20);
+		msg.setPadding(pad, pad, pad, pad);
+		boolean[] cancel = {false};
+		AlertDialog progress = new AlertDialog.Builder(a)
+				.setTitle("Baixando shaders")
+				.setView(msg)
+				.setCancelable(false)
+				.setNegativeButton(android.R.string.cancel, (d, w) -> cancel[0] = true)
+				.create();
+		progress.show();
+		new Thread(() -> {
+			LibretroShaders.Result r = LibretroShaders.download(new LibretroShaders.Listener() {
+				@Override
+				public void onProgress(int scanned, int imported) {
+					a.runOnUiThread(() -> msg.setText(imported + " importados · " + scanned + " analisados"));
+				}
+
+				@Override
+				public boolean isCancelled() {
+					return cancel[0];
+				}
+			});
+			a.runOnUiThread(() -> {
+				if (a.isFinishing()) {
+					return;
+				}
+				progress.dismiss();
+				current.setText("Shader atual: " + selLabel());
+				String text;
+				if (r.error != null) {
+					text = "Falha no download: " + r.error + "\nImportados antes da falha: " + r.imported;
+				} else if (r.cancelled) {
+					text = "Cancelado. Importados: " + r.imported;
+				} else {
+					text = r.imported + " shaders importados, " + r.skipped + " ignorados (multi-passes ou " +
+							"incompatíveis).\nEscolha em \"Selecionar shader\" (nomes começam com libretro__).";
+				}
+				new AlertDialog.Builder(a).setTitle("Shaders do libretro").setMessage(text)
+						.setPositiveButton(R.string.apex_close, null).show();
+			});
+		}, "ApexLibretroShaders").start();
 	}
 
 	private static void save(Activity a, float[] v) {
