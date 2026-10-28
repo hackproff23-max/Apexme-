@@ -176,6 +176,7 @@ public class MicroLoader {
 			IllegalAccessException, NoSuchMethodException, InvocationTargetException, IOException {
 		if (BuildConfig.FULL_EMULATOR) {
 			File dexSource = new File(appDir, Config.MIDLET_DEX_FILE);
+			ApexClock.scanDex(dexSource);
 			File codeCacheDir = ContextCompat.getCodeCacheDir(context);
 			File dexOptDir = new File(codeCacheDir, Config.DEX_OPT_CACHE_DIR);
 			if (dexOptDir.exists()) {
