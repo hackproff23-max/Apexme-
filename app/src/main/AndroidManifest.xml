@@ -136,6 +136,15 @@
         </activity>
         <activity android:name=".settings.KeyMapperActivity" android:exported="false" />
         <activity
+            android:name=".hex.HexEditorActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".hex.ConverterActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
             android:name=".filepicker.FilteredFilePickerActivity"
             android:exported="false"
             android:theme="@style/FilePickerTheme" />

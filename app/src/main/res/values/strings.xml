@@ -292,4 +292,13 @@
     <string name="apex_converting" translatable="false">Convertendo %1$d/%2$d\n%3$s</string>
     <string name="apex_convert_done" translatable="false">Concluído: %1$d instalado(s), %2$d já existente(s), %3$d com erro</string>
     <string name="apex_folder_scanning" translatable="false">Procurando jogos…</string>
+    <string name="hex_editor" translatable="false">Editor hex</string>
+    <string name="hex_converter" translatable="false">Conversor</string>
+    <string name="hex_save" translatable="false">Salvar</string>
+    <string name="hex_open" translatable="false">Abrir arquivo…</string>
+    <string name="hex_games" translatable="false">Arquivos dos jogos…</string>
+    <string name="hex_save_as" translatable="false">Salvar como…</string>
+    <string name="hex_goto" translatable="false">Ir para…</string>
+    <string name="hex_find" translatable="false">Buscar…</string>
+    <string name="hex_find_next" translatable="false">Buscar próximo</string>
 </resources>

@@ -14,6 +14,14 @@
         android:title="@string/apex_shaders"
         app:showAsAction="always" />
     <item
+        android:id="@+id/action_hex"
+        android:title="@string/hex_editor"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_converter"
+        android:title="@string/hex_converter"
+        app:showAsAction="never" />
+    <item
         android:id="@+id/action_settings"
         android:title="@string/action_settings"
         app:showAsAction="never" />
