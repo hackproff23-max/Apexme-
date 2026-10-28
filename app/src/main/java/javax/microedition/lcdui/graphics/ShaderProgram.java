@@ -51,6 +51,9 @@ public class ShaderProgram {
 	public int uOutputSize;
 	public int uFrameCount;
 	public int uMvp;
+	public int uResolution;
+	public int uTime;
+	private final long startTime = System.nanoTime();
 	/** Ultimo erro de compilacao de um shader importado (para mostrar ao usuario). */
 	static volatile String lastError;
 	private static final float[] IDENTITY = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
@@ -60,16 +63,23 @@ public class ShaderProgram {
 		if (sel.startsWith(ApexPrefs.SEL_USER)) {
 			File f = ApexPrefs.userShaderFile(sel.substring(ApexPrefs.SEL_USER.length()));
 			if (f.exists()) {
-				String src = FileUtils.getText(f.getPath());
+				String src = clean(FileUtils.getText(f.getPath()));
 				String vertexCode;
 				String fragmentCode;
+				File mate = findMate(f);
 				if (isCombined(src)) {
 					// arquivo unico (RetroArch): o mesmo codigo compilado como vertex e como fragment
 					vertexCode = prepare(src, "VERTEX");
 					fragmentCode = prepare(src, "FRAGMENT");
+				} else if (mate != null) {
+					// par .vsh/.fsh (.vert/.frag, .vs/.fs) com o mesmo nome
+					String a = clean(FileUtils.getText(mate.getPath()));
+					boolean fIsVertex = isVertexName(f.getName());
+					vertexCode = prepare(fIsVertex ? src : a, "VERTEX");
+					fragmentCode = prepare(fIsVertex ? a : src, "FRAGMENT");
 				} else {
 					vertexCode = ContextHolder.getAssetAsString(VERTEX);
-					fragmentCode = src;
+					fragmentCode = prepare(src, "FRAGMENT");
 				}
 				lastError = null;
 				if (createProgram(vertexCode, fragmentCode) != -1) {
@@ -121,23 +131,98 @@ public class ShaderProgram {
 				.matcher(src).find();
 	}
 
-	/** Adiciona o define do estagio (e precisao) depois da linha #version, se houver. GLSL ES 2.0 = #version 100. */
+	private static boolean isVertexName(String n) {
+		n = n.toLowerCase(java.util.Locale.ROOT);
+		return n.endsWith(".vsh") || n.endsWith(".vert") || n.endsWith(".vs");
+	}
+
+	/** Procura o arquivo par (vertex <-> fragment) com o mesmo nome base, na mesma pasta. */
+	private static File findMate(File f) {
+		String n = f.getName();
+		int dot = n.lastIndexOf('.');
+		if (dot <= 0) {
+			return null;
+		}
+		String base = n.substring(0, dot);
+		String[] exts = isVertexName(n) ? new String[]{".fsh", ".frag", ".fs", ".glsl"}
+				: new String[]{".vsh", ".vert", ".vs"};
+		if (!isVertexName(n) && !n.toLowerCase(java.util.Locale.ROOT).matches(".*\\.(fsh|frag|fs|glsl|txt|shader)$")) {
+			return null;
+		}
+		for (String e : exts) {
+			File m = new File(f.getParentFile(), base + e);
+			if (m.isFile() && !m.equals(f)) {
+				return m;
+			}
+		}
+		return null;
+	}
+
+	/** Tira BOM, quebras de linha do Windows e caracteres nulos. */
+	private static String clean(String s) {
+		if (s == null) {
+			return "";
+		}
+		if (!s.isEmpty() && s.charAt(0) == '\uFEFF') {
+			s = s.substring(1);
+		}
+		return s.replace("\r\n", "\n").replace('\r', '\n').replace("\u0000", "");
+	}
+
+	/**
+	 * Deixa o shader compilavel no GLES 2.0: define o estagio, remove #version de desktop,
+	 * converte GLSL 130+/300 es para 100, completa a precisao e aceita o formato ShaderToy (mainImage).
+	 */
 	private static String prepare(String src, String stage) {
-		String version = "";
 		String body = src;
-		java.util.regex.Matcher m = java.util.regex.Pattern.compile("(?m)^\\s*#version[^\\n]*\\n").matcher(src);
+		boolean modern = false;
+		java.util.regex.Matcher m = java.util.regex.Pattern.compile("(?m)^[ \\t]*#version[^\n]*\n?").matcher(src);
 		if (m.find()) {
 			String v = m.group().trim();
-			// versoes de desktop (110/120/...) nao compilam no Android: remove; 100 e 300 es ficam
-			if (v.matches("#version\\s+(100|300\\s+es)")) {
-				version = m.group();
-			}
-			body = src.substring(0, m.start()) + src.substring(m.end());
+			// o #version sai: o contexto e GLES 2.0 (100). Versoes novas sao convertidas abaixo
+			modern = !v.matches("#version\\s+(100|110|120)\\s*(es)?.*");
+			body = src.substring(0, m.start()) + "\n" + src.substring(m.end());
 		}
-		StringBuilder sb = new StringBuilder(version);
+		boolean vertex = "VERTEX".equals(stage);
+		if (modern) {
+			body = body.replaceAll("\\btexture(2D|Lod|Proj)?\\s*\\(", "texture2D(");
+			body = body.replaceAll("\\btexelFetch\\s*\\(", "texture2D(");
+			if (vertex) {
+				body = body.replaceAll("(?m)^([ \\t]*)(flat\\s+|smooth\\s+)?in\\s+", "$1attribute ");
+				body = body.replaceAll("(?m)^([ \\t]*)(flat\\s+|smooth\\s+)?out\\s+", "$1varying ");
+			} else {
+				java.util.regex.Matcher o = java.util.regex.Pattern
+						.compile("(?m)^[ \\t]*(layout\\s*\\([^)]*\\)\\s*)?out\\s+(?:(?:lowp|mediump|highp)\\s+)?vec4\\s+(\\w+)\\s*;").matcher(body);
+				if (o.find()) {
+					String name = o.group(2);
+					body = body.substring(0, o.start()) + body.substring(o.end());
+					body = body.replaceAll("\\b" + name + "\\b", "gl_FragColor");
+				}
+				body = body.replaceAll("(?m)^([ \\t]*)(flat\\s+|smooth\\s+)?in\\s+", "$1varying ");
+			}
+		}
+		StringBuilder sb = new StringBuilder();
 		sb.append("#define ").append(stage).append(" 1\n");
-		sb.append("#ifdef GL_ES\nprecision mediump float;\n#endif\n");
-		return sb.append(body).toString();
+		if (!vertex && !body.contains("precision ")) {
+			sb.append("#ifdef GL_ES\nprecision mediump float;\n#endif\n");
+		}
+		boolean toy = !vertex && body.contains("mainImage") && !java.util.regex.Pattern
+				.compile("void\\s+main\\s*\\(").matcher(body).find();
+		sb.append(body);
+		if (toy) {
+			sb.append("\nvarying vec2 v_texcoord0;\nvoid main() {\n")
+					.append("  vec4 c = vec4(0.0);\n  mainImage(c, v_texcoord0 * iResolution.xy);\n")
+					.append("  gl_FragColor = vec4(c.rgb, 1.0);\n}\n");
+			// uniforms do ShaderToy que o arquivo nao declarou
+			String head = "";
+			if (!body.contains("uniform vec3 iResolution")) head += "uniform vec3 iResolution;\n";
+			if (!body.contains("uniform float iTime") && !body.contains("uniform float iGlobalTime")) head += "uniform float iTime;\n";
+			if (!body.contains("uniform sampler2D iChannel0")) head += "uniform sampler2D iChannel0;\n";
+			String all = sb.toString();
+			int at = all.indexOf('\n', all.indexOf("#define")) + 1;
+			return all.substring(0, at) + head + all.substring(at);
+		}
+		return sb.toString();
 	}
 
 	public int createProgram(String vertex, String fragment) {
@@ -164,8 +249,21 @@ public class ShaderProgram {
 		if (aPosition == -1) aPosition = glGetAttribLocation(program, "VertexCoord");
 		aTexCoord = glGetAttribLocation(program, "a_texcoord0");
 		if (aTexCoord == -1) aTexCoord = glGetAttribLocation(program, "TexCoord");
+		if (aPosition == -1) aPosition = glGetAttribLocation(program, "aPosition");
+		if (aPosition == -1) aPosition = glGetAttribLocation(program, "a_pos");
+		if (aPosition == -1) aPosition = glGetAttribLocation(program, "position");
+		if (aTexCoord == -1) aTexCoord = glGetAttribLocation(program, "aTexCoord");
+		if (aTexCoord == -1) aTexCoord = glGetAttribLocation(program, "a_texCoord");
+		if (aTexCoord == -1) aTexCoord = glGetAttribLocation(program, "texcoord");
 		uTextureUnit = glGetUniformLocation(program, "sampler0");
 		if (uTextureUnit == -1) uTextureUnit = glGetUniformLocation(program, "Texture");
+		if (uTextureUnit == -1) uTextureUnit = glGetUniformLocation(program, "iChannel0");
+		if (uTextureUnit == -1) uTextureUnit = glGetUniformLocation(program, "u_texture");
+		if (uTextureUnit == -1) uTextureUnit = glGetUniformLocation(program, "tex");
+		if (uTextureUnit == -1) uTextureUnit = glGetUniformLocation(program, "uTexture");
+		uResolution = glGetUniformLocation(program, "iResolution");
+		uTime = glGetUniformLocation(program, "iTime");
+		if (uTime == -1) uTime = glGetUniformLocation(program, "iGlobalTime");
 		uTextureSize = glGetUniformLocation(program, "TextureSize");
 		uInputSize = glGetUniformLocation(program, "InputSize");
 		uOutputSize = glGetUniformLocation(program, "OutputSize");
@@ -224,5 +322,7 @@ public class ShaderProgram {
 		glUniform2f(uTexelDelta, 1.0f / width, 1.0f / height);
 		glUniform2f(uTextureSize, width, height);
 		glUniform2f(uInputSize, width, height);
+		if (uResolution != -1) glUniform3f(uResolution, width, height, 1f);
+		if (uTime != -1) glUniform1f(uTime, (System.nanoTime() - startTime) / 1e9f);
 	}
 }
