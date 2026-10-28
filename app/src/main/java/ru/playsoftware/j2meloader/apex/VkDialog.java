@@ -134,10 +134,36 @@ public final class VkDialog {
 			ApexPrefs.setFfEnabled(on);
 			ffChanged(vk);
 		}));
-		root.addView(ApexUi.button(a, "Velocidade: " + ApexPrefs.ffSpeed() + "x", v -> {
+		root.addView(ApexUi.button(a, "Velocidade: " + ApexPrefs.ffLabel(ApexPrefs.ffSpeed()), v -> {
 			holder[0].dismiss();
 			showFfSpeed(a, vk);
 		}));
+		root.addView(ApexUi.button(a, "Importar imagem do botão FF", v -> {
+			holder[0].dismiss();
+			ApexUi.pick(a, "image/*", uri -> {
+				boolean ok = ApexPrefs.importButtonImage(a, uri, ApexPrefs.FF, false);
+				Toast.makeText(a, ok ? "Imagem importada" : "Imagem inválida", Toast.LENGTH_SHORT).show();
+				relayout(vk);
+				ffChanged(vk);
+				show(a);
+			});
+		}));
+		root.addView(ApexUi.button(a, "Remover imagem do botão FF", v -> {
+			ApexPrefs.clearButtonImage(ApexPrefs.FF);
+			relayout(vk);
+			ffChanged(vk);
+			Toast.makeText(a, "Imagem removida", Toast.LENGTH_SHORT).show();
+		}));
+		if (vk != null) {
+			root.addView(ApexUi.button(a, "Mover botão FF (Modo edição)", v -> {
+				holder[0].dismiss();
+				ApexPrefs.setFfEnabled(true);
+				ffChanged(vk);
+				if (vk.getLayoutEditMode() == VirtualKeyboard.LAYOUT_EOF) {
+					((MicroActivity) a).apexVkEditStart();
+				}
+			}));
+		}
 
 		root.addView(ApexUi.section(a, "Imagem de cada botão (" + ApexPrefs.gameTypeName() + ")"));
 		root.addView(ApexUi.button(a, "Escolher imagem por botão", v -> {
@@ -191,14 +217,14 @@ public final class VkDialog {
 		}
 	}
 
-	/** Escolhe a velocidade do fast-forward: 1x, 2x, 3x, 4x, 6x ou 8x. */
+	/** Escolhe a velocidade do fast-forward: 1x a 32x. */
 	private static void showFfSpeed(Activity a, VirtualKeyboard vk) {
-		int[] speeds = ApexPrefs.FF_SPEEDS;
+		float[] speeds = ApexPrefs.FF_SPEEDS;
 		String[] names = new String[speeds.length];
 		int sel = 0;
 		for (int i = 0; i < speeds.length; i++) {
-			names[i] = speeds[i] + "x";
-			if (speeds[i] == ApexPrefs.ffSpeed()) {
+			names[i] = ApexPrefs.ffLabel(speeds[i]);
+			if (Math.abs(speeds[i] - ApexPrefs.ffSpeed()) < 0.001f) {
 				sel = i;
 			}
 		}

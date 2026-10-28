@@ -74,7 +74,7 @@ public final class ShadersDialog {
 			Toast.makeText(a, "Shader importado: " + name, Toast.LENGTH_SHORT).show();
 		}));
 		View selectBtn = ApexUi.button(a, "Selecionar shader", v -> {
-			String[] user = ApexPrefs.listUserShaders();
+			String[] user = ApexPrefs.listWorkingShaders();
 			String[] names = new String[user.length + 2];
 			names[0] = "Automático (do perfil)";
 			names[1] = "Apex (LCD + cores)";
@@ -111,6 +111,11 @@ public final class ShadersDialog {
 		root.addView(ApexUi.row(a, importBtn, selectBtn));
 		root.addView(current);
 		root.addView(ApexUi.button(a, "Baixar shaders do libretro", v -> confirmDownload(a, current)));
+		root.addView(ApexUi.button(a, "Restaurar shaders com erro", v -> {
+			int n = ApexPrefs.badShaders().size();
+			ApexPrefs.clearBadShaders();
+			Toast.makeText(a, n + " shaders voltaram para a lista", Toast.LENGTH_SHORT).show();
+		}));
 		root.addView(ApexUi.button(a, "Remover shaders do libretro", v -> {
 			int n = LibretroShaders.removeAll();
 			current.setText("Shader atual: " + selLabel());

@@ -84,7 +84,7 @@ public class ApexFastForward {
 		if (!enabled() || screen.isEmpty()) {
 			return;
 		}
-		String label = ">> " + ApexPrefs.ffSpeed() + "x";
+		String label = ">> " + ApexPrefs.ffLabel(ApexPrefs.ffSpeed());
 		ApexKeyPaint.draw(g, rect, ApexPrefs.FF, label, active || pointer >= 0, opaque, settings, 0.8f);
 	}
 

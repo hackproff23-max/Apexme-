@@ -89,8 +89,10 @@ public class ShaderProgram {
 					return;
 				}
 				final String err = lastError;
+				ApexPrefs.markShaderBad(sel.substring(ApexPrefs.SEL_USER.length()));
+				ApexPrefs.setShaderSel(ApexPrefs.SEL_AUTO);
 				ViewHandler.postEvent(() -> Toast.makeText(ContextHolder.getActivity(),
-						"Erro no shader importado - usando o padrao!"
+						"Shader incompativel (removido da lista) - usando o padrao!"
 								+ (err == null ? "" : "\n" + (err.length() > 160 ? err.substring(0, 160) : err)),
 						Toast.LENGTH_LONG).show());
 			}
@@ -252,6 +254,9 @@ public class ShaderProgram {
 	public int createProgram(String vertex, String fragment) {
 		int vertexId = loadShader(GL_VERTEX_SHADER, vertex);
 		int fragmentId = loadShader(GL_FRAGMENT_SHADER, fragment);
+		if (vertexId == -1 || fragmentId == -1) {
+			return -1;
+		}
 
 		int program = glCreateProgram();     // create empty OpenGL ShaderProgram
 		glAttachShader(program, vertexId);   // add the vertex shader to program
@@ -263,6 +268,11 @@ public class ShaderProgram {
 		if (status[0] == 0) {
 			String s = glGetProgramInfoLog(program);
 			Log.e(TAG, "createProgram: " + s);
+			lastError = s;
+			glDeleteShader(vertexId);
+			glDeleteShader(fragmentId);
+			glDeleteProgram(program);
+			return -1;
 		}
 		int error = glGetError();
 		if (error != GL_NO_ERROR) {

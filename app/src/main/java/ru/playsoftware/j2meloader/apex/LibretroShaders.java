@@ -46,9 +46,40 @@ public final class LibretroShaders {
 	private LibretroShaders() {
 	}
 
+	/** Recursos que o GLES 2.0 (J2ME) nao tem ou que exigem varios passes. */
+	private static final Pattern UNSUPPORTED = Pattern.compile(
+			"\\b(texelFetch|textureSize|textureGrad|textureOffset|uint|uvec[234]|ivec[234]|imageLoad|imageStore|"
+					+ "gl_FragData|gl_VertexID|gl_InstanceID|PassPrev\\d*Texture|OrigTexture|PrevTexture|"
+					+ "Original|OriginalHistory\\d*|PassOutput\\d*|FeedbackTexture)\\b|layout\\s*\\(|#\\s*extension\\s+\\w+\\s*:\\s*require");
+	private static final Pattern HEADER_BAD = Pattern.compile(
+			"(?m)^\\s*(#version\\s+(?:[3-9]\\d\\d|1[3-9]\\d)(?!\\s*es)(?:\\s+core)?\\s*$|#pragma\\s+(format|alias)\\b)");
+
+	/**
+	 * Le o cabecalho (primeiras linhas: #version, #pragma) e o final do arquivo para descartar cedo o que
+	 * o J2ME nao roda: GLSL desktop 130+, formatos de framebuffer (multi-pass), main sem fechar etc.
+	 */
+	static boolean quickCheck(String src) {
+		String[] lines = src.split("\n");
+		StringBuilder head = new StringBuilder();
+		for (int i = 0; i < lines.length && i < 40; i++) {
+			head.append(lines[i]).append('\n');
+		}
+		if (HEADER_BAD.matcher(head).find()) {
+			return false;
+		}
+		// ultima linha com conteudo: arquivo truncado (chaves desbalanceadas) nao compila
+		int open = 0;
+		for (int i = 0; i < src.length(); i++) {
+			char ch = src.charAt(i);
+			if (ch == '{') open++;
+			else if (ch == '}') open--;
+		}
+		return open == 0 && !UNSUPPORTED.matcher(src).find();
+	}
+
 	/** True se o shader e de arquivo unico e usa so a textura do jogo (sampler "Texture"). */
 	static boolean isCompatible(String src) {
-		if (src.length() > MAX_FILE || !MAIN.matcher(src).find() || !ShaderProgram.isCombined(src)) {
+		if (!quickCheck(src) || src.length() > MAX_FILE || !MAIN.matcher(src).find() || !ShaderProgram.isCombined(src)) {
 			return false;
 		}
 		Matcher m = SAMPLER.matcher(src);

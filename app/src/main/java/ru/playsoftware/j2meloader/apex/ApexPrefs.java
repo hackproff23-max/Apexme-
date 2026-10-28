@@ -133,6 +133,35 @@ public final class ApexPrefs {
 		return names;
 	}
 
+
+	/** Shaders que deram erro de compilacao/link neste aparelho (guardados para nao oferecer de novo). */
+	public static synchronized java.util.Set<String> badShaders() {
+		return new HashSet<>(sp().getStringSet("bad_shaders", new HashSet<String>()));
+	}
+
+	public static synchronized void markShaderBad(String name) {
+		java.util.Set<String> s = badShaders();
+		if (s.add(name)) {
+			sp().edit().putStringSet("bad_shaders", s).apply();
+		}
+	}
+
+	public static synchronized void clearBadShaders() {
+		sp().edit().remove("bad_shaders").apply();
+	}
+
+	/** Lista so os shaders que ainda nao falharam. */
+	public static String[] listWorkingShaders() {
+		java.util.Set<String> bad = badShaders();
+		ArrayList<String> ok = new ArrayList<>();
+		for (String n : listUserShaders()) {
+			if (!bad.contains(n)) {
+				ok.add(n);
+			}
+		}
+		return ok.toArray(new String[0]);
+	}
+
 	/** Copia um fragment shader (.fsh/.frag/.glsl/.txt) para a pasta do app. Retorna o nome salvo. */
 	public static String importShader(Context c, Uri uri) {
 		String name = displayName(c, uri);
@@ -227,7 +256,7 @@ public final class ApexPrefs {
 	}
 
 	// ---------------- fast-forward ----------------
-	public static final int[] FF_SPEEDS = {1, 2, 3, 4, 6, 8};
+	public static final float[] FF_SPEEDS = {1f, 1.25f, 1.5f, 2f, 3f, 4f, 6f, 8f, 16f, 32f};
 	public static final String FF = "fastforward";
 
 	/** Botao de fast-forward na tela (padrao: desativado). */
@@ -239,24 +268,29 @@ public final class ApexPrefs {
 		sp().edit().putBoolean("ff_on", v).apply();
 	}
 
-	/** Velocidade do fast-forward: 1, 2, 3, 4, 6 ou 8 (padrao 2). */
-	public static int ffSpeed() {
-		int s = sp().getInt("ff_speed", 2);
-		for (int k : FF_SPEEDS) {
-			if (k == s) {
-				return s;
+	/** Velocidade do fast-forward: 1, 1.25, 1.5, 2, 3, 4, 6, 8, 16 ou 32 (padrao 2). */
+	public static float ffSpeed() {
+		float s = sp().getFloat("ff_speed_f", sp().getInt("ff_speed", 2));
+		for (float k : FF_SPEEDS) {
+			if (Math.abs(k - s) < 0.001f) {
+				return k;
 			}
 		}
-		return 2;
+		return 2f;
 	}
 
-	public static void setFfSpeed(int v) {
-		for (int k : FF_SPEEDS) {
-			if (k == v) {
-				sp().edit().putInt("ff_speed", v).apply();
+	public static void setFfSpeed(float v) {
+		for (float k : FF_SPEEDS) {
+			if (Math.abs(k - v) < 0.001f) {
+				sp().edit().putFloat("ff_speed_f", k).apply();
 				return;
 			}
 		}
+	}
+
+	/** Texto da velocidade: "2x", "1.25x", "1.5x". */
+	public static String ffLabel(float v) {
+		return (v == Math.floor(v) ? String.valueOf((int) v) : String.valueOf(v)) + "x";
 	}
 
 	/** Opacidade da imagem do botao normal: 0 .. 1 (padrao 0.7). */
@@ -608,7 +642,7 @@ public final class ApexPrefs {
 		o.put("dpad_tamanho", dpadScale());
 		o.put("dpad_mapa", sp().getString("dpad_map", ""));
 		o.put("ff_ligado", ffEnabled());
-		o.put("ff_velocidade", ffSpeed());
+		o.put("ff_velocidade", (double) ffSpeed());
 		o.put("opacidade_normal", normalOpacity());
 		o.put("opacidade_pressionado", pressedOpacity());
 		JSONObject pos = new JSONObject();
@@ -641,7 +675,7 @@ public final class ApexPrefs {
 		if (o.has("dpad_tamanho")) e.putFloat("dpad_scale", (float) o.optDouble("dpad_tamanho", 1));
 		if (o.has("dpad_mapa")) e.putString("dpad_map", o.optString("dpad_mapa", ""));
 		if (o.has("ff_ligado")) e.putBoolean("ff_on", o.optBoolean("ff_ligado"));
-		if (o.has("ff_velocidade")) e.putInt("ff_speed", o.optInt("ff_velocidade", 2));
+		if (o.has("ff_velocidade")) e.putFloat("ff_speed_f", (float) o.optDouble("ff_velocidade", 2));
 		if (o.has("opacidade_normal")) e.putFloat("op_normal", (float) o.optDouble("opacidade_normal", 0.7));
 		if (o.has("opacidade_pressionado")) e.putFloat("op_pressed", (float) o.optDouble("opacidade_pressionado", 1));
 		JSONObject pos = o.optJSONObject("posicao");

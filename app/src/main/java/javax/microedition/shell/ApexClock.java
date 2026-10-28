@@ -9,9 +9,9 @@ public final class ApexClock {
 	private static final class State {
 		final long realBase;
 		final long virtualBase;
-		final int mult;
+		final float mult;
 
-		State(long realBase, long virtualBase, int mult) {
+		State(long realBase, long virtualBase, float mult) {
 			this.realBase = realBase;
 			this.virtualBase = virtualBase;
 			this.mult = mult;
@@ -25,62 +25,62 @@ public final class ApexClock {
 
 	private static State initial() {
 		long now = System.currentTimeMillis();
-		return new State(now, now, 1);
+		return new State(now, now, 1f);
 	}
 
 	/** Muda a velocidade (1 = normal). O tempo virtual continua de onde estava. */
-	public static synchronized void setSpeed(int mult) {
-		if (mult < 1) {
-			mult = 1;
+	public static synchronized void setSpeed(float mult) {
+		if (mult < 1f) {
+			mult = 1f;
 		}
 		State s = state;
 		if (s.mult == mult) {
 			return;
 		}
 		long real = System.currentTimeMillis();
-		state = new State(real, s.virtualBase + (real - s.realBase) * s.mult, mult);
+		state = new State(real, s.virtualBase + (long) ((real - s.realBase) * (double) s.mult), mult);
 	}
 
-	public static int speed() {
+	public static float speed() {
 		return state.mult;
 	}
 
 	/** Hora que o jogo enxerga (acelerada). */
 	public static long currentTimeMillis() {
 		State s = state;
-		return s.virtualBase + (System.currentTimeMillis() - s.realBase) * s.mult;
+		return s.virtualBase + (long) ((System.currentTimeMillis() - s.realBase) * (double) s.mult);
 	}
 
 	/** Encurta uma espera do jogo pela velocidade atual (minimo 1 ms para esperas positivas). */
 	public static long scale(long ms) {
-		int m = state.mult;
-		if (m <= 1 || ms <= 0) {
+		float m = state.mult;
+		if (m <= 1f || ms <= 0) {
 			return ms;
 		}
-		return Math.max(1L, ms / m);
+		return Math.max(1L, (long) (ms / m));
 	}
 
 	public static void sleep(long ms) throws InterruptedException {
-		int m = state.mult;
-		if (m <= 1 || ms <= 0) {
+		float m = state.mult;
+		if (m <= 1f || ms <= 0) {
 			Thread.sleep(ms);
 		} else if (ms >= 1_000_000_000L) {
-			Thread.sleep(ms / m);
+			Thread.sleep((long) (ms / m));
 		} else {
-			long nanos = ms * 1_000_000L / m;
+			long nanos = (long) (ms * 1_000_000.0 / m);
 			Thread.sleep(nanos / 1_000_000L, (int) (nanos % 1_000_000L));
 		}
 	}
 
 	/** Object.wait(ms) com a espera encurtada. Precisa ser chamado com o monitor do objeto, como o original. */
 	public static void waitMillis(Object o, long ms) throws InterruptedException {
-		int m = state.mult;
-		if (m <= 1 || ms <= 0) {
+		float m = state.mult;
+		if (m <= 1f || ms <= 0) {
 			o.wait(ms);
 		} else if (ms >= 1_000_000_000L) {
-			o.wait(ms / m);
+			o.wait((long) (ms / m));
 		} else {
-			long nanos = ms * 1_000_000L / m;
+			long nanos = (long) (ms * 1_000_000.0 / m);
 			o.wait(nanos / 1_000_000L, (int) (nanos % 1_000_000L));
 		}
 	}
