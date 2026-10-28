@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.Typeface;
@@ -37,6 +38,22 @@ public final class ApexTheme {
 	/** Espessura do contorno em porcentagem (0 = sem contorno, 100 = padrao). */
 	public static final String K_OUTLINE_WIDTH = "apex_outline_width";
 	public static final int DEF_OUTLINE_WIDTH = 100;
+	/** Tamanho do texto em porcentagem (100 = padrao). */
+	public static final String K_TEXT_SIZE = "apex_text_size";
+	public static final int DEF_TEXT_SIZE = 100;
+	public static final int MIN_TEXT_SIZE = 50;
+	public static final int MAX_TEXT_SIZE = 200;
+	/** Sombra do texto: cor, opacidade (%), desfoque (dp) e deslocamento X/Y (dp). */
+	public static final String K_SHADOW_COLOR = "apex_shadow_color";
+	public static final String K_SHADOW_ALPHA = "apex_shadow_alpha";
+	public static final String K_SHADOW_BLUR = "apex_shadow_blur";
+	public static final String K_SHADOW_DX = "apex_shadow_dx";
+	public static final String K_SHADOW_DY = "apex_shadow_dy";
+	public static final int DEF_SHADOW_COLOR = 0xFF000000;
+	public static final int DEF_SHADOW_ALPHA = 60;
+	public static final int DEF_SHADOW_BLUR = 4;
+	public static final int DEF_SHADOW_DX = 0;
+	public static final int DEF_SHADOW_DY = 2;
 	private static final String K_APP_BG = "apex_app_bg_file";
 	private static final String K_WIN_BG = "apex_window_bg_file";
 	private static final String K_FONT = "apex_font_file";
@@ -47,7 +64,8 @@ public final class ApexTheme {
 	public static final int DEF_PRESSED = 0x66F2A900;
 
 	private static final String SETTINGS_FILE = "tema.json";
-	private static final String[] COLOR_KEYS = {K_TEXT, K_OUTLINE, K_BG, K_PRESSED, K_WINDOW, K_OUTLINE_WIDTH};
+	private static final String[] COLOR_KEYS = {K_TEXT, K_OUTLINE, K_BG, K_PRESSED, K_WINDOW, K_OUTLINE_WIDTH,
+			K_TEXT_SIZE, K_SHADOW_COLOR, K_SHADOW_ALPHA, K_SHADOW_BLUR, K_SHADOW_DX, K_SHADOW_DY};
 	private static final String[] FILE_KEYS = {K_APP_BG, K_WIN_BG, K_FONT};
 
 	private static Bitmap appBitmap;
@@ -83,17 +101,69 @@ public final class ApexTheme {
 		syncToFile(c);
 	}
 
+	// valores calculados (cache invalidado a cada mudanca de tema)
 	private static float scaleCache = 1f;
+	private static float textScaleCache = 1f;
+	private static boolean shadowOn;
+	private static float shadowRadius;
+	private static float shadowDx;
+	private static float shadowDy;
+	private static int shadowColor;
 	private static int scaleVersion = -1;
+
+	/** Recalcula o cache se o tema mudou. Chamar dentro de synchronized (ApexTheme.class). */
+	private static void refreshCache(Context c) {
+		if (scaleVersion == version) {
+			return;
+		}
+		float d = c.getResources().getDisplayMetrics().density;
+		scaleCache = Math.max(0, getColor(c, K_OUTLINE_WIDTH, DEF_OUTLINE_WIDTH)) / 100f;
+		int size = getColor(c, K_TEXT_SIZE, DEF_TEXT_SIZE);
+		textScaleCache = Math.max(MIN_TEXT_SIZE, Math.min(MAX_TEXT_SIZE, size)) / 100f;
+		int color = getColor(c, K_SHADOW_COLOR, DEF_SHADOW_COLOR);
+		int opacity = Math.max(0, Math.min(100, getColor(c, K_SHADOW_ALPHA, DEF_SHADOW_ALPHA)));
+		int alpha = Math.round(Color.alpha(color) * opacity / 100f);
+		shadowColor = Color.argb(alpha, Color.red(color), Color.green(color), Color.blue(color));
+		shadowOn = alpha > 0;
+		// raio 0 desligaria a sombra no Paint, entao o minimo e bem pequeno (sombra "dura")
+		shadowRadius = Math.max(0.01f, Math.max(0, getColor(c, K_SHADOW_BLUR, DEF_SHADOW_BLUR)) * d);
+		shadowDx = getColor(c, K_SHADOW_DX, DEF_SHADOW_DX) * d;
+		shadowDy = getColor(c, K_SHADOW_DY, DEF_SHADOW_DY) * d;
+		scaleVersion = version;
+	}
 
 	/** Fator da espessura do contorno (1 = padrao, 0 = sem contorno). */
 	public static float outlineScale(Context c) {
 		synchronized (ApexTheme.class) {
-			if (scaleVersion != version) {
-				scaleCache = Math.max(0, getColor(c, K_OUTLINE_WIDTH, DEF_OUTLINE_WIDTH)) / 100f;
-				scaleVersion = version;
-			}
+			refreshCache(c);
 			return scaleCache;
+		}
+	}
+
+	/** Fator do tamanho do texto (1 = padrao). */
+	public static float textScale(Context c) {
+		synchronized (ApexTheme.class) {
+			refreshCache(c);
+			return textScaleCache;
+		}
+	}
+
+	/** Liga a sombra no Paint do texto (desenho do app). Devolve false se a sombra estiver desligada. */
+	public static boolean applyShadow(Context c, Paint paint) {
+		synchronized (ApexTheme.class) {
+			refreshCache(c);
+			if (!shadowOn) {
+				return false;
+			}
+			paint.setShadowLayer(shadowRadius, shadowDx, shadowDy, shadowColor);
+			return true;
+		}
+	}
+
+	public static boolean shadowEnabled(Context c) {
+		synchronized (ApexTheme.class) {
+			refreshCache(c);
+			return shadowOn;
 		}
 	}
 
@@ -168,6 +238,51 @@ public final class ApexTheme {
 		}
 	}
 
+	private static final java.util.Map<android.widget.TextView, float[]> SIZES =
+			new java.util.WeakHashMap<>();
+
+	/** Textos dentro do jogo (MicroActivity) nao mudam de tamanho: o layout do midlet depende dele. */
+	private static boolean inMidlet(Context c) {
+		while (c instanceof android.content.ContextWrapper) {
+			if (c instanceof javax.microedition.shell.MicroActivity) {
+				return true;
+			}
+			c = ((android.content.ContextWrapper) c).getBaseContext();
+		}
+		return false;
+	}
+
+	/**
+	 * Aplica o tamanho de texto escolhido nas configuracoes. Guarda o tamanho original de cada texto
+	 * para que a escala nunca se acumule (nem quando o app chama isto a cada layout).
+	 */
+	public static void applyTextSize(android.widget.TextView tv) {
+		Context c = tv.getContext();
+		if (inMidlet(c)) {
+			return;
+		}
+		if (android.os.Build.VERSION.SDK_INT >= 26
+				&& tv.getAutoSizeTextType() != android.widget.TextView.AUTO_SIZE_TEXT_TYPE_NONE) {
+			return;
+		}
+		float scale = textScale(c);
+		float cur = tv.getTextSize();
+		float[] s = SIZES.get(tv);
+		if (s == null) {
+			s = new float[]{cur, cur};
+			SIZES.put(tv, s);
+		} else if (Math.abs(cur - s[1]) > 0.01f) {
+			s[0] = cur; // alguem mudou o tamanho: esse passa a ser o original
+		}
+		float target = s[0] * scale;
+		if (Math.abs(cur - target) > 0.01f) {
+			tv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, target);
+			s[1] = tv.getTextSize();
+		} else {
+			s[1] = cur;
+		}
+	}
+
 	private static final java.util.Map<android.widget.TextView, Boolean> OUTLINED =
 			new java.util.WeakHashMap<>();
 
@@ -207,6 +322,7 @@ public final class ApexTheme {
 		if (v instanceof android.widget.TextView) {
 			android.widget.TextView tv = (android.widget.TextView) v;
 			applyFont(tv);
+			applyTextSize(tv);
 			applyOutline(tv);
 		}
 		if (v instanceof android.view.ViewGroup) {
@@ -365,7 +481,9 @@ public final class ApexTheme {
 		clear(c, TARGET_APP_BG);
 		clear(c, TARGET_WINDOW_BG);
 		clear(c, TARGET_FONT);
-		prefs(c).edit().remove(K_TEXT).remove(K_OUTLINE).remove(K_BG).remove(K_WINDOW).remove(K_PRESSED).remove(K_OUTLINE_WIDTH).apply();
+		prefs(c).edit().remove(K_TEXT).remove(K_OUTLINE).remove(K_BG).remove(K_WINDOW).remove(K_PRESSED).remove(K_OUTLINE_WIDTH)
+				.remove(K_TEXT_SIZE).remove(K_SHADOW_COLOR).remove(K_SHADOW_ALPHA).remove(K_SHADOW_BLUR)
+				.remove(K_SHADOW_DX).remove(K_SHADOW_DY).apply();
 		invalidate();
 		syncToFile(c);
 	}

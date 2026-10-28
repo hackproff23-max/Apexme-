@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Typeface;
+import android.os.Build;
 import android.text.Layout;
 import android.text.TextPaint;
 import android.util.AttributeSet;
@@ -62,25 +63,50 @@ public class OutlinedTextView extends AppCompatTextView {
 		if (layout == null) {
 			return;
 		}
-		float scale = ApexTheme.outlineScale(tv.getContext());
-		if (scale <= 0.001f) {
+		Context c = tv.getContext();
+		float scale = ApexTheme.outlineScale(c);
+		boolean outline = scale > 0.001f;
+		boolean shadow = ApexTheme.shadowEnabled(c);
+		if (!outline && !shadow) {
 			return;
 		}
 		TextPaint paint = tv.getPaint();
 		int save = canvas.save();
 		canvas.translate(tv.getCompoundPaddingLeft(), tv.getExtendedPaddingTop() + verticalOffset(tv, layout));
-		paint.setStyle(Paint.Style.STROKE);
 		paint.setStrokeJoin(Paint.Join.ROUND);
-		paint.setStrokeWidth(Math.max(tv.getResources().getDisplayMetrics().density, tv.getTextSize() * 0.14f) * scale);
-		paint.setColor(outlineColor);
+		if (shadow) {
+			// a sombra sai so desta primeira passada (por baixo do contorno e do preenchimento)
+			ApexTheme.applyShadow(c, paint);
+		}
+		if (outline) {
+			paint.setStyle(Paint.Style.STROKE);
+			paint.setStrokeWidth(Math.max(tv.getResources().getDisplayMetrics().density, tv.getTextSize() * 0.14f) * scale);
+			paint.setColor(outlineColor);
+		} else {
+			paint.setStyle(Paint.Style.FILL);
+			paint.setStrokeWidth(0f);
+			paint.setColor(tv.getCurrentTextColor());
+		}
 		layout.draw(canvas);
+		if (shadow) {
+			restoreShadow(tv, paint);
+		}
 		paint.setStyle(Paint.Style.FILL);
 		paint.setStrokeWidth(0f);
-		if (fill) {
+		if (fill && outline) {
 			paint.setColor(tv.getCurrentTextColor());
 			layout.draw(canvas);
 		}
 		canvas.restoreToCount(save);
+	}
+
+	/** Volta a sombra propria do TextView (se tiver uma); senao remove. */
+	private static void restoreShadow(TextView tv, TextPaint paint) {
+		if (Build.VERSION.SDK_INT >= 26 && tv.getShadowRadius() > 0f) {
+			paint.setShadowLayer(tv.getShadowRadius(), tv.getShadowDx(), tv.getShadowDy(), tv.getShadowColor());
+		} else {
+			paint.clearShadowLayer();
+		}
 	}
 
 	/** Mesmo deslocamento vertical que o TextView usa ao centralizar/alinhar embaixo. */

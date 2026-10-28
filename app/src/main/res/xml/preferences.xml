@@ -32,6 +32,58 @@
         android:title="@string/apex_outline_width"
         app:showSeekBarValue="true"
         app:updatesContinuously="true" />
+    <SeekBarPreference
+        android:key="apex_text_size"
+        android:icon="@drawable/ic_apex_colors"
+        android:max="200"
+        android:defaultValue="100"
+        android:summary="@string/apex_text_size_hint"
+        android:title="@string/apex_text_size"
+        app:min="50"
+        app:showSeekBarValue="true"
+        app:updatesContinuously="false" />
+    <ru.playsoftware.j2meloader.settings.ColorPreference
+        android:key="pref_color_shadow"
+        android:icon="@drawable/ic_apex_colors"
+        android:title="@string/apex_shadow_color" />
+    <SeekBarPreference
+        android:key="apex_shadow_alpha"
+        android:icon="@drawable/ic_apex_colors"
+        android:max="100"
+        android:defaultValue="60"
+        android:summary="@string/apex_shadow_alpha_hint"
+        android:title="@string/apex_shadow_alpha"
+        app:showSeekBarValue="true"
+        app:updatesContinuously="true" />
+    <SeekBarPreference
+        android:key="apex_shadow_blur"
+        android:icon="@drawable/ic_apex_colors"
+        android:max="30"
+        android:defaultValue="4"
+        android:summary="@string/apex_shadow_blur_hint"
+        android:title="@string/apex_shadow_blur"
+        app:showSeekBarValue="true"
+        app:updatesContinuously="true" />
+    <SeekBarPreference
+        android:key="apex_shadow_dx"
+        android:icon="@drawable/ic_apex_colors"
+        android:max="20"
+        android:defaultValue="0"
+        android:summary="@string/apex_shadow_dx_hint"
+        android:title="@string/apex_shadow_dx"
+        app:min="-20"
+        app:showSeekBarValue="true"
+        app:updatesContinuously="true" />
+    <SeekBarPreference
+        android:key="apex_shadow_dy"
+        android:icon="@drawable/ic_apex_colors"
+        android:max="20"
+        android:defaultValue="2"
+        android:summary="@string/apex_shadow_dy_hint"
+        android:title="@string/apex_shadow_dy"
+        app:min="-20"
+        app:showSeekBarValue="true"
+        app:updatesContinuously="true" />
     <Preference
         android:key="pref_default_settings"
         android:icon="@drawable/ic_setting_default"

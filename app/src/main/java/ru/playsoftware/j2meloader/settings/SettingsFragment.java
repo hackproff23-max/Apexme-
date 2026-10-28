@@ -74,12 +74,16 @@ public class SettingsFragment extends PreferenceFragmentCompat {
 		((ColorPreference) findPreference("pref_color_bg")).setup(ApexTheme.K_BG, ApexTheme.DEF_BG, refresh);
 		((ColorPreference) findPreference("pref_color_window")).setup(ApexTheme.K_WINDOW, ApexTheme.DEF_BG, refresh);
 		((ColorPreference) findPreference("pref_color_pressed")).setup(ApexTheme.K_PRESSED, ApexTheme.DEF_PRESSED, refresh);
-		androidx.preference.Preference widthPref = findPreference(ApexTheme.K_OUTLINE_WIDTH);
-		widthPref.setOnPreferenceChangeListener((p, value) -> {
-			ApexTheme.setColor(requireContext(), ApexTheme.K_OUTLINE_WIDTH, (Integer) value);
-			refresh.run();
-			return true;
-		});
+		((ColorPreference) findPreference("pref_color_shadow")).setup(ApexTheme.K_SHADOW_COLOR, ApexTheme.DEF_SHADOW_COLOR, refresh);
+		for (String key : new String[]{ApexTheme.K_OUTLINE_WIDTH, ApexTheme.K_TEXT_SIZE, ApexTheme.K_SHADOW_ALPHA,
+				ApexTheme.K_SHADOW_BLUR, ApexTheme.K_SHADOW_DX, ApexTheme.K_SHADOW_DY}) {
+			androidx.preference.Preference seek = findPreference(key);
+			seek.setOnPreferenceChangeListener((p, value) -> {
+				ApexTheme.setColor(requireContext(), key, (Integer) value);
+				refresh.run();
+				return true;
+			});
+		}
 		findPreference("pref_reset_theme").setOnPreferenceClickListener(p -> {
 			ApexTheme.resetAll(requireContext());
 			requireActivity().recreate();

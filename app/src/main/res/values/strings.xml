@@ -303,5 +303,16 @@
     <string name="hex_find_next" translatable="false">Buscar próximo</string>
     <string name="apex_outline_width" translatable="false">Espessura do contorno</string>
     <string name="apex_outline_width_hint" translatable="false">0 = sem contorno · 100 = padrão · até 300</string>
+    <string name="apex_text_size" translatable="false">Tamanho do texto</string>
+    <string name="apex_text_size_hint" translatable="false">100 = padrão · 50 a 200 (%) · vale para todo o app</string>
+    <string name="apex_shadow_color" translatable="false">Cor da sombra</string>
+    <string name="apex_shadow_alpha" translatable="false">Intensidade da sombra</string>
+    <string name="apex_shadow_alpha_hint" translatable="false">0 = sem sombra · 100 = sombra total</string>
+    <string name="apex_shadow_blur" translatable="false">Desfoque da sombra</string>
+    <string name="apex_shadow_blur_hint" translatable="false">0 = sombra nítida · quanto maior, mais borrada</string>
+    <string name="apex_shadow_dx" translatable="false">Sombra: horizontal</string>
+    <string name="apex_shadow_dx_hint" translatable="false">Negativo = esquerda · positivo = direita</string>
+    <string name="apex_shadow_dy" translatable="false">Sombra: vertical</string>
+    <string name="apex_shadow_dy_hint" translatable="false">Negativo = para cima · positivo = para baixo</string>
     <string name="apex_loading" translatable="false">Carregando</string>
 </resources>
