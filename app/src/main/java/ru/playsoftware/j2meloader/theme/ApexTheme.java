@@ -34,17 +34,20 @@ public final class ApexTheme {
 	public static final String K_BG = "apex_bg_color";
 	public static final String K_PRESSED = "apex_pressed_color";
 	public static final String K_WINDOW = "apex_window_color";
+	/** Espessura do contorno em porcentagem (0 = sem contorno, 100 = padrao). */
+	public static final String K_OUTLINE_WIDTH = "apex_outline_width";
+	public static final int DEF_OUTLINE_WIDTH = 100;
 	private static final String K_APP_BG = "apex_app_bg_file";
 	private static final String K_WIN_BG = "apex_window_bg_file";
 	private static final String K_FONT = "apex_font_file";
 
-	public static final int DEF_TEXT = 0xFFFFFFFF;
-	public static final int DEF_OUTLINE = 0xFF0099FF;
+	public static final int DEF_TEXT = 0xFFE6E6E6;
+	public static final int DEF_OUTLINE = 0xFFF2A900;
 	public static final int DEF_BG = 0xFF000000;
-	public static final int DEF_PRESSED = 0x660099FF;
+	public static final int DEF_PRESSED = 0x66F2A900;
 
 	private static final String SETTINGS_FILE = "tema.json";
-	private static final String[] COLOR_KEYS = {K_TEXT, K_OUTLINE, K_BG, K_PRESSED, K_WINDOW};
+	private static final String[] COLOR_KEYS = {K_TEXT, K_OUTLINE, K_BG, K_PRESSED, K_WINDOW, K_OUTLINE_WIDTH};
 	private static final String[] FILE_KEYS = {K_APP_BG, K_WIN_BG, K_FONT};
 
 	private static Bitmap appBitmap;
@@ -78,6 +81,20 @@ public final class ApexTheme {
 			version++;
 		}
 		syncToFile(c);
+	}
+
+	private static float scaleCache = 1f;
+	private static int scaleVersion = -1;
+
+	/** Fator da espessura do contorno (1 = padrao, 0 = sem contorno). */
+	public static float outlineScale(Context c) {
+		synchronized (ApexTheme.class) {
+			if (scaleVersion != version) {
+				scaleCache = Math.max(0, getColor(c, K_OUTLINE_WIDTH, DEF_OUTLINE_WIDTH)) / 100f;
+				scaleVersion = version;
+			}
+			return scaleCache;
+		}
 	}
 
 	public static int textColor(Context c) {
@@ -348,7 +365,7 @@ public final class ApexTheme {
 		clear(c, TARGET_APP_BG);
 		clear(c, TARGET_WINDOW_BG);
 		clear(c, TARGET_FONT);
-		prefs(c).edit().remove(K_TEXT).remove(K_OUTLINE).remove(K_BG).remove(K_WINDOW).remove(K_PRESSED).apply();
+		prefs(c).edit().remove(K_TEXT).remove(K_OUTLINE).remove(K_BG).remove(K_WINDOW).remove(K_PRESSED).remove(K_OUTLINE_WIDTH).apply();
 		invalidate();
 		syncToFile(c);
 	}

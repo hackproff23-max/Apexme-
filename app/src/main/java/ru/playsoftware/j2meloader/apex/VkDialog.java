@@ -397,7 +397,7 @@ public final class VkDialog {
 					c.drawBitmap(bmp, null, r, p);
 				} else {
 					p.setStyle(android.graphics.Paint.Style.FILL);
-					p.setColor(0xFF0099FF);
+					p.setColor(0xFFF2A900);
 					p.setAlpha(alpha);
 					c.drawRoundRect(r, 12 * d, 12 * d, p);
 					p.setColor(0xFFFFFFFF);

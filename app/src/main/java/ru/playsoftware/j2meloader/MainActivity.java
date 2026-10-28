@@ -123,6 +123,9 @@ public class MainActivity extends BaseActivity {
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
+		if (savedInstanceState == null) {
+			ru.playsoftware.j2meloader.theme.LoadingOverlay.show(this);
+		}
 		androidx.appcompat.app.ActionBar bar = getSupportActionBar();
 		if (bar != null) {
 			// logo + nome completo do app (com contorno) no lugar do titulo

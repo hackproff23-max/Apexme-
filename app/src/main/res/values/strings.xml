@@ -301,4 +301,7 @@
     <string name="hex_goto" translatable="false">Ir para…</string>
     <string name="hex_find" translatable="false">Buscar…</string>
     <string name="hex_find_next" translatable="false">Buscar próximo</string>
+    <string name="apex_outline_width" translatable="false">Espessura do contorno</string>
+    <string name="apex_outline_width_hint" translatable="false">0 = sem contorno · 100 = padrão · até 300</string>
+    <string name="apex_loading" translatable="false">Carregando</string>
 </resources>

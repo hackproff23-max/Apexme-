@@ -62,12 +62,16 @@ public class OutlinedTextView extends AppCompatTextView {
 		if (layout == null) {
 			return;
 		}
+		float scale = ApexTheme.outlineScale(tv.getContext());
+		if (scale <= 0.001f) {
+			return;
+		}
 		TextPaint paint = tv.getPaint();
 		int save = canvas.save();
 		canvas.translate(tv.getCompoundPaddingLeft(), tv.getExtendedPaddingTop() + verticalOffset(tv, layout));
 		paint.setStyle(Paint.Style.STROKE);
 		paint.setStrokeJoin(Paint.Join.ROUND);
-		paint.setStrokeWidth(Math.max(tv.getResources().getDisplayMetrics().density, tv.getTextSize() * 0.14f));
+		paint.setStrokeWidth(Math.max(tv.getResources().getDisplayMetrics().density, tv.getTextSize() * 0.14f) * scale);
 		paint.setColor(outlineColor);
 		layout.draw(canvas);
 		paint.setStyle(Paint.Style.FILL);

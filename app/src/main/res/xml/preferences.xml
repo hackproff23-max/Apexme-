@@ -23,6 +23,15 @@
         android:key="pref_color_pressed"
         android:icon="@drawable/ic_apex_colors"
         android:title="@string/apex_color_pressed" />
+    <SeekBarPreference
+        android:key="apex_outline_width"
+        android:icon="@drawable/ic_apex_colors"
+        android:max="300"
+        android:defaultValue="100"
+        android:summary="@string/apex_outline_width_hint"
+        android:title="@string/apex_outline_width"
+        app:showSeekBarValue="true"
+        app:updatesContinuously="true" />
     <Preference
         android:key="pref_default_settings"
         android:icon="@drawable/ic_setting_default"
