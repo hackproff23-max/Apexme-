@@ -20,6 +20,34 @@ public final class ApexClock {
 
 	private static volatile State state = initial();
 
+	/** true se o dex do jogo foi gerado com as chamadas ao ApexClock (instalado com suporte ao fast-forward). */
+	public static volatile boolean gameSupported = true;
+	/** Quantas vezes o jogo consultou o relogio (diagnostico; contagem aproximada). */
+	public static long hits;
+
+	/** Procura o nome da classe no dex do jogo: se nao houver, o jogo foi instalado antes do fast-forward. */
+	public static void scanDex(java.io.File dex) {
+		gameSupported = true;
+		hits = 0;
+		byte[] pat = "shell/ApexClock".getBytes();
+		try (java.io.InputStream in = new java.io.BufferedInputStream(new java.io.FileInputStream(dex), 64 * 1024)) {
+			int matched = 0;
+			int b;
+			while ((b = in.read()) != -1) {
+				if (b == (pat[matched] & 0xFF)) {
+					if (++matched == pat.length) {
+						return;
+					}
+				} else {
+					matched = b == (pat[0] & 0xFF) ? 1 : 0;
+				}
+			}
+			gameSupported = false;
+		} catch (Throwable ignored) {
+			gameSupported = true; // nao deu para ler: nao afirma nada
+		}
+	}
+
 	private ApexClock() {
 	}
 
@@ -47,6 +75,7 @@ public final class ApexClock {
 
 	/** Hora que o jogo enxerga (acelerada). */
 	public static long currentTimeMillis() {
+		hits++;
 		State s = state;
 		return s.virtualBase + (long) ((System.currentTimeMillis() - s.realBase) * (double) s.mult);
 	}
@@ -61,6 +90,7 @@ public final class ApexClock {
 	}
 
 	public static void sleep(long ms) throws InterruptedException {
+		hits++;
 		float m = state.mult;
 		if (m <= 1f || ms <= 0) {
 			Thread.sleep(ms);
@@ -74,6 +104,7 @@ public final class ApexClock {
 
 	/** Object.wait(ms) com a espera encurtada. Precisa ser chamado com o monitor do objeto, como o original. */
 	public static void waitMillis(Object o, long ms) throws InterruptedException {
+		hits++;
 		float m = state.mult;
 		if (m <= 1f || ms <= 0) {
 			o.wait(ms);
