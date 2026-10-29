@@ -670,10 +670,32 @@ public final class ApexPrefs {
 		sp().edit().putString("number_map", sb.toString()).apply();
 	}
 
-	/** Se a tecla numerica tiver uma letra, devolve a letra; senao o proprio codigo. */
+	/** Layout automatico (tipo teclado QWERTY de celular): 1=R 2=T 3=Y / 4=F 5=G 6=H / 7=V 8=B 9=N. */
+	private static final String AUTO_LAYOUT = "rtyfghvbn";
+
+	/** Letra automatica da tecla numerica (so se o jogo usar essa letra), ou o proprio codigo. */
+	private static int autoNumber(int code) {
+		String chars = detectedLetterChars;
+		if (chars == null || code < '1' || code > '9' || !lettersEnabled()) {
+			return code;
+		}
+		char want = AUTO_LAYOUT.charAt(code - '1');
+		for (int i = 0; i < chars.length(); i++) {
+			if (Character.toLowerCase(chars.charAt(i)) == want) {
+				return chars.charAt(i); // na caixa em que o jogo compara
+			}
+		}
+		return code;
+	}
+
+	/**
+	 * Se a tecla numerica tiver uma letra, devolve a letra; senao o proprio codigo.
+	 * O mapeamento manual vence; sem ele, o jogo detectado com letras usa o layout automatico.
+	 */
 	public static int remapNumber(int code) {
 		if ((code >= '0' && code <= '9') || code == '*' || code == '#') {
-			return numbers().get(code, code);
+			int user = numbers().get(code, -1);
+			return user >= 0 ? user : autoNumber(code);
 		}
 		return code;
 	}

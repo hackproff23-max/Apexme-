@@ -84,13 +84,32 @@ public class ApexLetterPad {
 	/** Monta a lista de teclas conforme as letras detectadas; sem deteccao usa o teclado completo. */
 	private void rebuild() {
 		String chars = ApexPrefs.detectedLetterChars();
-		String key = chars == null ? "" : chars;
+		// letras que ja saem pelas teclas numericas (ex.: 5 = G) nao precisam aparecer aqui
+		StringBuilder rest = new StringBuilder();
+		if (chars != null) {
+			String covered = "";
+			for (char d : "0123456789*#".toCharArray()) {
+				int m = ApexPrefs.remapNumber(d);
+				if (m != d) {
+					covered += (char) m;
+				}
+			}
+			for (char ch : chars.toCharArray()) {
+				if (covered.indexOf(ch) < 0) {
+					rest.append(ch);
+				}
+			}
+		}
+		String key = chars == null ? "" : "#" + rest;
 		if (key.equals(builtFor)) {
 			return;
 		}
 		cancel();
 		builtFor = key;
-		if (key.isEmpty()) {
+		if (chars != null) {
+			key = rest.toString();
+		}
+		if (chars == null) {
 			compact = false;
 			shown = keys;
 			cols = 10;
@@ -105,6 +124,11 @@ public class ApexLetterPad {
 		}
 		shown = detectedKeys;
 		int n = detectedKeys.size();
+		if (n == 0) {
+			cols = 1;
+			rows = 0;
+			return;
+		}
 		int perRow = n <= 6 ? n : (int) Math.ceil(n / Math.ceil(n / 6.0));
 		cols = Math.max(1, perRow);
 		rows = (n + cols - 1) / cols;
