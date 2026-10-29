@@ -37,10 +37,10 @@ public final class ApexTheme {
 	public static final String K_WINDOW = "apex_window_color";
 	/** Espessura do contorno em porcentagem (0 = sem contorno, 100 = padrao). */
 	public static final String K_OUTLINE_WIDTH = "apex_outline_width";
-	public static final int DEF_OUTLINE_WIDTH = 100;
+	public static final int DEF_OUTLINE_WIDTH = 165;
 	/** Tamanho do texto em porcentagem (100 = padrao). */
 	public static final String K_TEXT_SIZE = "apex_text_size";
-	public static final int DEF_TEXT_SIZE = 100;
+	public static final int DEF_TEXT_SIZE = 109;
 	public static final int MIN_TEXT_SIZE = 50;
 	public static final int MAX_TEXT_SIZE = 200;
 	/** Sombra do texto: cor, opacidade (%), desfoque (dp) e deslocamento X/Y (dp). */
@@ -49,19 +49,19 @@ public final class ApexTheme {
 	public static final String K_SHADOW_BLUR = "apex_shadow_blur";
 	public static final String K_SHADOW_DX = "apex_shadow_dx";
 	public static final String K_SHADOW_DY = "apex_shadow_dy";
-	public static final int DEF_SHADOW_COLOR = 0xFF000000;
-	public static final int DEF_SHADOW_ALPHA = 60;
-	public static final int DEF_SHADOW_BLUR = 4;
+	public static final int DEF_SHADOW_COLOR = 0xFF535353;
+	public static final int DEF_SHADOW_ALPHA = 100;
+	public static final int DEF_SHADOW_BLUR = 30;
 	public static final int DEF_SHADOW_DX = 0;
-	public static final int DEF_SHADOW_DY = 2;
+	public static final int DEF_SHADOW_DY = 0;
 	private static final String K_APP_BG = "apex_app_bg_file";
 	private static final String K_WIN_BG = "apex_window_bg_file";
 	private static final String K_FONT = "apex_font_file";
 
-	public static final int DEF_TEXT = 0xFFE6E6E6;
-	public static final int DEF_OUTLINE = 0xFFF2A900;
+	public static final int DEF_TEXT = 0xFFD1FF00;
+	public static final int DEF_OUTLINE = 0xFF000000;
 	public static final int DEF_BG = 0xFF000000;
-	public static final int DEF_PRESSED = 0x66F2A900;
+	public static final int DEF_PRESSED = 0xFF7BCA57;
 
 	private static final String SETTINGS_FILE = "tema.json";
 	private static final String[] COLOR_KEYS = {K_TEXT, K_OUTLINE, K_BG, K_PRESSED, K_WINDOW, K_OUTLINE_WIDTH,
@@ -342,6 +342,42 @@ public final class ApexTheme {
 			android.view.ViewGroup g = (android.view.ViewGroup) v;
 			for (int i = 0; i < g.getChildCount(); i++) {
 				applyFontTree(g.getChildAt(i));
+			}
+		}
+	}
+
+	/**
+	 * Janelas soltas (menus de overflow, popups, spinners): aplica fundo de janela padrao/importado,
+	 * cor do texto, fonte, tamanho e contorno do tema. So mexe no que ainda nao esta no padrao do app.
+	 */
+	public static void applyPopupTree(android.view.View root) {
+		Context c = root.getContext();
+		android.view.View bgView = root;
+		if (!(bgView.getBackground() instanceof ApexWindowBackground)) {
+			android.view.View child = root instanceof android.view.ViewGroup
+					&& ((android.view.ViewGroup) root).getChildCount() > 0
+					? ((android.view.ViewGroup) root).getChildAt(0) : null;
+			if (child != null && child.getBackground() != null
+					&& !(child.getBackground() instanceof ApexWindowBackground)) {
+				child.setBackground(new ApexWindowBackground());
+			} else if (child == null || child.getBackground() == null) {
+				root.setBackground(new ApexWindowBackground());
+			}
+		}
+		applyPopupText(root, textColor(c));
+	}
+
+	private static void applyPopupText(android.view.View v, int color) {
+		if (v instanceof android.widget.TextView) {
+			android.widget.TextView tv = (android.widget.TextView) v;
+			if (tv.getCurrentTextColor() != color) {
+				tv.setTextColor(color);
+			}
+		}
+		if (v instanceof android.view.ViewGroup) {
+			android.view.ViewGroup g = (android.view.ViewGroup) v;
+			for (int i = 0; i < g.getChildCount(); i++) {
+				applyPopupText(g.getChildAt(i), color);
 			}
 		}
 	}
@@ -655,7 +691,8 @@ public final class ApexTheme {
 	}
 
 	public static boolean hasAppImage(Context c) {
-		return prefs(c).getString(K_APP_BG, null) != null && appBitmap(c) != null;
+		// com o fundo padrao embutido sempre ha imagem de fundo (barra superior transparente)
+		return appBitmap(c) != null;
 	}
 
 	/** Desenha o bitmap preenchendo dst (center crop). */

@@ -31,6 +31,14 @@ public final class ApexFontCallbacks implements Application.ActivityLifecycleCal
 				java.util.List<View> views = new java.util.ArrayList<>((java.util.List<View>) f.get(inst));
 				for (View v : views) {
 					ApexTheme.applyFontTree(v);
+					android.view.ViewGroup.LayoutParams lp = v.getLayoutParams();
+					if (lp instanceof android.view.WindowManager.LayoutParams) {
+						int type = ((android.view.WindowManager.LayoutParams) lp).type;
+						if (type >= android.view.WindowManager.LayoutParams.FIRST_SUB_WINDOW
+								&& type <= android.view.WindowManager.LayoutParams.TYPE_APPLICATION_ATTACHED_DIALOG) {
+							ApexTheme.applyPopupTree(v);
+						}
+					}
 				}
 			} catch (Throwable t) {
 				scanFailed = true;
