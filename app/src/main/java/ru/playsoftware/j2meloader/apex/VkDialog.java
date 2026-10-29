@@ -193,6 +193,9 @@ public final class VkDialog {
 				}));
 
 		root.addView(ApexUi.section(a, "Teclado de letras"));
+		root.addView(ApexUi.toggle(a, "Detectar letras automaticamente (por jogo)", ApexPrefs.autoDetectLetters(),
+				on -> ApexPrefs.setAutoDetectLetters(on)));
+		root.addView(ApexUi.text(a, "Ao abrir o jogo, o app lê o código dele e liga o teclado de letras se o jogo usar letras (Q, W, A, S...). Vale na próxima vez que abrir o jogo.", 12));
 		root.addView(ApexUi.toggle(a, "Mostrar teclado de letras", ApexPrefs.lettersEnabled(), on -> {
 			ApexPrefs.setLettersEnabled(on);
 			relayout(vk);

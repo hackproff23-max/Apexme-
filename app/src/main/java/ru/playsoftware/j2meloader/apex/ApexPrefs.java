@@ -507,12 +507,74 @@ public final class ApexPrefs {
 		sp().edit().putFloat("analog_scale", v).apply();
 	}
 
+	/** Resultado da deteccao para o jogo aberto: -1 = sem deteccao, 0 = numeros, 1 = letras. */
+	private static volatile int detectedLetters = -1;
+
 	public static boolean lettersEnabled() {
+		int d = detectedLetters;
+		if (d >= 0) {
+			return d == 1;
+		}
 		return sp().getBoolean("letters_on", false);
 	}
 
 	public static void setLettersEnabled(boolean v) {
+		detectedLetters = -1; // escolha manual vence a deteccao nesta sessao
 		sp().edit().putBoolean("letters_on", v).apply();
+	}
+
+	/** Detectar automaticamente se o jogo usa letras (padrao: ligado). */
+	public static boolean autoDetectLetters() {
+		return sp().getBoolean("letters_autodetect", true);
+	}
+
+	public static void setAutoDetectLetters(boolean v) {
+		sp().edit().putBoolean("letters_autodetect", v).apply();
+	}
+
+	/**
+	 * Le o jar original do jogo (res.jar) e liga/desliga o teclado de letras para esta sessao.
+	 * O resultado fica em apex_keys.txt dentro da pasta do jogo, entao so le o jar na 1a vez.
+	 */
+	public static void detectLetters(File appDir) {
+		detectedLetters = -1;
+		if (!autoDetectLetters()) {
+			return;
+		}
+		try {
+			File cache = new File(appDir, "apex_keys.txt");
+			int mode = -1;
+			if (cache.isFile()) {
+				try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.FileReader(cache))) {
+					String l = r.readLine();
+					if (l != null) {
+						mode = Integer.parseInt(l.trim());
+					}
+				} catch (Exception ignored) {
+					mode = -1;
+				}
+			}
+			if (mode < 0) {
+				File jar = new File(appDir, "res.jar");
+				if (!jar.isFile()) {
+					return;
+				}
+				KeyScan.Result res = KeyScan.scan(jar);
+				android.util.Log.i("ApexKeys", appDir.getName() + ": " + res);
+				mode = res.mode;
+				try (java.io.FileWriter w = new java.io.FileWriter(cache)) {
+					w.write(String.valueOf(mode));
+				} catch (Exception ignored) {
+				}
+			}
+			if (mode == KeyScan.LETTERS) {
+				detectedLetters = 1;
+			} else if (mode == KeyScan.NUMBERS) {
+				detectedLetters = 0;
+			}
+		} catch (Throwable t) {
+			detectedLetters = -1;
+		}
 	}
 
 	// ---------------- grade do editor de teclado ----------------

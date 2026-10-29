@@ -100,6 +100,7 @@ public class MicroLoader {
 		if (params == null) {
 			return false;
 		}
+		ru.playsoftware.j2meloader.apex.ApexPrefs.detectLetters(appDir);
 		Display.initDisplay();
 		Graphics3D.initGraphics3D();
 		File cacheDir = ContextHolder.getCacheDir();
