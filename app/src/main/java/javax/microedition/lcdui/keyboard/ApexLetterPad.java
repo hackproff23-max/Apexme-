@@ -41,6 +41,12 @@ public class ApexLetterPad {
 	private final float[] rowOffset = new float[4];
 	private final int[] rowOf;
 	private final Key[] owned = new Key[10];
+	/** Teclas que aparecem agora: so as letras detectadas no jogo, ou o teclado completo. */
+	private ArrayList<Key> shown = new ArrayList<>();
+	private ArrayList<Key> detectedKeys = new ArrayList<>();
+	private String builtFor;
+	private boolean compact;
+	private int cols = 10, rows = 4;
 	private final RectF screen = new RectF();
 	private final RectF bounds = new RectF();
 	private float keySize;
@@ -72,6 +78,36 @@ public class ApexLetterPad {
 		rowOffset[1] = 0.5f;
 		rowOffset[2] = 1.5f;
 		rowOffset[3] = 1.5f;
+		shown = keys;
+	}
+
+	/** Monta a lista de teclas conforme as letras detectadas; sem deteccao usa o teclado completo. */
+	private void rebuild() {
+		String chars = ApexPrefs.detectedLetterChars();
+		String key = chars == null ? "" : chars;
+		if (key.equals(builtFor)) {
+			return;
+		}
+		cancel();
+		builtFor = key;
+		if (key.isEmpty()) {
+			compact = false;
+			shown = keys;
+			cols = 10;
+			rows = 4;
+			return;
+		}
+		compact = true;
+		detectedKeys = new ArrayList<>();
+		for (char ch : key.toCharArray()) {
+			char lower = Character.toLowerCase(ch);
+			detectedKeys.add(new Key(String.valueOf(lower), String.valueOf(Character.toUpperCase(ch)), ch, 1f));
+		}
+		shown = detectedKeys;
+		int n = detectedKeys.size();
+		int perRow = n <= 6 ? n : (int) Math.ceil(n / Math.ceil(n / 6.0));
+		cols = Math.max(1, perRow);
+		rows = (n + cols - 1) / cols;
 	}
 
 	public void setTarget(Canvas c) {
@@ -101,20 +137,31 @@ public class ApexLetterPad {
 
 	public void layout(RectF scr) {
 		screen.set(scr);
+		rebuild();
 		keySize = Math.min(scr.width() / 14f, scr.height() / 10f) * 0.75f * ApexPrefs.buttonScale();
 		float[] p = ApexPrefs.pos(POS, landscape(), 0.5f, 0.78f);
-		float w = keySize * 10f;
-		float h = keySize * 4f;
+		float w = keySize * cols;
+		float h = keySize * rows;
 		moveTo(scr.left + scr.width() * p[0] - w / 2f, scr.top + scr.height() * p[1] - h / 2f);
 	}
 
 	private void moveTo(float left, float top) {
-		float w = keySize * 10f;
-		float h = keySize * 4f;
+		float w = keySize * cols;
+		float h = keySize * rows;
 		left = Math.max(screen.left, Math.min(screen.right - w, left));
 		top = Math.max(screen.top, Math.min(screen.bottom - h, top));
 		bounds.set(left, top, left + w, top + h);
 		float gap = keySize * 0.05f;
+		if (compact) {
+			for (int i = 0; i < shown.size(); i++) {
+				Key k = shown.get(i);
+				int r = i / cols;
+				int c = i % cols;
+				k.rect.set(left + c * keySize + gap, top + r * keySize + gap,
+						left + (c + 1) * keySize - gap, top + (r + 1) * keySize - gap);
+			}
+			return;
+		}
 		float[] x = {left + rowOffset[0] * keySize, left + rowOffset[1] * keySize,
 				left + rowOffset[2] * keySize, left + rowOffset[3] * keySize};
 		for (int i = 0; i < keys.size(); i++) {
@@ -130,7 +177,7 @@ public class ApexLetterPad {
 		if (!enabled() || screen.isEmpty()) {
 			return;
 		}
-		for (Key k : keys) {
+		for (Key k : shown) {
 			ApexKeyPaint.draw(g, k.rect, k.id, k.label, k.selected, opaque, settings, 0.8f);
 		}
 	}
@@ -143,7 +190,7 @@ public class ApexLetterPad {
 		if (!enabled() || id < 0 || id >= owned.length || !bounds.contains(x, y)) {
 			return false;
 		}
-		for (Key k : keys) {
+		for (Key k : shown) {
 			if (k.rect.contains(x, y)) {
 				if (owned[id] != null) {
 					release(id);

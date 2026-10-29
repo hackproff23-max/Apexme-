@@ -520,6 +520,7 @@ public final class ApexPrefs {
 
 	public static void setLettersEnabled(boolean v) {
 		detectedLetters = -1; // escolha manual vence a deteccao nesta sessao
+		detectedLetterChars = null; // e mostra o teclado completo
 		sp().edit().putBoolean("letters_on", v).apply();
 	}
 
@@ -532,23 +533,36 @@ public final class ApexPrefs {
 		sp().edit().putBoolean("letters_autodetect", v).apply();
 	}
 
+	/** Letras que o jogo aberto usa (ex.: "qwas"), ou null se nao detectou. */
+	private static volatile String detectedLetterChars = null;
+
+	/** So as letras que o jogo usa; null = sem deteccao (teclado completo, modo manual). */
+	public static String detectedLetterChars() {
+		return detectedLetterChars;
+	}
+
 	/**
 	 * Le o jar original do jogo (res.jar) e liga/desliga o teclado de letras para esta sessao.
-	 * O resultado fica em apex_keys.txt dentro da pasta do jogo, entao so le o jar na 1a vez.
+	 * O resultado fica em apex_keys2.txt dentro da pasta do jogo (1a linha: modo, 2a: letras),
+	 * entao so le o jar na 1a vez. O apex_keys.txt antigo (sem letras, deteccao errada) e ignorado.
 	 */
 	public static void detectLetters(File appDir) {
 		detectedLetters = -1;
+		detectedLetterChars = null;
 		if (!autoDetectLetters()) {
 			return;
 		}
 		try {
-			File cache = new File(appDir, "apex_keys.txt");
+			File cache = new File(appDir, "apex_keys2.txt");
 			int mode = -1;
+			String chars = "";
 			if (cache.isFile()) {
 				try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.FileReader(cache))) {
 					String l = r.readLine();
 					if (l != null) {
 						mode = Integer.parseInt(l.trim());
+						String l2 = r.readLine();
+						chars = l2 == null ? "" : l2.trim();
 					}
 				} catch (Exception ignored) {
 					mode = -1;
@@ -560,20 +574,23 @@ public final class ApexPrefs {
 					return;
 				}
 				KeyScan.Result res = KeyScan.scan(jar);
-				android.util.Log.i("ApexKeys", appDir.getName() + ": " + res);
+				android.util.Log.i("ApexKeys", appDir.getName() + ": " + res + " chars=" + res.letterChars);
 				mode = res.mode;
+				chars = res.letterChars;
 				try (java.io.FileWriter w = new java.io.FileWriter(cache)) {
-					w.write(String.valueOf(mode));
+					w.write(mode + "\n" + chars);
 				} catch (Exception ignored) {
 				}
 			}
-			if (mode == KeyScan.LETTERS) {
+			if (mode == KeyScan.LETTERS && !chars.isEmpty()) {
 				detectedLetters = 1;
-			} else if (mode == KeyScan.NUMBERS) {
+				detectedLetterChars = chars;
+			} else if (mode == KeyScan.NUMBERS || mode == KeyScan.LETTERS) {
 				detectedLetters = 0;
 			}
 		} catch (Throwable t) {
 			detectedLetters = -1;
+			detectedLetterChars = null;
 		}
 	}
 

@@ -22,7 +22,7 @@ public final class KeyScan {
 	public static final int LETTERS = 2;
 
 	/** Minimo de letras diferentes para considerar que o jogo usa letras. */
-	private static final int MIN_LETTERS = 4;
+	private static final int MIN_LETTERS = 2;
 	private static final int MAX_CLASS_SIZE = 600 * 1024;
 
 	private KeyScan() {
@@ -33,6 +33,8 @@ public final class KeyScan {
 		public int mode = UNKNOWN;
 		public int letters;
 		public int digits;
+		/** Letras que o jogo realmente compara (na caixa em que aparecem), ex.: "qwas". */
+		public String letterChars = "";
 
 		@Override
 		public String toString() {
@@ -42,7 +44,7 @@ public final class KeyScan {
 
 	public static Result scan(File jar) {
 		Result r = new Result();
-		HashSet<Integer> letters = new HashSet<>();
+		java.util.TreeMap<Integer, Integer> letters = new java.util.TreeMap<>();
 		HashSet<Integer> digits = new HashSet<>();
 		try (ZipFile zip = new ZipFile(jar)) {
 			Enumeration<? extends ZipEntry> en = zip.entries();
@@ -62,7 +64,12 @@ public final class KeyScan {
 		}
 		r.letters = letters.size();
 		r.digits = digits.size();
-		if (r.letters >= MIN_LETTERS && r.letters >= r.digits) {
+		StringBuilder sb = new StringBuilder();
+		for (int code : letters.values()) {
+			sb.append((char) code);
+		}
+		r.letterChars = sb.toString();
+		if (r.letters >= MIN_LETTERS && r.letters > r.digits) {
 			r.mode = LETTERS;
 		} else if (r.letters + r.digits > 0) {
 			r.mode = NUMBERS;
@@ -70,17 +77,19 @@ public final class KeyScan {
 		return r;
 	}
 
-	private static void addKey(int c, HashSet<Integer> letters, HashSet<Integer> digits) {
+	private static void addKey(int c, java.util.TreeMap<Integer, Integer> letters, HashSet<Integer> digits) {
 		if (c >= 'a' && c <= 'z') {
-			letters.add(c);
+			letters.put(c, c);
 		} else if (c >= 'A' && c <= 'Z') {
-			letters.add(c + 32);
+			if (!letters.containsKey(c + 32)) {
+				letters.put(c + 32, c);
+			}
 		} else if ((c >= '0' && c <= '9') || c == '*' || c == '#') {
 			digits.add(c);
 		}
 	}
 
-	private static void scanClass(DataInputStream in, HashSet<Integer> letters, HashSet<Integer> digits)
+	private static void scanClass(DataInputStream in, java.util.TreeMap<Integer, Integer> letters, HashSet<Integer> digits)
 			throws IOException {
 		if (in.readInt() != 0xCAFEBABE) {
 			return;
@@ -152,6 +161,8 @@ public final class KeyScan {
 		}
 		int methods = in.readUnsignedShort();
 		byte[][] codes = new byte[methods][];
+		boolean[] keyMethod = new boolean[methods];
+		boolean[] helper = new boolean[methods];
 		boolean keyClass = superName != null
 				&& (superName.endsWith("/Canvas") || superName.endsWith("/GameCanvas"));
 		for (int i = 0; i < methods; i++) {
@@ -161,6 +172,9 @@ public final class KeyScan {
 			if ("(I)V".equals(desc) && name != null
 					&& (name.equals("keyPressed") || name.equals("keyReleased") || name.equals("keyRepeated"))) {
 				keyClass = true;
+				keyMethod[i] = true;
+			} else if (desc != null && desc.startsWith("(I)") && !"<init>".equals(name)) {
+				helper[i] = true; // possivel auxiliar que recebe o codigo da tecla
 			}
 			int attrs = in.readUnsignedShort();
 			for (int a = 0; a < attrs; a++) {
@@ -190,9 +204,16 @@ public final class KeyScan {
 		if (!keyClass) {
 			return;
 		}
-		for (byte[] code : codes) {
-			if (code != null) {
-				scanCode(code, ints, isInt, letters, digits);
+		boolean anyKeyMethod = false;
+		for (boolean b : keyMethod) {
+			anyKeyMethod |= b;
+		}
+		if (!anyKeyMethod) {
+			return; // so Canvas sem keyPressed: paint/logica geram falsos positivos
+		}
+		for (int i = 0; i < codes.length; i++) {
+			if (codes[i] != null && (keyMethod[i] || helper[i])) {
+				scanCode(codes[i], ints, isInt, letters, digits);
 			}
 		}
 	}
@@ -290,7 +311,7 @@ public final class KeyScan {
 	}
 
 	private static void scanCode(byte[] c, int[] ints, boolean[] isInt,
-								 HashSet<Integer> letters, HashSet<Integer> digits) {
+								 java.util.TreeMap<Integer, Integer> letters, HashSet<Integer> digits) {
 		int pc = 0;
 		int prev = -1;   // pc da instrucao anterior
 		int prev2 = -1;  // pc da anterior a anterior
@@ -320,11 +341,14 @@ public final class KeyScan {
 				}
 			} else if (op == 170) { // tableswitch
 				int p = (pc + 4) & ~3;
+				int def = s4(c, p);
 				int lo = s4(c, p + 4);
 				int hi = s4(c, p + 8);
-				if (hi - lo < 256) {
+				if (hi - lo < 256 && p + 12 + (hi - lo + 1) * 4 <= c.length) {
 					for (int k = lo; k <= hi; k++) {
-						addKey(k, letters, digits);
+						if (s4(c, p + 12 + (k - lo) * 4) != def) {
+							addKey(k, letters, digits);
+						}
 					}
 				}
 			}
