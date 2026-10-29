@@ -29,8 +29,8 @@ import ru.playsoftware.j2meloader.theme.ApexTheme;
  *     botoes/    imagens dos botoes (ID_normal.png)
  *     fundos/    fundo do app e fundo das janelas
  *     fontes/    fonte .ttf/.otf
- *     shaders/   shaders importados
  *     LEIA-ME.txt
+ *   shaders/       shaders importados e baixados (libretro__*)
  *   configuracoes/
  *     importacoes.json   lista organizada de tudo que foi importado
  *     tema.json          cores e arquivos de tema em uso
@@ -57,7 +57,8 @@ public final class ImportStore {
 			if (Config.getEmulatorDir() == null) {
 				return null;
 			}
-			File d = new File(Config.getImportDir(), sub);
+			// shaders ficam na pasta shaders/ do app (ao lado de importacao/), nao dentro dela
+			File d = SHADERS.equals(sub) ? new File(Config.getShadersDir()) : new File(Config.getImportDir(), sub);
 			if (!d.isDirectory() && !d.mkdirs()) {
 				return null;
 			}
@@ -120,7 +121,15 @@ public final class ImportStore {
 			// cria as pastas de cada tipo e leva o que ficou na reserva interna
 			moveFiles(new File(internal, botoesSub(type)), externalDir(botoesSub(type)));
 		}
-		moveFiles(new File(internal, SHADERS), externalDir(SHADERS));
+		File shadersDir = externalDir(SHADERS);
+		moveFiles(new File(internal, SHADERS), shadersDir);
+		// versoes anteriores guardavam os shaders em importacao/shaders: leva para shaders/
+		File oldShaders = new File(Config.getImportDir(), SHADERS);
+		moveFiles(oldShaders, shadersDir);
+		if (shadersDir != null) {
+			//noinspection ResultOfMethodCallIgnored
+			oldShaders.delete(); // so apaga se ficou vazia
+		}
 		sync();
 	}
 
@@ -177,9 +186,8 @@ public final class ImportStore {
 			JSONArray shaders = new JSONArray();
 			String sel = ApexPrefs.shaderSel();
 			File sd = externalDir(SHADERS);
-			String[] names = sd != null ? sd.list() : null;
+			String[] names = sd != null ? ApexPrefs.shaderFileNames(sd) : null;
 			if (names != null) {
-				Arrays.sort(names);
 				for (String n : names) {
 					JSONObject e = new JSONObject();
 					e.put("arquivo", n);
@@ -222,7 +230,8 @@ public final class ImportStore {
 				+ "                 (o tipo ativo e escolhido no Teclado virtual)\n"
 				+ "fundos/   fundo do app e fundo das janelas\n"
 				+ "fontes/   fonte .ttf ou .otf\n"
-				+ "shaders/  shaders importados (.fsh, .frag, .glsl)\n\n"
+				+ "\nOs shaders (importados e baixados do libretro) ficam em shaders/, ao lado\n"
+				+ "de importacao/ (.fsh, .frag, .glsl).\n\n"
 				+ "A lista completa e organizada fica em configuracoes/importacoes.json\n"
 				+ "(os IDs dos botoes estao la). O tema em uso fica em configuracoes/tema.json.\n";
 		try (FileOutputStream os = new FileOutputStream(f)) {

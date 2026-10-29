@@ -19,7 +19,7 @@ import javax.microedition.lcdui.graphics.ShaderProgram;
  * Baixa o repositorio libretro/glsl-shaders (GitHub) e importa so os shaders que o emulador consegue usar:
  * arquivo unico (#if defined(VERTEX) / FRAGMENT) que usa apenas a textura do jogo. Os que dependem de
  * outros passes, imagens de LUT ou de frames anteriores (presets .glslp) sao ignorados.
- * Os arquivos ficam em importacao/shaders com o prefixo "libretro__".
+ * Os arquivos ficam na pasta shaders/ do app com o prefixo "libretro__".
  */
 public final class LibretroShaders {
 	public static final String PREFIX = "libretro__";

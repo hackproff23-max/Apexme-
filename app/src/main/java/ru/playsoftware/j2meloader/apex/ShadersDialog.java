@@ -145,8 +145,9 @@ public final class ShadersDialog {
 			vals[3] = v / 100f;
 			save(a, vals);
 		}));
-		root.addView(ApexUi.text(a, "Cores e LCD valem para os shaders Automático (sem shader no perfil) " +
-				"e Apex. Importe shaders GLSL ES 2.0: arquivo único com #if defined(VERTEX) / " +
+		root.addView(ApexUi.text(a, "Saturação, brilho, contraste e LCD valem para todos os shaders " +
+				"(Automático, Apex, importados e baixados do libretro). Os shaders ficam na pasta " +
+				"shaders do app. Importe shaders GLSL ES 2.0: arquivo único com #if defined(VERTEX) / " +
 				"FRAGMENT (estilo RetroArch), ou só o fragment usando sampler0 e v_texcoord0.", 12));
 
 		AlertDialog dialog = new AlertDialog.Builder(a)
@@ -236,8 +237,8 @@ public final class ShadersDialog {
 				.setTitle("Shaders do libretro")
 				.setMessage("Baixa o repositório libretro/glsl-shaders do GitHub (use Wi-Fi) e importa só os " +
 						"shaders compatíveis com o emulador: arquivo único que usa apenas a imagem do jogo. " +
-						"Os que dependem de vários passes ou de imagens extras são ignorados. Cada shader " +
-						"tem a licença do repositório de origem.")
+						"Os que dependem de vários passes ou de imagens extras são ignorados. Ficam salvos na " +
+						"pasta shaders do app. Cada shader tem a licença do repositório de origem.")
 				.setPositiveButton("Baixar", (d, w) -> startDownload(a, current))
 				.setNegativeButton(android.R.string.cancel, null)
 				.show();

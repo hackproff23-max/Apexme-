@@ -125,10 +125,29 @@ public final class ApexPrefs {
 	}
 
 	public static String[] listUserShaders() {
-		String[] names = ImportStore.dir(ImportStore.SHADERS).list();
-		if (names == null) {
+		return shaderFileNames(ImportStore.dir(ImportStore.SHADERS));
+	}
+
+	/**
+	 * Nomes dos arquivos de shader de uma pasta. A pasta shaders/ tambem guarda os perfis (.ini) e
+	 * outros arquivos, que nao sao shaders selecionaveis.
+	 */
+	static String[] shaderFileNames(File dir) {
+		File[] files = dir.listFiles();
+		if (files == null) {
 			return new String[0];
 		}
+		ArrayList<String> out = new ArrayList<>();
+		for (File f : files) {
+			String n = f.getName();
+			String l = n.toLowerCase(java.util.Locale.ROOT);
+			if (!f.isFile() || n.startsWith(".")
+					|| l.matches(".*\\.(ini|json|png|jpg|jpeg|tmp|zip|md)$")) {
+				continue;
+			}
+			out.add(n);
+		}
+		String[] names = out.toArray(new String[0]);
 		Arrays.sort(names);
 		return names;
 	}

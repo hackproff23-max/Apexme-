@@ -45,6 +45,15 @@ public class ShaderProgram {
 	public int uSetting;
 	public int uPixelDelta;
 	public int uColor;
+	/** Controle de cores/LCD aplicado por cima de qualquer shader: brilho, contraste, saturacao, LCD. */
+	public int uApexColor;
+	/** Grade do LCD: origem (px) e tamanho de um pixel do jogo na tela (px). */
+	public int uApexGrid;
+	private FloatBuffer gridVbo;
+	private int gridTexW;
+	private int gridTexH;
+	private int gridSurfW;
+	private int gridSurfH;
 	// nomes no estilo RetroArch (GLSL ES 2.0)
 	public int uTextureSize;
 	public int uInputSize;
@@ -68,7 +77,11 @@ public class ShaderProgram {
 				String vertexCode = codes[0];
 				String fragmentCode = codes[1];
 				lastError = null;
-				int userProgram = createProgram(vertexCode, fragmentCode);
+				// com cores/LCD por cima; se so isso quebrar a compilacao, usa o shader puro
+				int userProgram = createProgram(vertexCode, withColorControls(fragmentCode));
+				if (userProgram == -1) {
+					userProgram = createProgram(vertexCode, fragmentCode);
+				}
 				if (userProgram != -1) {
 					applyPragmaDefaults(userProgram, src);
 					glReleaseShaderCompiler();
@@ -96,7 +109,8 @@ public class ShaderProgram {
 			if (vertex != null && fragment != null) {
 				String vertexCode = FileUtils.getText(shader.dir + vertex);
 				String fragmentCode = FileUtils.getText(shader.dir + fragment);
-				if (createProgram(vertexCode, fragmentCode) != -1) {
+				if (createProgram(vertexCode, withColorControls(fragmentCode)) != -1
+						|| createProgram(vertexCode, fragmentCode) != -1) {
 					glReleaseShaderCompiler();
 					return;
 				}
@@ -107,7 +121,10 @@ public class ShaderProgram {
 		}
 		String vertexCode = ContextHolder.getAssetAsString(VERTEX);
 		String fragmentCode = ContextHolder.getAssetAsString(FRAGMENT);
-		int program = createProgram(vertexCode, fragmentCode);
+		int program = createProgram(vertexCode, withColorControls(fragmentCode));
+		if (program == -1) {
+			program = createProgram(vertexCode, fragmentCode);
+		}
 		glReleaseShaderCompiler();
 		if (program == -1) {
 			throw new RuntimeException("Init shader program error: see log for detail");
@@ -162,7 +179,10 @@ public class ShaderProgram {
 			String[] codes = buildCodes(f, clean(FileUtils.getText(f.getPath())));
 			ShaderProgram p = new ShaderProgram();
 			lastError = null;
-			int prog = p.createProgram(codes[0], codes[1]);
+			int prog = p.createProgram(codes[0], withColorControls(codes[1]));
+			if (prog == -1) {
+				prog = p.createProgram(codes[0], codes[1]);
+			}
 			if (prog == -1) {
 				return false;
 			}
@@ -305,6 +325,43 @@ public class ShaderProgram {
 		return sb.toString();
 	}
 
+	private static final java.util.regex.Pattern MAIN_FN = java.util.regex.Pattern.compile("\\bvoid\\s+main\\s*\\(");
+
+	/**
+	 * Faz brilho, contraste, saturacao e LCD (Shaders > Controle de cores) valerem para qualquer
+	 * fragment shader: o main original vira apex_main() e um main novo chama ele e ajusta gl_FragColor.
+	 * Se o codigo nao tiver main (ou ja tiver sido envolvido), devolve o codigo sem mudar.
+	 */
+	static String withColorControls(String fragment) {
+		if (fragment == null || fragment.contains("apex_main") || !MAIN_FN.matcher(fragment).find()) {
+			return fragment;
+		}
+		String body = MAIN_FN.matcher(fragment).replaceAll("void apex_main(");
+		return body + "\n"
+				+ "uniform mediump vec4 apex_color;\n"
+				+ "uniform mediump vec4 apex_grid;\n"
+				+ "void main() {\n"
+				+ "  apex_main();\n"
+				+ "  mediump vec3 c = gl_FragColor.rgb;\n"
+				+ "  c += apex_color.x;\n"
+				+ "  c = (c - 0.5) * apex_color.y + 0.5;\n"
+				+ "  mediump float l = dot(c, vec3(0.299, 0.587, 0.114));\n"
+				+ "  c = mix(vec3(l), c, apex_color.z);\n"
+				+ "  if (apex_color.w > 0.001 && apex_grid.z > 0.5) {\n"
+				+ "    mediump vec2 p = fract((gl_FragCoord.xy - apex_grid.xy) / apex_grid.zw);\n"
+				+ "    mediump float gx = smoothstep(0.0, 0.22, p.x) * smoothstep(1.0, 0.78, p.x);\n"
+				+ "    mediump float gy = smoothstep(0.0, 0.22, p.y) * smoothstep(1.0, 0.78, p.y);\n"
+				+ "    mediump vec3 mask = vec3(0.62);\n"
+				+ "    if (p.x < 0.3333) mask.r = 1.0;\n"
+				+ "    else if (p.x < 0.6666) mask.g = 1.0;\n"
+				+ "    else mask.b = 1.0;\n"
+				+ "    mediump vec3 lcd = c * mask * (0.45 + 0.55 * gx * gy) * 1.35;\n"
+				+ "    c = mix(c, lcd, apex_color.w);\n"
+				+ "  }\n"
+				+ "  gl_FragColor.rgb = clamp(c, 0.0, 1.0);\n"
+				+ "}\n";
+	}
+
 	public int createProgram(String vertex, String fragment) {
 		int vertexId = loadShader(GL_VERTEX_SHADER, vertex);
 		int fragmentId = loadShader(GL_FRAGMENT_SHADER, fragment);
@@ -361,6 +418,8 @@ public class ShaderProgram {
 		uPixelDelta = glGetUniformLocation(program, "u_pixelDelta");
 		uSetting = glGetUniformLocation(program, "u_setting");
 		uColor = glGetUniformLocation(program, "u_color");
+		uApexColor = glGetUniformLocation(program, "apex_color");
+		uApexGrid = glGetUniformLocation(program, "apex_grid");
 		glUseProgram(program);
 		if (uMvp != -1) {
 			glUniformMatrix4fv(uMvp, 1, false, IDENTITY, 0);
@@ -398,6 +457,29 @@ public class ShaderProgram {
 		return shader;
 	}
 
+	/** Tamanho da superficie em pixels (para alinhar a grade do LCD aos pixels do jogo). */
+	public void setSurface(int w, int h) {
+		gridSurfW = w;
+		gridSurfH = h;
+		uploadGrid();
+	}
+
+	/** Calcula onde a imagem do jogo esta na tela e envia para o shader (apex_grid). */
+	private void uploadGrid() {
+		if (uApexGrid == -1 || gridVbo == null || gridSurfW <= 0 || gridSurfH <= 0 || gridTexW <= 0 || gridTexH <= 0) {
+			return;
+		}
+		// vertices: [x, y, u, v] x4 (esq-topo, esq-base, dir-topo, dir-base), x e y em -1..1
+		float left = gridVbo.get(0);
+		float right = gridVbo.get(8);
+		float bottom = Math.min(gridVbo.get(1), gridVbo.get(5));
+		float wPx = Math.abs(right - left) / 2f * gridSurfW;
+		float xPx = (Math.min(left, right) + 1f) / 2f * gridSurfW;
+		float yPx = (bottom + 1f) / 2f * gridSurfH;
+		float cell = wPx / gridTexW;
+		glUniform4f(uApexGrid, xPx, yPx, cell, cell);
+	}
+
 	public void loadVbo(FloatBuffer vbo, float width, float height) {
 		vbo.rewind();
 		glVertexAttribPointer(aPosition, 2, GL_FLOAT, false, 4 * 4, vbo);
@@ -407,6 +489,10 @@ public class ShaderProgram {
 		vbo.position(2);
 		glVertexAttribPointer(aTexCoord, 2, GL_FLOAT, false, 4 * 4, vbo);
 		glEnableVertexAttribArray(aTexCoord);
+		gridVbo = vbo;
+		gridTexW = (int) width;
+		gridTexH = (int) height;
+		uploadGrid();
 		glUniform2f(uTexelDelta, 1.0f / width, 1.0f / height);
 		glUniform2f(uTextureSize, width, height);
 		glUniform2f(uInputSize, width, height);

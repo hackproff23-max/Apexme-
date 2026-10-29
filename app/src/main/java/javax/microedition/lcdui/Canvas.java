@@ -820,6 +820,8 @@ public abstract class Canvas extends Displayable {
 			}
 			glUniform4f(program.uColor, ApexPrefs.brightness(), ApexPrefs.contrast(),
 					ApexPrefs.saturation(), ApexPrefs.lcdOpacity());
+			glUniform4f(program.uApexColor, ApexPrefs.brightness(), ApexPrefs.contrast(),
+					ApexPrefs.saturation(), ApexPrefs.lcdOpacity());
 		}
 
 		/** Atualiza so os valores (brilho, contraste, saturacao, LCD). */
@@ -866,6 +868,7 @@ public abstract class Canvas extends Displayable {
 			mView.queueEvent(() -> {
 				program = new ShaderProgram(shaderFilter);
 				glUniform1i(program.uTextureUnit, 0);
+				program.setSurface(surfaceW, surfaceH);
 				Bitmap bmp = offscreenCopy.getBitmap();
 				synchronized (vbo) {
 					program.loadVbo(vbo, bmp.getWidth(), bmp.getHeight());
@@ -884,6 +887,7 @@ public abstract class Canvas extends Displayable {
 			surfaceW = width;
 			surfaceH = height;
 			glViewport(0, 0, width, height);
+			program.setSurface(width, height);
 			glUniform2f(program.uPixelDelta, 1.0f / width, 1.0f / height);
 			glUniform2f(program.uOutputSize, width, height);
 		}
