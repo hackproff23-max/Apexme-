@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.preference.PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+    <ru.playsoftware.j2meloader.settings.PreviewPreference android:key="pref_preview" />
+    <ru.playsoftware.j2meloader.settings.ColorPreference
+        android:key="pref_color_text"
+        android:icon="@drawable/ic_apex_colors"
+        android:title="@string/apex_color_text" />
+    <ru.playsoftware.j2meloader.settings.ColorPreference
+        android:key="pref_color_outline"
+        android:icon="@drawable/ic_apex_colors"
+        android:title="@string/apex_color_outline" />
+    <ru.playsoftware.j2meloader.settings.ColorPreference
+        android:key="pref_color_bg"
+        android:icon="@drawable/ic_apex_colors"
+        android:title="@string/apex_color_bg" />
+    <ru.playsoftware.j2meloader.settings.ColorPreference
+        android:key="pref_color_window"
+        android:icon="@drawable/ic_apex_colors"
+        android:title="@string/apex_color_window" />
+    <ru.playsoftware.j2meloader.settings.ColorPreference
+        android:key="pref_color_pressed"
+        android:icon="@drawable/ic_apex_colors"
+        android:title="@string/apex_color_pressed" />
+    <SeekBarPreference
+        android:key="apex_outline_width"
+        android:icon="@drawable/ic_apex_colors"
+        android:max="300"
+        android:defaultValue="100"
+        android:summary="@string/apex_outline_width_hint"
+        android:title="@string/apex_outline_width"
+        app:showSeekBarValue="true"
+        app:updatesContinuously="true" />
+    <SeekBarPreference
+        android:key="apex_text_size"
+        android:icon="@drawable/ic_apex_colors"
+        android:max="200"
+        android:defaultValue="100"
+        android:summary="@string/apex_text_size_hint"
+        android:title="@string/apex_text_size"
+        app:min="50"
+        app:showSeekBarValue="true"
+        app:updatesContinuously="false" />
+    <ru.playsoftware.j2meloader.settings.ColorPreference
+        android:key="pref_color_shadow"
+        android:icon="@drawable/ic_apex_colors"
+        android:title="@string/apex_shadow_color" />
+    <SeekBarPreference
+        android:key="apex_shadow_alpha"
+        android:icon="@drawable/ic_apex_colors"
+        android:max="100"
+        android:defaultValue="60"
+        android:summary="@string/apex_shadow_alpha_hint"
+        android:title="@string/apex_shadow_alpha"
+        app:showSeekBarValue="true"
+        app:updatesContinuously="true" />
+    <SeekBarPreference
+        android:key="apex_shadow_blur"
+        android:icon="@drawable/ic_apex_colors"
+        android:max="30"
+        android:defaultValue="4"
+        android:summary="@string/apex_shadow_blur_hint"
+        android:title="@string/apex_shadow_blur"
+        app:showSeekBarValue="true"
+        app:updatesContinuously="true" />
+    <SeekBarPreference
+        android:key="apex_shadow_dx"
+        android:icon="@drawable/ic_apex_colors"
+        android:max="20"
+        android:defaultValue="0"
+        android:summary="@string/apex_shadow_dx_hint"
+        android:title="@string/apex_shadow_dx"
+        app:min="-20"
+        app:showSeekBarValue="true"
+        app:updatesContinuously="true" />
+    <SeekBarPreference
+        android:key="apex_shadow_dy"
+        android:icon="@drawable/ic_apex_colors"
+        android:max="20"
+        android:defaultValue="2"
+        android:summary="@string/apex_shadow_dy_hint"
+        android:title="@string/apex_shadow_dy"
+        app:min="-20"
+        app:showSeekBarValue="true"
+        app:updatesContinuously="true" />
+    <Preference
+        android:key="pref_default_settings"
+        android:icon="@drawable/ic_setting_default"
+        android:title="@string/profiles" />
+    <Preference
+        android:key="emulator_dir"
+        android:icon="@drawable/ic_setting_folder"
+        android:title="@string/pref_emulator_dir"
+        tools:summary="/sdcard/J2ME-Loader" />
+    <Preference
+        android:key="pref_import_app_bg"
+        android:icon="@drawable/ic_setting_image"
+        android:summary="@string/apex_pref_import_hint"
+        android:title="@string/apex_import_app_bg" />
+    <Preference
+        android:key="pref_import_window_bg"
+        android:icon="@drawable/ic_setting_window"
+        android:summary="@string/apex_pref_import_hint"
+        android:title="@string/apex_import_window_bg" />
+    <Preference
+        android:key="pref_import_font"
+        android:icon="@drawable/ic_setting_font"
+        android:summary="@string/apex_pref_import_hint"
+        android:title="@string/apex_import_font" />
+    <Preference
+        android:key="pref_reset_theme"
+        android:icon="@drawable/ic_setting_default"
+        android:title="@string/apex_reset" />
+</androidx.preference.PreferenceScreen>

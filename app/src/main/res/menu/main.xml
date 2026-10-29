@@ -1,0 +1,33 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context="ru.playsoftware.j2meloader.MainActivity">
+
+    <item
+        android:id="@+id/action_vk"
+        android:icon="@drawable/ic_apex_keyboard"
+        android:title="@string/PREF_VIRTUAL_KEYBOARD_OPTIONS"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/action_shaders"
+        android:icon="@drawable/ic_apex_shaders"
+        android:title="@string/apex_shaders"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/action_hex"
+        android:title="@string/hex_editor"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_converter"
+        android:title="@string/hex_converter"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_settings"
+        android:title="@string/action_settings"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_exit_app"
+        android:title="@string/exit"
+        app:showAsAction="never" />
+
+</menu>

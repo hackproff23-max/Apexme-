@@ -1,0 +1,36 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/hex_save"
+        android:title="@string/hex_save"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/hex_open"
+        android:title="@string/hex_open"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/hex_games"
+        android:title="@string/hex_games"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/hex_save_as"
+        android:title="@string/hex_save_as"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/hex_goto"
+        android:title="@string/hex_goto"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/hex_find"
+        android:title="@string/hex_find"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/hex_find_next"
+        android:title="@string/hex_find_next"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/hex_converter"
+        android:title="@string/hex_converter"
+        app:showAsAction="never" />
+</menu>
