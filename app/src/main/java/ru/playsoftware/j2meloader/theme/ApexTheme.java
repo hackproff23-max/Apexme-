@@ -190,6 +190,9 @@ public final class ApexTheme {
 	public static synchronized Bitmap appBitmap(Context c) {
 		if (!appLoaded) {
 			appBitmap = loadBitmap(c, K_APP_BG);
+			if (appBitmap == null) {
+				appBitmap = defaultBitmap(c);
+			}
 			appLoaded = true;
 		}
 		return appBitmap;
@@ -198,6 +201,9 @@ public final class ApexTheme {
 	public static synchronized Bitmap windowBitmap(Context c) {
 		if (!winLoaded) {
 			winBitmap = loadBitmap(c, K_WIN_BG);
+			if (winBitmap == null) {
+				winBitmap = defaultBitmap(c);
+			}
 			winLoaded = true;
 		}
 		return winBitmap;
@@ -213,6 +219,13 @@ public final class ApexTheme {
 					if (t != null && t != Typeface.DEFAULT) {
 						typeface = t;
 					}
+				} catch (Exception ignored) {
+				}
+			}
+			if (typeface == null) {
+				try {
+					// fonte padrao do Apexme (assets/fonts/BebasKai.ttf)
+					typeface = Typeface.createFromAsset(c.getAssets(), "fonts/BebasKai.ttf");
 				} catch (Exception ignored) {
 				}
 			}
@@ -331,6 +344,20 @@ public final class ApexTheme {
 				applyFontTree(g.getChildAt(i));
 			}
 		}
+	}
+
+	private static Bitmap defaultBmp;
+
+	/** Imagem padrao do Apexme (res/drawable-nodpi/apex_default_bg), usada quando nao ha fundo importado. */
+	private static synchronized Bitmap defaultBitmap(Context c) {
+		if (defaultBmp == null) {
+			try {
+				defaultBmp = BitmapFactory.decodeResource(c.getResources(),
+						ru.playsoftware.j2meloader.R.drawable.apex_default_bg);
+			} catch (Throwable ignored) {
+			}
+		}
+		return defaultBmp;
 	}
 
 	private static Bitmap loadBitmap(Context c, String key) {
@@ -628,7 +655,7 @@ public final class ApexTheme {
 	}
 
 	public static boolean hasAppImage(Context c) {
-		return appBitmap(c) != null;
+		return prefs(c).getString(K_APP_BG, null) != null && appBitmap(c) != null;
 	}
 
 	/** Desenha o bitmap preenchendo dst (center crop). */
