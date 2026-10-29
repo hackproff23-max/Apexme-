@@ -176,9 +176,10 @@ public final class ShadersDialog {
 		}
 		new AlertDialog.Builder(a)
 				.setTitle("Testar todos os shaders")
-				.setMessage("Compila os " + total + " shaders neste aparelho, um por um, e esconde da lista " +
-						"os que dão erro. A tela do jogo pode piscar durante o teste. Os escondidos podem " +
-						"voltar em \"Restaurar shaders com erro\".")
+				.setMessage("Compila os " + total + " shaders neste aparelho, um por um. Os que funcionam " +
+						"são renomeados sem o prefixo \"" + LibretroShaders.PREFIX + "\" e os que dão erro " +
+						"são APAGADOS do armazenamento (não dá para desfazer). A tela do jogo pode piscar " +
+						"durante o teste.")
 				.setPositiveButton("Testar", (d, w) -> startTest(a, c, current))
 				.setNegativeButton(android.R.string.cancel, null)
 				.show();
@@ -206,21 +207,25 @@ public final class ShadersDialog {
 
 			@Override
 			public void onDone(int ok, int bad, boolean cancelled) {
+				// apaga os que deram erro e tira o prefixo dos que funcionam (so os testados)
+				ApexPrefs.CleanupResult cr = ApexPrefs.cleanupTested(names, ok + bad);
 				a.runOnUiThread(() -> {
 					if (a.isFinishing()) {
 						return;
 					}
 					progress.dismiss();
-					String sel = ApexPrefs.shaderSel();
-					if (sel.startsWith(ApexPrefs.SEL_USER)
-							&& ApexPrefs.badShaders().contains(sel.substring(ApexPrefs.SEL_USER.length()))) {
-						ApexPrefs.setShaderSel(ApexPrefs.SEL_AUTO);
+					if (cr.selectionChanged) {
 						apply(a, true);
 					}
 					current.setText("Shader atual: " + selLabel());
+					String text = (cancelled ? "Cancelado. " : "") + ok + " funcionam (" + cr.renamed +
+							" renomeados sem o prefixo " + LibretroShaders.PREFIX + "), " + bad +
+							" com erro (" + cr.deleted + " apagados do armazenamento).";
+					if (cr.duplicates > 0) {
+						text += "\n" + cr.duplicates + " cópias repetidas removidas.";
+					}
 					new AlertDialog.Builder(a).setTitle("Teste dos shaders")
-							.setMessage((cancelled ? "Cancelado. " : "") + ok + " funcionam, " + bad +
-									" com erro (escondidos da lista).")
+							.setMessage(text)
 							.setPositiveButton(R.string.apex_close, null).show();
 				});
 			}
@@ -281,7 +286,8 @@ public final class ShadersDialog {
 					text = "Cancelado. Importados: " + r.imported;
 				} else {
 					text = r.imported + " shaders importados, " + r.skipped + " ignorados (multi-passes ou " +
-							"incompatíveis).\nEscolha em \"Selecionar shader\" (nomes começam com libretro__).";
+							"incompatíveis).\nRode \"Testar todos os shaders\" para apagar os que não funcionam e tirar o prefixo " +
+							LibretroShaders.PREFIX + " dos que funcionam.";
 				}
 				new AlertDialog.Builder(a).setTitle("Shaders do libretro").setMessage(text)
 						.setPositiveButton(R.string.apex_close, null).show();

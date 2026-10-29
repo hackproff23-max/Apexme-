@@ -13,6 +13,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -179,6 +180,136 @@ public final class ApexPrefs {
 			}
 		}
 		return ok.toArray(new String[0]);
+	}
+
+	/** Resultado da limpeza feita depois de "Testar todos os shaders". */
+	public static final class CleanupResult {
+		/** Shaders com erro apagados do armazenamento. */
+		public int deleted;
+		/** Shaders que funcionam e foram renomeados sem o prefixo libretro__. */
+		public int renamed;
+		/** Copias repetidas (mesmo nome e conteudo) removidas. */
+		public int duplicates;
+		/** O shader selecionado foi apagado ou mudou de nome (precisa recarregar). */
+		public boolean selectionChanged;
+	}
+
+	/**
+	 * Depois do teste: apaga do armazenamento os shaders testados que deram erro e tira o prefixo
+	 * "libretro__" do nome dos que funcionam. So mexe nos primeiros {@code tested} nomes da lista
+	 * (os que de fato foram testados, caso o teste tenha sido cancelado).
+	 */
+	public static CleanupResult cleanupTested(String[] names, int tested) {
+		CleanupResult r = new CleanupResult();
+		try {
+			java.util.Set<String> bad = badShaders();
+			String sel = shaderSel();
+			String selName = sel.startsWith(SEL_USER) ? sel.substring(SEL_USER.length()) : null;
+			int count = Math.min(tested, names.length);
+			for (int i = 0; i < count; i++) {
+				String name = names[i];
+				File f = userShaderFile(name);
+				if (!f.isFile()) {
+					continue;
+				}
+				if (bad.contains(name)) {
+					if (f.delete()) {
+						r.deleted++;
+						if (name.equals(selName)) {
+							setShaderSel(SEL_AUTO);
+							r.selectionChanged = true;
+							selName = null;
+						}
+					}
+					continue;
+				}
+				String prefix = LibretroShaders.PREFIX;
+				if (!name.startsWith(prefix) || name.length() <= prefix.length()) {
+					continue;
+				}
+				String base = name.substring(prefix.length());
+				String finalName = base;
+				File target = userShaderFile(base);
+				if (target.exists()) {
+					if (sameContent(f, target)) {
+						// ja existe um shader igual com o nome limpo: so tira a copia
+						if (f.delete()) {
+							r.duplicates++;
+							if (name.equals(selName)) {
+								setShaderSel(SEL_USER + base);
+								r.selectionChanged = true;
+								selName = null;
+							}
+						}
+						continue;
+					}
+					String stem = base;
+					String ext = "";
+					int dot = base.lastIndexOf('.');
+					if (dot > 0) {
+						stem = base.substring(0, dot);
+						ext = base.substring(dot);
+					}
+					int k = 2;
+					while (userShaderFile(stem + "_" + k + ext).exists()) {
+						k++;
+					}
+					finalName = stem + "_" + k + ext;
+				}
+				if (f.renameTo(userShaderFile(finalName))) {
+					r.renamed++;
+					if (name.equals(selName)) {
+						setShaderSel(SEL_USER + finalName);
+						r.selectionChanged = true;
+						selName = null;
+					}
+				}
+			}
+			// tira da lista de erros o que ja foi apagado
+			java.util.Set<String> left = new HashSet<>();
+			for (String n : bad) {
+				if (userShaderFile(n).exists()) {
+					left.add(n);
+				}
+			}
+			if (left.isEmpty()) {
+				clearBadShaders();
+			} else {
+				sp().edit().putStringSet("bad_shaders", left).apply();
+			}
+		} catch (Throwable ignored) {
+		}
+		ImportStore.sync();
+		return r;
+	}
+
+	private static boolean sameContent(File a, File b) {
+		if (a.length() != b.length()) {
+			return false;
+		}
+		try (InputStream x = new FileInputStream(a); InputStream y = new FileInputStream(b)) {
+			byte[] bx = new byte[8192];
+			byte[] by = new byte[8192];
+			int n;
+			while ((n = x.read(bx)) > 0) {
+				int got = 0;
+				while (got < n) {
+					int m = y.read(by, got, n - got);
+					if (m < 0) {
+						return false;
+					}
+					got += m;
+				}
+				for (int i = 0; i < n; i++) {
+					if (bx[i] != by[i]) {
+						return false;
+					}
+				}
+			}
+			return true;
+		} catch (Exception e) {
+			return false;
+		}
 	}
 
 	/** Copia um fragment shader (.fsh/.frag/.glsl/.txt) para a pasta do app. Retorna o nome salvo. */
