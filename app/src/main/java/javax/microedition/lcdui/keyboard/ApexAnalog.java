@@ -83,7 +83,7 @@ public class ApexAnalog implements Runnable {
 		int alpha = opaque ? 0xFF : settings.vkAlpha;
 		int a = alpha << 24;
 		boolean active = pointer >= 0;
-		Bitmap baseImg = ApexPrefs.buttonBitmap(ApexPrefs.ANALOG_BASE, active);
+		Bitmap baseImg = ApexDefaults.analog(ApexPrefs.buttonBitmap(ApexPrefs.ANALOG_BASE, active));
 		if (baseImg != null) {
 			g.drawBitmap(baseImg, rect, Math.round(255 * (active ? ApexPrefs.pressedOpacity() : ApexPrefs.normalOpacity())));
 		} else {
@@ -94,7 +94,7 @@ public class ApexAnalog implements Runnable {
 		}
 		float kr = radius * 0.45f;
 		RectF knob = new RectF(knobX - kr, knobY - kr, knobX + kr, knobY + kr);
-		Bitmap knobImg = ApexPrefs.buttonBitmap(ApexPrefs.ANALOG_KNOB, active);
+		Bitmap knobImg = ApexDefaults.analog(ApexPrefs.buttonBitmap(ApexPrefs.ANALOG_KNOB, active));
 		if (knobImg != null) {
 			g.drawBitmap(knobImg, knob, Math.round(255 * (active ? ApexPrefs.pressedOpacity() : ApexPrefs.normalOpacity())));
 		} else {

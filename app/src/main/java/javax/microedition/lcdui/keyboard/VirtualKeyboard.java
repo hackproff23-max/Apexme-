@@ -1554,6 +1554,9 @@ public class VirtualKeyboard implements Overlay, Runnable {
 				g.drawBitmap(png, rect, Math.round(255 * (selected ? ApexPrefs.pressedOpacity() : ApexPrefs.normalOpacity())));
 				return;
 			}
+			if (ApexDefaults.drawKey(g, rect, shown, selected)) {
+				return;
+			}
 			g.setFillColor(alpha | bgColor);
 			g.setTextColor(alpha | fgColor);
 			g.setDrawColor(alpha | settings.vkOutlineColor);

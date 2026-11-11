@@ -93,7 +93,7 @@ public class ApexDpad implements Runnable {
 		if (!enabled() || screen.isEmpty()) {
 			return;
 		}
-		android.graphics.Bitmap img = ApexPrefs.buttonBitmap(ApexPrefs.DPAD, false);
+		android.graphics.Bitmap img = ApexDefaults.dpad(ApexPrefs.buttonBitmap(ApexPrefs.DPAD, false));
 		if (img != null) {
 			// uma imagem so; ao tocar, apenas a parte pressionada fica com a opacidade de "pressionado"
 			RectF part = null;

@@ -24,6 +24,12 @@ final class ApexKeyPaint {
 			g.drawBitmap(bmp, r, a);
 			return;
 		}
+		g.setTextScale(textScale);
+		boolean def = ApexDefaults.drawKey(g, r, label, sel);
+		g.setTextScale(1f);
+		if (def) {
+			return;
+		}
 		int corner = (int) (Math.min(r.width(), r.height()) / 4f);
 		g.setFillColor((a << 24) | bg);
 		g.setDrawColor((a << 24) | s.vkOutlineColor);
