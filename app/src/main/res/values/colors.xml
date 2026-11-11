@@ -9,7 +9,7 @@
     <color name="primary_dark">#000000</color>
     <color name="accent">#f2a900</color>
     <color name="background">#000000</color>
-    <color name="text_primary">#d1ff00</color>
+    <color name="text_primary">#F89820</color>
     <color name="text_secondary">#b9b9b9</color>
     <color name="btn_bg_normal">#f2a900</color>
     <color name="btn_bg_pressed">#8a6000</color>

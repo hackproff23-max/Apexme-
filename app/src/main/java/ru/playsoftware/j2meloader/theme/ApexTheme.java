@@ -58,10 +58,10 @@ public final class ApexTheme {
 	private static final String K_WIN_BG = "apex_window_bg_file";
 	private static final String K_FONT = "apex_font_file";
 
-	public static final int DEF_TEXT = 0xFFD1FF00;
+	public static final int DEF_TEXT = 0xFFF89820;
 	public static final int DEF_OUTLINE = 0xFF000000;
 	public static final int DEF_BG = 0xFF000000;
-	public static final int DEF_PRESSED = 0xFF7BCA57;
+	public static final int DEF_PRESSED = 0xFF5FA8D3;
 
 	private static final String SETTINGS_FILE = "tema.json";
 	private static final String[] COLOR_KEYS = {K_TEXT, K_OUTLINE, K_BG, K_PRESSED, K_WINDOW, K_OUTLINE_WIDTH,
