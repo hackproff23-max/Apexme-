@@ -25,7 +25,7 @@ import javax.microedition.shell.MicroActivity;
 
 import ru.playsoftware.j2meloader.theme.ApexTheme;
 
-/** Janela Tela: cada escolha aplica imediatamente, sem botao Salvar. */
+/** Janela Tela: preview imediato e salvamento explicito da escolha final. */
 public final class ScreenDialog {
 	private static final int[][] PRESETS = {
 			{0, 0}, {240, 320}, {320, 240}, {360, 640}, {640, 360}, {480, 800}, {800, 480}};
@@ -84,7 +84,7 @@ public final class ScreenDialog {
 				}
 				cur[0] = nw;
 				cur[1] = nh;
-				applyNow(a, prefs, cur, fs[0]);
+				applyPreview(a, cur, fs[0]);
 			}
 		};
 		ew.setOnFocusChangeListener(resolutionListener);
@@ -109,7 +109,7 @@ public final class ScreenDialog {
 				cur[1] = p[1];
 				ew.clearFocus();
 				eh.clearFocus();
-				applyNow(a, prefs, cur, fs[0]);
+				applyPreview(a, cur, fs[0]);
 			});
 			presets.addView(chip, chipParams(a, false));
 		}
@@ -124,7 +124,7 @@ public final class ScreenDialog {
 		// tela cheia
 		SwitchCompat sw = ApexUi.toggle(a, "Tela cheia", fs[0], v -> {
 			fs[0] = v;
-			applyNow(a, prefs, cur, fs[0]);
+			applyPreview(a, cur, fs[0]);
 		});
 		sw.setShadowLayer(ApexUi.dp(a, 3), 0, 0, Color.BLACK);
 		root.addView(sw);
@@ -142,7 +142,7 @@ public final class ScreenDialog {
 				for (int k = 0; k < oc.length; k++) {
 					mark(a, oc[k], k == idx);
 				}
-				applyNow(a, prefs, cur, fs[0]);
+				applyPreview(a, cur, fs[0]);
 			});
 			orow.addView(oc[i], chipParams(a, true));
 		}
@@ -150,6 +150,26 @@ public final class ScreenDialog {
 				LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
 		olp.topMargin = ApexUi.dp(a, 4);
 		root.addView(orow, olp);
+
+		TextView save = chip(a, "Salvar", true);
+		LinearLayout.LayoutParams saveLp = new LinearLayout.LayoutParams(
+				LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+		saveLp.topMargin = ApexUi.dp(a, 10);
+		save.setOnClickListener(v -> {
+			int nw = parseSide(ew.getText());
+			int nh = parseSide(eh.getText());
+			if (nw < 0 || nh < 0) {
+				ew.setError(nw < 0 ? "Use 0 ou 32–4096" : null);
+				eh.setError(nh < 0 ? "Use 0 ou 32–4096" : null);
+				return;
+			}
+			cur[0] = nw;
+			cur[1] = nh;
+			prefs.edit().putInt("width", cur[0]).putInt("height", cur[1])
+					.putInt("orientation", cur[2]).putBoolean("fullscreen", fs[0]).apply();
+			d.dismiss();
+		});
+		root.addView(save, saveLp);
 
 		ScrollView sv = new ScrollView(a) {
 			@Override
@@ -178,10 +198,7 @@ public final class ScreenDialog {
 		d.show();
 	}
 
-	private static void applyNow(MicroActivity a,
-			android.content.SharedPreferences prefs, int[] values, boolean fullscreen) {
-		prefs.edit().putInt("width", values[0]).putInt("height", values[1])
-				.putInt("orientation", values[2]).putBoolean("fullscreen", fullscreen).apply();
+	private static void applyPreview(MicroActivity a, int[] values, boolean fullscreen) {
 		a.setRequestedOrientation(ORIENT[values[2]]);
 		Canvas c = canvas(a);
 		if (c != null) {
