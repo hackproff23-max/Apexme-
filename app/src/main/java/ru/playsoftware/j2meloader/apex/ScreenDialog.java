@@ -1,14 +1,11 @@
 package ru.playsoftware.j2meloader.apex;
 
 import android.app.Dialog;
+import android.content.Context;
 import android.content.pm.ActivityInfo;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
-import android.os.Handler;
-import android.os.Looper;
-import android.text.Editable;
 import android.text.InputType;
-import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.View;
 import android.view.Window;
@@ -190,7 +187,6 @@ public final class ScreenDialog {
 		sv.addView(root);
 		d.setContentView(sv);
 		d.setCanceledOnTouchOutside(false);
-		d.setOnDismissListener(x2 -> handler.removeCallbacksAndMessages(null));
 		Window w = d.getWindow();
 		if (w != null) {
 			w.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
