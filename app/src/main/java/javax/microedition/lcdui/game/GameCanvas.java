@@ -32,7 +32,7 @@ public class GameCanvas extends Canvas {
 	public static final int GAME_C_PRESSED = 1 << Canvas.GAME_C;
 	public static final int GAME_D_PRESSED = 1 << Canvas.GAME_D;
 
-	private final Image image;
+	private volatile Image image;
 	private int keyState;
 	private final boolean suppressCommands;
 
@@ -40,6 +40,20 @@ public class GameCanvas extends Canvas {
 		super();
 		this.suppressCommands = suppressCommands;
 		image = Image.createImage(width, maxHeight);
+	}
+
+	/**
+	 * Quando a resolucao e alterada ao vivo, o buffer do jogo precisa acompanhar,
+	 * senao o jogo continua desenhando no tamanho antigo (tela preta/cortada).
+	 */
+	@Override
+	public void updateSize() {
+		super.updateSize();
+		Image img = image;
+		if (img != null && (img.getWidth() < width || img.getHeight() < maxHeight)) {
+			image = Image.createImage(Math.max(width, img.getWidth()),
+					Math.max(maxHeight, img.getHeight()));
+		}
 	}
 
 	@Override

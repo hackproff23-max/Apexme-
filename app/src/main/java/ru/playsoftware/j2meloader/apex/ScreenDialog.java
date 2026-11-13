@@ -1,11 +1,15 @@
 package ru.playsoftware.j2meloader.apex;
 
 import android.app.Dialog;
-import android.content.Context;
 import android.content.pm.ActivityInfo;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
+import android.net.Uri;
+import android.os.Handler;
+import android.os.Looper;
+import android.text.Editable;
 import android.text.InputType;
+import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.View;
 import android.view.Window;
@@ -15,17 +19,27 @@ import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.widget.SwitchCompat;
+
+import java.io.File;
 
 import javax.microedition.lcdui.ApexScreen;
 import javax.microedition.lcdui.Canvas;
 import javax.microedition.lcdui.Displayable;
 import javax.microedition.shell.MicroActivity;
 
+import ru.playsoftware.j2meloader.BuildConfig;
+import ru.playsoftware.j2meloader.config.Config;
+import ru.playsoftware.j2meloader.config.ProfileModel;
+import ru.playsoftware.j2meloader.config.ProfilesManager;
 import ru.playsoftware.j2meloader.theme.ApexTheme;
 
-/** Janela Tela: preview imediato e salvamento explicito da escolha final. */
+/**
+ * Janela Tela: a resolucao e aplicada ao vivo enquanto voce digita (ou toca num preset),
+ * e so e gravada no perfil do jogo ao tocar em Salvar. Cancelar volta ao que estava antes.
+ */
 public final class ScreenDialog {
 	private static final int[][] PRESETS = {
 			{0, 0}, {240, 320}, {320, 240}, {360, 640}, {640, 360}, {480, 800}, {800, 480}};
@@ -37,6 +51,7 @@ public final class ScreenDialog {
 	private static final String[] ORIENT_NAMES = {"Padrão", "Automática", "Retrato", "Paisagem"};
 	private static final int MIN_SIDE = 32;
 	private static final int MAX_SIDE = 4096;
+	private static final long PREVIEW_DELAY_MS = 350;
 
 	private ScreenDialog() {
 	}
@@ -49,12 +64,11 @@ public final class ScreenDialog {
 		if (a.isFinishing()) {
 			return;
 		}
-		android.content.SharedPreferences prefs =
-				a.getSharedPreferences("apex_screen", Context.MODE_PRIVATE);
+		// valores atuais (o que esta na tela agora)
 		int[] cur = {
-				prefs.getInt("width", Math.max(0, Displayable.getVirtualWidth())),
-				prefs.getInt("height", Math.max(0, Displayable.getVirtualHeight())),
-				prefs.getInt("orientation", 0)};
+				Math.max(0, Displayable.getVirtualWidth()),
+				Math.max(0, Displayable.getVirtualHeight()),
+				0};
 		int req = a.getRequestedOrientation();
 		for (int i = 0; i < ORIENT.length; i++) {
 			if (ORIENT[i] == req) {
@@ -62,39 +76,61 @@ public final class ScreenDialog {
 			}
 		}
 		Canvas first = canvas(a);
-		boolean[] fs = {prefs.getBoolean("fullscreen",
-				first != null && ApexScreen.isFullscreen(first))};
+		boolean[] fs = {first != null && ApexScreen.isFullscreen(first)};
+		// copia para o Cancelar
+		final int[] orig = cur.clone();
+		final boolean origFs = fs[0];
+		final boolean[] saved = {false};
 
 		Dialog d = new Dialog(a);
 		d.requestWindowFeature(Window.FEATURE_NO_TITLE);
 		LinearLayout root = ApexUi.column(a);
 		root.setBackgroundColor(Color.argb(55, 0, 0, 0));
+		Handler handler = new Handler(Looper.getMainLooper());
 
-		// resolucao
+		// ---- resolucao ----
 		root.addView(label(a, "Resolução (largura × altura, 0 = automática)", 14));
 		EditText ew = field(a, cur[0]);
 		EditText eh = field(a, cur[1]);
-		View.OnFocusChangeListener resolutionListener = (v, hasFocus) -> {
-			if (!hasFocus) {
-				int nw = parseSide(ew.getText());
-				int nh = parseSide(eh.getText());
-				if (nw < 0 || nh < 0) {
-					((EditText) v).setError("Use 0 ou 32–4096");
-					return;
-				}
+
+		// aplica ao vivo, com um pequeno atraso para nao redesenhar a cada tecla
+		Runnable preview = () -> {
+			int nw = parseSide(ew.getText());
+			int nh = parseSide(eh.getText());
+			ew.setError(nw < 0 ? "Use 0 ou 32–4096" : null);
+			eh.setError(nh < 0 ? "Use 0 ou 32–4096" : null);
+			if (nw < 0 || nh < 0) {
+				return;
+			}
+			if (nw != cur[0] || nh != cur[1]) {
 				cur[0] = nw;
 				cur[1] = nh;
 				applyPreview(a, cur, fs[0]);
 			}
 		};
-		ew.setOnFocusChangeListener(resolutionListener);
-		eh.setOnFocusChangeListener(resolutionListener);
+		TextWatcher watcher = new TextWatcher() {
+			@Override
+			public void beforeTextChanged(CharSequence s, int st, int c, int af) {
+			}
+
+			@Override
+			public void onTextChanged(CharSequence s, int st, int b, int c) {
+			}
+
+			@Override
+			public void afterTextChanged(Editable s) {
+				handler.removeCallbacks(preview);
+				handler.postDelayed(preview, PREVIEW_DELAY_MS);
+			}
+		};
+		ew.addTextChangedListener(watcher);
+		eh.addTextChangedListener(watcher);
+
 		LinearLayout resRow = new LinearLayout(a);
 		resRow.setOrientation(LinearLayout.HORIZONTAL);
 		resRow.setGravity(Gravity.CENTER_VERTICAL);
 		resRow.addView(ew, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-		TextView x = label(a, "  ×  ", 18);
-		resRow.addView(x);
+		resRow.addView(label(a, "  ×  ", 18));
 		resRow.addView(eh, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
 		root.addView(resRow);
 
@@ -105,11 +141,10 @@ public final class ScreenDialog {
 			chip.setOnClickListener(v -> {
 				ew.setText(String.valueOf(p[0]));
 				eh.setText(String.valueOf(p[1]));
-				cur[0] = p[0];
-				cur[1] = p[1];
+				handler.removeCallbacks(preview);
 				ew.clearFocus();
 				eh.clearFocus();
-				applyPreview(a, cur, fs[0]);
+				preview.run();
 			});
 			presets.addView(chip, chipParams(a, false));
 		}
@@ -121,7 +156,7 @@ public final class ScreenDialog {
 		hlp.topMargin = ApexUi.dp(a, 8);
 		root.addView(hs, hlp);
 
-		// tela cheia
+		// ---- tela cheia ----
 		SwitchCompat sw = ApexUi.toggle(a, "Tela cheia", fs[0], v -> {
 			fs[0] = v;
 			applyPreview(a, cur, fs[0]);
@@ -129,7 +164,7 @@ public final class ScreenDialog {
 		sw.setShadowLayer(ApexUi.dp(a, 3), 0, 0, Color.BLACK);
 		root.addView(sw);
 
-		// orientacao
+		// ---- orientacao ----
 		root.addView(label(a, "Orientação da tela", 14));
 		LinearLayout orow = new LinearLayout(a);
 		orow.setOrientation(LinearLayout.HORIZONTAL);
@@ -151,11 +186,20 @@ public final class ScreenDialog {
 		olp.topMargin = ApexUi.dp(a, 4);
 		root.addView(orow, olp);
 
+		// ---- rodape fixo: Cancelar / Salvar ----
+		LinearLayout footer = new LinearLayout(a);
+		footer.setOrientation(LinearLayout.HORIZONTAL);
+		footer.setBackgroundColor(Color.argb(110, 0, 0, 0));
+		int fp = ApexUi.dp(a, 8);
+		footer.setPadding(fp, fp, fp, fp);
+
+		TextView cancel = chip(a, "Cancelar", false);
+		cancel.setOnClickListener(v -> d.dismiss()); // o dismiss reverte
+		footer.addView(cancel, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
 		TextView save = chip(a, "Salvar", true);
-		LinearLayout.LayoutParams saveLp = new LinearLayout.LayoutParams(
-				LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-		saveLp.topMargin = ApexUi.dp(a, 10);
 		save.setOnClickListener(v -> {
+			handler.removeCallbacks(preview);
 			int nw = parseSide(ew.getText());
 			int nh = parseSide(eh.getText());
 			if (nw < 0 || nh < 0) {
@@ -165,22 +209,45 @@ public final class ScreenDialog {
 			}
 			cur[0] = nw;
 			cur[1] = nh;
-			prefs.edit().putInt("width", cur[0]).putInt("height", cur[1])
-					.putInt("orientation", cur[2]).putBoolean("fullscreen", fs[0]).apply();
-			d.dismiss();
+			applyPreview(a, cur, fs[0]);
+			if (persist(a, cur, fs[0])) {
+				saved[0] = true;
+				Toast.makeText(a, "Tela salva", Toast.LENGTH_SHORT).show();
+				d.dismiss();
+			} else {
+				Toast.makeText(a, "Não foi possível salvar o perfil do jogo", Toast.LENGTH_LONG).show();
+			}
 		});
-		root.addView(save, saveLp);
+		LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(
+				0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+		slp.leftMargin = ApexUi.dp(a, 8);
+		footer.addView(save, slp);
 
 		ScrollView sv = new ScrollView(a) {
 			@Override
 			protected void onMeasure(int w, int h) {
-				int max = (int) (getResources().getDisplayMetrics().heightPixels * 0.55f);
+				int max = (int) (getResources().getDisplayMetrics().heightPixels * 0.5f);
 				super.onMeasure(w, View.MeasureSpec.makeMeasureSpec(max, View.MeasureSpec.AT_MOST));
 			}
 		};
 		sv.addView(root);
-		d.setContentView(sv);
+
+		LinearLayout outer = new LinearLayout(a);
+		outer.setOrientation(LinearLayout.VERTICAL);
+		outer.addView(sv, new LinearLayout.LayoutParams(
+				LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+		outer.addView(footer, new LinearLayout.LayoutParams(
+				LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+		d.setContentView(outer);
 		d.setCanceledOnTouchOutside(false);
+		// Sair sem salvar (Cancelar / botao voltar): restaura o que estava antes.
+		d.setOnDismissListener(x -> {
+			handler.removeCallbacks(preview);
+			if (!saved[0]) {
+				applyPreview(a, orig, origFs);
+			}
+		});
 		Window w = d.getWindow();
 		if (w != null) {
 			w.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
@@ -204,6 +271,47 @@ public final class ScreenDialog {
 		if (c != null) {
 			ApexScreen.apply(c, values[0], values[1], fullscreen);
 		}
+	}
+
+	/** Pasta do perfil do jogo (a mesma que o MicroLoader le ao iniciar). */
+	private static File profileDir(MicroActivity a) {
+		try {
+			String appPath;
+			if (BuildConfig.FULL_EMULATOR) {
+				Uri data = a.getIntent().getData();
+				if (data == null) {
+					return null;
+				}
+				appPath = data.toString();
+			} else {
+				appPath = a.getApplicationInfo().dataDir + "/files/converted/midlet";
+			}
+			File appDir = new File(appPath);
+			File converted = appDir.getParentFile();
+			if (converted == null || converted.getParent() == null) {
+				return null;
+			}
+			return new File(converted.getParent() + Config.MIDLET_CONFIGS_DIR + appDir.getName());
+		} catch (Throwable e) {
+			return null;
+		}
+	}
+
+	/** Grava no perfil do jogo: e daqui que o jogo le a resolucao na proxima abertura. */
+	private static boolean persist(MicroActivity a, int[] v, boolean fullscreen) {
+		File dir = profileDir(a);
+		if (dir == null) {
+			return false;
+		}
+		ProfileModel p = ProfilesManager.loadConfig(dir);
+		if (p == null) {
+			return false;
+		}
+		p.screenWidth = v[0];
+		p.screenHeight = v[1];
+		p.orientation = v[2];
+		p.forceFullscreen = fullscreen;
+		return ProfilesManager.saveConfig(p);
 	}
 
 	private static int parseSide(CharSequence s) {

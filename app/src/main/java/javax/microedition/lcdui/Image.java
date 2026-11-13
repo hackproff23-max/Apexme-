@@ -149,13 +149,17 @@ public class Image {
 
 	void setSize(int width, int height) {
 		if (width > bitmap.getWidth() || height > bitmap.getHeight()) {
-			Bitmap b = bitmap;
-			bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+			Bitmap old = bitmap;
+			Bitmap grown = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+			// Copia o conteudo antigo para o novo bitmap.
+			new android.graphics.Canvas(grown).drawBitmap(old, 0, 0, null);
+			bitmap = grown;
 			bounds.right = width;
 			bounds.bottom = height;
 			if (graphics != null) {
-				graphics.reset(0, 0, width, height);
-				graphics.getCanvas().drawBitmap(b, 0, 0, null);
+				// CORRECAO DA TELA PRETA: o Canvas do Graphics e final e ficava preso ao
+				// bitmap antigo. Recria o Graphics para desenhar no bitmap novo.
+				graphics = new Graphics(this);
 			}
 		} else {
 			bounds.right = width;
