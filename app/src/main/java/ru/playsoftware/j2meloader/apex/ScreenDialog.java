@@ -2,7 +2,6 @@ package ru.playsoftware.j2meloader.apex;
 
 import android.app.Dialog;
 import android.content.Context;
-import android.content.Context;
 import android.content.pm.ActivityInfo;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
