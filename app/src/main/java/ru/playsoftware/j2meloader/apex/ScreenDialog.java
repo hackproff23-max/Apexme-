@@ -25,7 +25,7 @@ import javax.microedition.shell.MicroActivity;
 
 import ru.playsoftware.j2meloader.theme.ApexTheme;
 
-/** Janela Tela: resolucao, tela cheia e orientacao aplicadas ao vivo, quase transparente. */
+/** Janela Tela: cada escolha aplica imediatamente, sem botao Salvar. */
 public final class ScreenDialog {
 	private static final int[][] PRESETS = {
 			{0, 0}, {240, 320}, {320, 240}, {360, 640}, {640, 360}, {480, 800}, {800, 480}};
@@ -74,6 +74,21 @@ public final class ScreenDialog {
 		root.addView(label(a, "Resolução (largura × altura, 0 = automática)", 14));
 		EditText ew = field(a, cur[0]);
 		EditText eh = field(a, cur[1]);
+		View.OnFocusChangeListener resolutionListener = (v, hasFocus) -> {
+			if (!hasFocus) {
+				int nw = parseSide(ew.getText());
+				int nh = parseSide(eh.getText());
+				if (nw < 0 || nh < 0) {
+					((EditText) v).setError("Use 0 ou 32–4096");
+					return;
+				}
+				cur[0] = nw;
+				cur[1] = nh;
+				applyNow(a, prefs, cur, fs[0]);
+			}
+		};
+		ew.setOnFocusChangeListener(resolutionListener);
+		eh.setOnFocusChangeListener(resolutionListener);
 		LinearLayout resRow = new LinearLayout(a);
 		resRow.setOrientation(LinearLayout.HORIZONTAL);
 		resRow.setGravity(Gravity.CENTER_VERTICAL);
@@ -90,6 +105,11 @@ public final class ScreenDialog {
 			chip.setOnClickListener(v -> {
 				ew.setText(String.valueOf(p[0]));
 				eh.setText(String.valueOf(p[1]));
+				cur[0] = p[0];
+				cur[1] = p[1];
+				ew.clearFocus();
+				eh.clearFocus();
+				applyNow(a, prefs, cur, fs[0]);
 			});
 			presets.addView(chip, chipParams(a, false));
 		}
@@ -102,7 +122,10 @@ public final class ScreenDialog {
 		root.addView(hs, hlp);
 
 		// tela cheia
-		SwitchCompat sw = ApexUi.toggle(a, "Tela cheia", fs[0], v -> fs[0] = v);
+		SwitchCompat sw = ApexUi.toggle(a, "Tela cheia", fs[0], v -> {
+			fs[0] = v;
+			applyNow(a, prefs, cur, fs[0]);
+		});
 		sw.setShadowLayer(ApexUi.dp(a, 3), 0, 0, Color.BLACK);
 		root.addView(sw);
 
@@ -119,6 +142,7 @@ public final class ScreenDialog {
 				for (int k = 0; k < oc.length; k++) {
 					mark(a, oc[k], k == idx);
 				}
+				applyNow(a, prefs, cur, fs[0]);
 			});
 			orow.addView(oc[i], chipParams(a, true));
 		}
@@ -126,35 +150,6 @@ public final class ScreenDialog {
 				LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
 		olp.topMargin = ApexUi.dp(a, 4);
 		root.addView(orow, olp);
-
-		LinearLayout actions = new LinearLayout(a);
-		actions.setOrientation(LinearLayout.HORIZONTAL);
-		TextView cancel = chip(a, "Cancelar", false);
-		cancel.setOnClickListener(v -> d.dismiss());
-		TextView save = chip(a, "Salvar", true);
-		save.setOnClickListener(v -> {
-			int newWidth = parseSide(ew.getText());
-			int newHeight = parseSide(eh.getText());
-			if (newWidth < 0 || newHeight < 0) {
-				ew.setError("Use 0 ou 32–4096");
-				eh.setError("Use 0 ou 32–4096");
-				return;
-			}
-			cur[0] = newWidth;
-			cur[1] = newHeight;
-			prefs.edit().putInt("width", cur[0]).putInt("height", cur[1])
-					.putInt("orientation", cur[2]).putBoolean("fullscreen", fs[0]).apply();
-			a.setRequestedOrientation(ORIENT[cur[2]]);
-			Canvas c = canvas(a);
-			if (c != null) ApexScreen.apply(c, cur[0], cur[1], fs[0]);
-			d.dismiss();
-		});
-		LinearLayout.LayoutParams actionParams = new LinearLayout.LayoutParams(
-				0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-		actionParams.topMargin = ApexUi.dp(a, 12);
-		actions.addView(cancel, actionParams);
-		actions.addView(save, actionParams);
-		root.addView(actions);
 
 		ScrollView sv = new ScrollView(a) {
 			@Override
@@ -181,6 +176,17 @@ public final class ScreenDialog {
 			w.setAttributes(lp);
 		}
 		d.show();
+	}
+
+	private static void applyNow(MicroActivity a,
+			android.content.SharedPreferences prefs, int[] values, boolean fullscreen) {
+		prefs.edit().putInt("width", values[0]).putInt("height", values[1])
+				.putInt("orientation", values[2]).putBoolean("fullscreen", fullscreen).apply();
+		a.setRequestedOrientation(ORIENT[values[2]]);
+		Canvas c = canvas(a);
+		if (c != null) {
+			ApexScreen.apply(c, values[0], values[1], fullscreen);
+		}
 	}
 
 	private static int parseSide(CharSequence s) {
