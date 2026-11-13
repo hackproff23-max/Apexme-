@@ -293,6 +293,24 @@ public class InstallerDialog extends DialogFragment {
 						nd.getVersion(),
 						installer.getCurrentVersion()));
 				break;
+			case AppInstaller.STATUS_DUPLICATE_EXACT: {
+				AppItem existing = installer.getExistsApp();
+				message = new SpannableStringBuilder("Este jogo já está instalado. A instalação existente foi mantida; nenhum arquivo foi substituído.");
+				btnOk.setText(R.string.START_CMD);
+				btnClose.setText(R.string.close);
+				alertConfirm(message, v -> {
+					installer.clearCache();
+					installer.deleteTemp();
+					Config.startApp(v.getContext(), existing.getTitle(), existing.getPathExt(), false);
+					dismiss();
+				});
+				return;
+			}
+			case AppInstaller.STATUS_DUPLICATE_TITLE:
+				message = new SpannableStringBuilder("Já existe um jogo com o mesmo título normalizado: ")
+						.append(installer.getExistsApp().getTitle())
+						.append(". Se continuar, a instalação existente será substituída. Deseja realmente continuar?");
+				break;
 			case AppInstaller.STATUS_EQUAL:
 				message = new SpannableStringBuilder(getString(R.string.reinstall));
 				AppItem app = installer.getExistsApp();

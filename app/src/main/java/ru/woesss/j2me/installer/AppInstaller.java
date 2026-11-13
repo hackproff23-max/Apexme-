@@ -61,6 +61,8 @@ public class AppInstaller {
 	static final int STATUS_UNMATCHED = 3;
 	static final int STATUS_NEED_JAD = 4;
 	static final int STATUS_SUCCESS = 5;
+	static final int STATUS_DUPLICATE_EXACT = 6;
+	static final int STATUS_DUPLICATE_TITLE = 7;
 
 	private final int id;
 	private final Application context;
@@ -379,10 +381,20 @@ public class AppInstaller {
 	}
 
 	private int checkDescriptor() {
-		// Remove invalid characters from app path
 		String name = newDesc.getName();
-		String vendor = newDesc.getVendor();
-		currentApp = appRepository.get(name, vendor);
+		try {
+			GameFingerprint.Match match = GameFingerprint.findMatch(srcJar, name, appRepository);
+			if (match != null) {
+				currentApp = match.app;
+				appDirName = currentApp.getPath();
+				targetDir = new File(Config.getAppDir(), appDirName);
+				return match.identical ? STATUS_DUPLICATE_EXACT : STATUS_DUPLICATE_TITLE;
+			}
+		} catch (Exception e) {
+			Log.w(TAG, "Game duplicate scan failed; continuing with normal installer", e);
+		}
+		// Preserve the original MIDlet name/vendor version check as a fallback.
+		currentApp = appRepository.get(name, newDesc.getVendor());
 		if (currentApp == null) {
 			generatePathName(name.replaceAll(FileUtils.ILLEGAL_FILENAME_CHARS, "").trim());
 			return STATUS_NEW;
