@@ -21,6 +21,12 @@ android {
     }
 
     signingConfigs {
+        apexme {
+            storeFile file("apexme.keystore")
+            storePassword "apexme123"
+            keyAlias "apexme"
+            keyPassword "apexme123"
+        }
         release {
             def keystoreFile = rootProject.file("keystore.properties")
             if (System.getenv()['BITRISE_IO']) {
@@ -47,7 +53,7 @@ android {
             if (System.getenv()['BITRISE_IO'] || rootProject.file("keystore.properties").exists()) {
                 signingConfig signingConfigs.release
             } else {
-                signingConfig signingConfigs.debug
+                signingConfig signingConfigs.apexme
             }
         }
         debug {

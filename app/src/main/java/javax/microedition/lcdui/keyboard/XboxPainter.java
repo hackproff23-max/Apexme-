@@ -65,6 +65,10 @@ final class XboxPainter {
 			Jewel j = jewelFor(label);
 			socket(c, cx, cy, rad * 1.13f, 150);
 			jewel(c, cx, cy, rad, j, t);
+			if (XboxIcons.draw(c, cx, cy, rad, label, j.dark, j == DARK)) {
+				c.restoreToCount(save);
+				return;
+			}
 			if (label != null && !label.isEmpty()) {
 				if (j == DARK) {
 					text.setColor(Color.argb(230, 235, 235, 235));
