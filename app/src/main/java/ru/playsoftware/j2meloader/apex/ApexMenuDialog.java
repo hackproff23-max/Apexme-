@@ -15,7 +15,7 @@ import javax.microedition.shell.MicroActivity;
 import ru.playsoftware.j2meloader.R;
 import ru.playsoftware.j2meloader.theme.ApexTheme;
 
-/** Menu lateral do Apexme: Sair, Shaders e Teclado virtual, cada um com seu icone. */
+/** Menu lateral do Apexme: Sair, Shaders, Teclado virtual e Tela, cada um com seu icone branco. */
 public final class ApexMenuDialog {
 	private ApexMenuDialog() {
 	}
@@ -45,6 +45,10 @@ public final class ApexMenuDialog {
 					d.dismiss();
 					VkDialog.show(a);
 				}));
+		root.addView(item(a, R.drawable.ic_apex_screen, "Tela", () -> {
+			d.dismiss();
+			ScreenDialog.show(a);
+		}));
 		d.setContentView(root);
 		Window w = d.getWindow();
 		if (w != null) {
@@ -67,7 +71,7 @@ public final class ApexMenuDialog {
 		row.setBackgroundResource(R.drawable.apex_pressed);
 		ImageView iv = new ImageView(a);
 		iv.setImageResource(icon);
-		iv.setColorFilter(ApexTheme.outlineColor(a));
+		iv.setColorFilter(android.graphics.Color.WHITE);
 		int s = ApexUi.dp(a, 28);
 		row.addView(iv, new LinearLayout.LayoutParams(s, s));
 		TextView t = new TextView(a);
