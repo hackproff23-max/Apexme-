@@ -48,6 +48,11 @@ public class CanvasWrapper {
 		this.canvas = canvas;
 	}
 
+	/** Canvas nativo, para os desenhos por codigo (estilo Xbox). */
+	public Canvas getCanvas() {
+		return canvas;
+	}
+
 	public void clear(int color) {
 		canvas.drawColor(color, PorterDuff.Mode.SRC);
 	}

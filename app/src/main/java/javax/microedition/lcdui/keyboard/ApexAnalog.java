@@ -30,6 +30,9 @@ public class ApexAnalog implements Runnable {
 	private float offX, offY;
 	private Canvas target;
 	private View view;
+	private final ApexAnim.Value anim = new ApexAnim.Value();
+	private final ApexAnim.Value animX = new ApexAnim.Value();
+	private final ApexAnim.Value animY = new ApexAnim.Value();
 
 	public ApexAnalog(ProfileModel settings) {
 		this.settings = settings;
@@ -44,6 +47,7 @@ public class ApexAnalog implements Runnable {
 
 	public void setView(View v) {
 		view = v;
+		ApexAnim.bind(v);
 	}
 
 	private boolean landscape() {
@@ -83,7 +87,16 @@ public class ApexAnalog implements Runnable {
 		int alpha = opaque ? 0xFF : settings.vkAlpha;
 		int a = alpha << 24;
 		boolean active = pointer >= 0;
-		Bitmap baseImg = ApexDefaults.analog(ApexPrefs.buttonBitmap(ApexPrefs.ANALOG_BASE, active));
+		Bitmap baseImg = ApexPrefs.buttonBitmap(ApexPrefs.ANALOG_BASE, active);
+		if (baseImg == null && ApexPrefs.buttonBitmap(ApexPrefs.ANALOG_KNOB, active) == null) {
+			float t = anim.linear(active);
+			float kx = animX.smooth((knobX - cx) / radius, active);
+			float ky = animY.smooth((knobY - cy) / radius, active);
+			float n = ApexPrefs.normalOpacity();
+			float opacity = opaque ? 1f : n + (ApexPrefs.pressedOpacity() - n) * t;
+			XboxPainter.INSTANCE.stick(g.getCanvas(), cx, cy, radius, kx, ky, t, opacity);
+			return;
+		}
 		if (baseImg != null) {
 			g.drawBitmap(baseImg, rect, Math.round(255 * (active ? ApexPrefs.pressedOpacity() : ApexPrefs.normalOpacity())));
 		} else {
@@ -94,7 +107,7 @@ public class ApexAnalog implements Runnable {
 		}
 		float kr = radius * 0.45f;
 		RectF knob = new RectF(knobX - kr, knobY - kr, knobX + kr, knobY + kr);
-		Bitmap knobImg = ApexDefaults.analog(ApexPrefs.buttonBitmap(ApexPrefs.ANALOG_KNOB, active));
+		Bitmap knobImg = ApexPrefs.buttonBitmap(ApexPrefs.ANALOG_KNOB, active);
 		if (knobImg != null) {
 			g.drawBitmap(knobImg, knob, Math.round(255 * (active ? ApexPrefs.pressedOpacity() : ApexPrefs.normalOpacity())));
 		} else {

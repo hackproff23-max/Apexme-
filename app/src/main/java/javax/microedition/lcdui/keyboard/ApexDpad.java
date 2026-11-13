@@ -31,6 +31,8 @@ public class ApexDpad implements Runnable {
 	private float offX, offY;
 	private Canvas target;
 	private View view;
+	private int lastBits;
+	private final ApexAnim.Value anim = new ApexAnim.Value();
 
 	public ApexDpad(ProfileModel settings) {
 		this.settings = settings;
@@ -45,6 +47,7 @@ public class ApexDpad implements Runnable {
 
 	public void setView(View v) {
 		view = v;
+		ApexAnim.bind(v);
 	}
 
 	private boolean landscape() {
@@ -93,7 +96,7 @@ public class ApexDpad implements Runnable {
 		if (!enabled() || screen.isEmpty()) {
 			return;
 		}
-		android.graphics.Bitmap img = ApexDefaults.dpad(ApexPrefs.buttonBitmap(ApexPrefs.DPAD, false));
+		android.graphics.Bitmap img = ApexPrefs.buttonBitmap(ApexPrefs.DPAD, false);
 		if (img != null) {
 			// uma imagem so; ao tocar, apenas a parte pressionada fica com a opacidade de "pressionado"
 			RectF part = null;
@@ -105,27 +108,26 @@ public class ApexDpad implements Runnable {
 					Math.round(255 * ApexPrefs.pressedOpacity()), part);
 			return;
 		}
-		int alpha = opaque ? 0xFF : settings.vkAlpha;
-		int a = alpha << 24;
-		float cellSize = side / 3f;
-		float gap = cellSize * 0.06f;
-		for (int r = 0; r < 3; r++) {
-			for (int c = 0; c < 3; c++) {
-				int di = dirIndex(r, c);
-				if (di < 0) {
-					continue;
-				}
-				boolean on = pointer >= 0 && cell == di;
-				RectF cr = cellRect(r, c);
-				cr.inset(gap, gap);
-				g.setFillColor(a | (on ? settings.vkBgColorSelected : settings.vkBgColor));
-				g.setDrawColor(a | settings.vkOutlineColor);
-				g.setTextColor(a | (on ? settings.vkFgColorSelected : settings.vkFgColor));
-				g.fillRoundRect(cr, (int) (cellSize * 0.2f), (int) (cellSize * 0.2f));
-				g.drawRoundRect(cr, (int) (cellSize * 0.2f), (int) (cellSize * 0.2f));
-				g.drawString(ARROWS[r * 3 + c], cr.centerX(), cr.centerY());
-			}
+		boolean on = pointer >= 0 && cell >= 0;
+		if (on) {
+			lastBits = bitsFor(cell);
 		}
+		float t = anim.linear(on);
+		float n = ApexPrefs.normalOpacity();
+		float opacity = opaque ? 1f : n + (ApexPrefs.pressedOpacity() - n) * t;
+		XboxPainter.INSTANCE.dpad(g.getCanvas(), cx, cy, side / 2f, lastBits, t, opacity);
+	}
+
+	/** Bits DPAD_* da direcao 0..7 (grade 3x3 sem o centro). */
+	private static int bitsFor(int dir) {
+		int i = dir < 4 ? dir : dir + 1;
+		int row = i / 3, col = i % 3;
+		int b = 0;
+		if (row == 0) b |= XboxPainter.DPAD_UP;
+		if (row == 2) b |= XboxPainter.DPAD_DOWN;
+		if (col == 0) b |= XboxPainter.DPAD_LEFT;
+		if (col == 2) b |= XboxPainter.DPAD_RIGHT;
+		return b;
 	}
 
 	private boolean contains(float x, float y) {
