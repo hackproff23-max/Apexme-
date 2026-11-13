@@ -184,6 +184,17 @@ final class XboxPainter {
 
 	private static Jewel jewelFor(String label) {
 		if (label == null) return DARK;
+		switch (label) { // apex-cores: so estas 4 teclas coloridas, o resto preto
+			case "#": return YELLOW;
+			case "*": return BLUE;
+			case "0": return RED;
+			case "F": return GREEN;
+			default: return DARK;
+		}
+	}
+
+	private static Jewel jewelForOld(String label) {
+		if (label == null) return DARK;
 		switch (label) {
 			case "A":
 				return GREEN;
