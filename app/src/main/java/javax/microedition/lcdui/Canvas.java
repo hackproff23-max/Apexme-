@@ -1010,15 +1010,17 @@ public abstract class Canvas extends Displayable {
 			if (r - l <= 0 || b - t <= 0) {
 				return;
 			}
-			Graphics g = offscreen.getSingleGraphics();
-			g.reset(l, t, r, b);
-			try {
-				paint(g);
-			} catch (Throwable e) {
-				Log.e(TAG, "Error in paint()", e);
-			}
 			synchronized (bufferLock) {
-				offscreen.copyTo(offscreenCopy);
+				Graphics g = offscreen.getSingleGraphics();
+				g.reset(l, t, r, b);
+				try {
+					paint(g);
+				} catch (Throwable e) {
+					Log.e(TAG, "Error in paint()", e);
+				}
+				synchronized (bufferLock) {
+					offscreen.copyTo(offscreenCopy);
+				}
 			}
 			if (surface == null || !surface.isValid()) {
 				return;
