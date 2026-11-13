@@ -23,10 +23,15 @@ public final class ApexScreen {
 		Displayable.setVirtualSize(w, h);
 		int w0 = c.width;
 		int h0 = c.height;
-		c.setFullScreenMode(fullscreen);
-		c.updateSize();
-		if (c.width != w0 || c.height != h0) {
-			Display.postEvent(CanvasEvent.getInstance(c, CanvasEvent.SIZE_CHANGED, c.width, c.height));
+		boolean fullscreenChanged = isFullscreen(c) != fullscreen;
+		if (fullscreenChanged) {
+			// setFullScreenMode já recalcula o buffer e envia SIZE_CHANGED.
+			c.setFullScreenMode(fullscreen);
+		} else {
+			c.updateSize();
+			if (c.width != w0 || c.height != h0) {
+				Display.postEvent(CanvasEvent.getInstance(c, CanvasEvent.SIZE_CHANGED, c.width, c.height));
+			}
 		}
 	}
 }
