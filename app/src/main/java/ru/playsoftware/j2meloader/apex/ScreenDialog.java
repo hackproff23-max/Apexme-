@@ -2,6 +2,7 @@ package ru.playsoftware.j2meloader.apex;
 
 import android.app.Dialog;
 import android.content.Context;
+import android.content.Context;
 import android.content.pm.ActivityInfo;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
@@ -49,8 +50,12 @@ public final class ScreenDialog {
 		if (a.isFinishing()) {
 			return;
 		}
-		int[] cur = {Math.max(0, Displayable.getVirtualWidth()),
-				Math.max(0, Displayable.getVirtualHeight()), 0};
+		android.content.SharedPreferences prefs =
+				a.getSharedPreferences("apex_screen", Context.MODE_PRIVATE);
+		int[] cur = {
+				prefs.getInt("width", Math.max(0, Displayable.getVirtualWidth())),
+				prefs.getInt("height", Math.max(0, Displayable.getVirtualHeight())),
+				prefs.getInt("orientation", 0)};
 		int req = a.getRequestedOrientation();
 		for (int i = 0; i < ORIENT.length; i++) {
 			if (ORIENT[i] == req) {
@@ -58,16 +63,8 @@ public final class ScreenDialog {
 			}
 		}
 		Canvas first = canvas(a);
-		boolean[] fs = {first != null && ApexScreen.isFullscreen(first)};
-		boolean[] setting = {false};
-		Handler handler = new Handler(Looper.getMainLooper());
-
-		Runnable apply = () -> {
-			Canvas c = canvas(a);
-			if (c != null) {
-				ApexScreen.apply(c, cur[0], cur[1], fs[0]);
-			}
-		};
+		boolean[] fs = {prefs.getBoolean("fullscreen",
+				first != null && ApexScreen.isFullscreen(first))};
 
 		Dialog d = new Dialog(a);
 		d.requestWindowFeature(Window.FEATURE_NO_TITLE);
@@ -78,36 +75,6 @@ public final class ScreenDialog {
 		root.addView(label(a, "Resolução (largura × altura, 0 = automática)", 14));
 		EditText ew = field(a, cur[0]);
 		EditText eh = field(a, cur[1]);
-		Runnable fromFields = () -> {
-			int w = parseSide(ew.getText());
-			int h = parseSide(eh.getText());
-			if (w < 0 || h < 0) {
-				return;
-			}
-			cur[0] = w;
-			cur[1] = h;
-			apply.run();
-		};
-		TextWatcher tw = new TextWatcher() {
-			@Override
-			public void beforeTextChanged(CharSequence s, int st, int c, int af) {
-			}
-
-			@Override
-			public void onTextChanged(CharSequence s, int st, int b, int c) {
-			}
-
-			@Override
-			public void afterTextChanged(Editable s) {
-				if (setting[0]) {
-					return;
-				}
-				handler.removeCallbacks(fromFields);
-				handler.postDelayed(fromFields, 400);
-			}
-		};
-		ew.addTextChangedListener(tw);
-		eh.addTextChangedListener(tw);
 		LinearLayout resRow = new LinearLayout(a);
 		resRow.setOrientation(LinearLayout.HORIZONTAL);
 		resRow.setGravity(Gravity.CENTER_VERTICAL);
@@ -122,13 +89,8 @@ public final class ScreenDialog {
 		for (int[] p : PRESETS) {
 			TextView chip = chip(a, p[0] == 0 ? "Auto" : p[0] + "×" + p[1], false);
 			chip.setOnClickListener(v -> {
-				setting[0] = true;
 				ew.setText(String.valueOf(p[0]));
 				eh.setText(String.valueOf(p[1]));
-				setting[0] = false;
-				cur[0] = p[0];
-				cur[1] = p[1];
-				apply.run();
 			});
 			presets.addView(chip, chipParams(a, false));
 		}
@@ -141,10 +103,7 @@ public final class ScreenDialog {
 		root.addView(hs, hlp);
 
 		// tela cheia
-		SwitchCompat sw = ApexUi.toggle(a, "Tela cheia", fs[0], v -> {
-			fs[0] = v;
-			apply.run();
-		});
+		SwitchCompat sw = ApexUi.toggle(a, "Tela cheia", fs[0], v -> fs[0] = v);
 		sw.setShadowLayer(ApexUi.dp(a, 3), 0, 0, Color.BLACK);
 		root.addView(sw);
 
@@ -161,7 +120,6 @@ public final class ScreenDialog {
 				for (int k = 0; k < oc.length; k++) {
 					mark(a, oc[k], k == idx);
 				}
-				a.setRequestedOrientation(ORIENT[idx]);
 			});
 			orow.addView(oc[i], chipParams(a, true));
 		}
@@ -170,12 +128,34 @@ public final class ScreenDialog {
 		olp.topMargin = ApexUi.dp(a, 4);
 		root.addView(orow, olp);
 
-		TextView close = chip(a, "Fechar", false);
-		close.setOnClickListener(v -> d.dismiss());
-		LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(
-				LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-		clp.topMargin = ApexUi.dp(a, 12);
-		root.addView(close, clp);
+		LinearLayout actions = new LinearLayout(a);
+		actions.setOrientation(LinearLayout.HORIZONTAL);
+		TextView cancel = chip(a, "Cancelar", false);
+		cancel.setOnClickListener(v -> d.dismiss());
+		TextView save = chip(a, "Salvar", true);
+		save.setOnClickListener(v -> {
+			int newWidth = parseSide(ew.getText());
+			int newHeight = parseSide(eh.getText());
+			if (newWidth < 0 || newHeight < 0) {
+				ew.setError("Use 0 ou 32–4096");
+				eh.setError("Use 0 ou 32–4096");
+				return;
+			}
+			cur[0] = newWidth;
+			cur[1] = newHeight;
+			prefs.edit().putInt("width", cur[0]).putInt("height", cur[1])
+					.putInt("orientation", cur[2]).putBoolean("fullscreen", fs[0]).apply();
+			a.setRequestedOrientation(ORIENT[cur[2]]);
+			Canvas c = canvas(a);
+			if (c != null) ApexScreen.apply(c, cur[0], cur[1], fs[0]);
+			d.dismiss();
+		});
+		LinearLayout.LayoutParams actionParams = new LinearLayout.LayoutParams(
+				0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+		actionParams.topMargin = ApexUi.dp(a, 12);
+		actions.addView(cancel, actionParams);
+		actions.addView(save, actionParams);
+		root.addView(actions);
 
 		ScrollView sv = new ScrollView(a) {
 			@Override
