@@ -6,8 +6,10 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.Typeface;
 
+import ru.playsoftware.j2meloader.apex.ApexControlTheme;
+
 /**
- * Icones das teclas pretas.
+ * Icones das teclas pretas (brancas no tema claro).
  * A = mover controles (cruz com setas), B = tamanho dos controles (seta diagonal dupla),
  * 1-9 = direcao (setas; 5 = OK). A letra/numero fica pequeno no canto.
  * Retorna false para teclas sem icone: ai vale o desenho normal.
@@ -33,8 +35,14 @@ final class XboxIcons {
 		c.drawLine(tx, ty, tx + h * (float) Math.cos(a + Math.PI + 0.6), ty + h * (float) Math.sin(a + Math.PI + 0.6), p);
 	}
 
+	/** Compatibilidade: usa o tema atual do controle. */
 	static boolean draw(Canvas c, float cx, float cy, float rad, String label, int tint, boolean onDark) {
-		if (label == null || label.length() != 1 || !onDark) return false;
+		return draw(c, cx, cy, rad, label, tint, onDark, ApexControlTheme.light());
+	}
+
+	static boolean draw(Canvas c, float cx, float cy, float rad, String label, int tint, boolean onNeutral,
+						boolean light) {
+		if (label == null || label.length() != 1 || !onNeutral) return false;
 		char ch = label.charAt(0);
 		float dx = 0f, dy = 0f;
 		int kind;
@@ -52,7 +60,7 @@ final class XboxIcons {
 			case '9': kind = 6; dx = 1; dy = 1; break;
 			default: return false;
 		}
-		int color = Color.argb(240, 235, 235, 235);
+		int color = light ? Color.argb(240, 40, 40, 40) : Color.argb(240, 235, 235, 235);
 		float s = rad * 0.5f;
 		float ix = cx - rad * 0.06f, iy = cy - rad * 0.1f;
 		p.setShader(null);

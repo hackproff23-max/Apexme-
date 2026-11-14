@@ -10,9 +10,12 @@ import android.graphics.RectF;
 import android.graphics.Shader;
 import android.graphics.Typeface;
 
+import ru.playsoftware.j2meloader.apex.ApexControlTheme;
+
 /**
  * Desenha os controles no estilo do controle Xbox original (porte do ControlPainter.kt).
  * Todos os metodos recebem "t" (0..1): quanto o controle esta pressionado, para animar.
+ * Tema escuro (padrao) ou claro (branco), escolhido em ApexControlTheme.
  * Nao e thread-safe: use sempre na thread de desenho.
  */
 final class XboxPainter {
@@ -36,6 +39,8 @@ final class XboxPainter {
 	private static final Jewel BLUE = new Jewel(0xFF8CC4FF, 0xFF1F6FD0, 0xFF0A2F66);
 	private static final Jewel YELLOW = new Jewel(0xFFFFEE8F, 0xFFF2BE12, 0xFF7A5A00);
 	private static final Jewel DARK = new Jewel(0xFF6E6E6E, 0xFF2E2E2E, 0xFF0C0C0C);
+	/** Versao branca da joia preta (tema claro). */
+	private static final Jewel WHITE = new Jewel(0xFFFFFFFF, 0xFFF0F0F0, 0xFFB4B4B4);
 
 	private static final float[][] AXES = {{0f, -1f}, {0f, 1f}, {-1f, 0f}, {1f, 0f}};
 	private static final int[] DIR_BITS = {DPAD_UP, DPAD_DOWN, DPAD_LEFT, DPAD_RIGHT};
@@ -45,6 +50,8 @@ final class XboxPainter {
 	private final RectF rect = new RectF();
 	private final Path path = new Path();
 	private final Path bar = new Path();
+	/** Tema do desenho em andamento (lido uma vez por chamada publica). */
+	private boolean light;
 
 	private XboxPainter() {
 		text.setTextAlign(Paint.Align.CENTER);
@@ -55,6 +62,7 @@ final class XboxPainter {
 
 	/** Tecla do teclado virtual. Retangulo largo vira pilula; o resto, joia redonda. */
 	void key(Canvas c, RectF r, String label, float t, float opacity) {
+		light = ApexControlTheme.light();
 		float w = r.width(), h = r.height();
 		float cx = r.centerX(), cy = r.centerY();
 		int save = begin(c, cx, cy, Math.max(w, h) * 0.65f, opacity);
@@ -63,15 +71,19 @@ final class XboxPainter {
 		} else {
 			float rad = Math.min(w, h) / 2f / 1.13f;
 			Jewel j = jewelFor(label);
+			boolean neutral = j == DARK;
+			if (neutral && light) {
+				j = WHITE;
+			}
 			socket(c, cx, cy, rad * 1.13f, 150);
 			jewel(c, cx, cy, rad, j, t);
-			if (XboxIcons.draw(c, cx, cy, rad, label, j.dark, j == DARK)) {
+			if (XboxIcons.draw(c, cx, cy, rad, label, j.dark, neutral, light)) {
 				c.restoreToCount(save);
 				return;
 			}
 			if (label != null && !label.isEmpty()) {
-				if (j == DARK) {
-					text.setColor(Color.argb(230, 235, 235, 235));
+				if (neutral) {
+					text.setColor(light ? Color.argb(235, 35, 35, 35) : Color.argb(230, 235, 235, 235));
 					fit(label, rad * 0.8f, rad * 1.5f);
 					c.drawText(label, cx, cy + text.getTextSize() * 0.35f, text);
 				} else {
@@ -88,10 +100,11 @@ final class XboxPainter {
 	}
 
 	/**
-	 * D-pad: cruz preta que "balanca". bits = DPAD_* das direcoes seguradas
+	 * D-pad: cruz preta (ou branca no tema claro) que "balanca". bits = DPAD_* das direcoes seguradas
 	 * (mantenha o ultimo valor enquanto t volta a 0, para o fade-out).
 	 */
 	void dpad(Canvas c, float cx, float cy, float r, int bits, float t, float opacity) {
+		light = ApexControlTheme.light();
 		int save = begin(c, cx, cy, r * 1.2f, opacity);
 		socket(c, cx, cy, r, WELL_FILL);
 
@@ -105,12 +118,13 @@ final class XboxPainter {
 
 		p.setStyle(Paint.Style.FILL);
 		p.setShader(null);
-		p.setColor(Color.argb(140, 0, 0, 0));
+		p.setColor(Color.argb(light ? 90 : 140, 0, 0, 0));
 		c.save();
 		c.translate(0f, r * 0.05f);
 		c.drawPath(path, p);
 		c.restore();
-		shade(new LinearGradient(0f, cy - al, 0f, cy + al, 0xFF575757, 0xFF1C1C1C, Shader.TileMode.CLAMP));
+		shade(new LinearGradient(0f, cy - al, 0f, cy + al,
+				light ? 0xFFFFFFFF : 0xFF575757, light ? 0xFFCFCFCF : 0xFF1C1C1C, Shader.TileMode.CLAMP));
 		c.drawPath(path, p);
 
 		float tx = 0f, ty = 0f;
@@ -127,7 +141,7 @@ final class XboxPainter {
 			c.clipPath(path);
 			shade(new LinearGradient(
 					cx + ux * al, cy + uy * al, cx - ux * al, cy - uy * al,
-					new int[]{Color.argb((int) (200 * t), 0, 0, 0), Color.argb(0, 0, 0, 0),
+					new int[]{Color.argb((int) ((light ? 120 : 200) * t), 0, 0, 0), Color.argb(0, 0, 0, 0),
 							Color.argb(0, 255, 255, 255), Color.argb((int) (70 * t), 255, 255, 255)},
 					new float[]{0f, 0.5f, 0.5f, 1f}, Shader.TileMode.CLAMP));
 			c.drawRect(cx - al, cy - al, cx + al, cy + al, p);
@@ -136,19 +150,21 @@ final class XboxPainter {
 		p.setShader(null);
 		p.setStyle(Paint.Style.STROKE);
 		p.setStrokeWidth(Math.max(1.5f, r * 0.02f));
-		p.setColor(Color.argb(150, 0, 0, 0));
+		p.setColor(light ? Color.argb(130, 70, 70, 70) : Color.argb(150, 0, 0, 0));
 		c.drawPath(path, p);
 
 		float dish = aw * 0.75f;
 		p.setStyle(Paint.Style.FILL);
-		shade(new LinearGradient(0f, cy - dish, 0f, cy + dish, 0xFF1A1A1A, 0xFF383838, Shader.TileMode.CLAMP));
+		shade(new LinearGradient(0f, cy - dish, 0f, cy + dish,
+				light ? 0xFFD4D4D4 : 0xFF1A1A1A, light ? 0xFFFFFFFF : 0xFF383838, Shader.TileMode.CLAMP));
 		c.drawCircle(cx, cy, dish, p);
 		p.setShader(null);
 		c.restoreToCount(save);
 	}
 
-	/** Analogico: base escura + tampa concava com sulcos em cruz. kx, ky em -1..1. */
+	/** Analogico: base escura (ou clara) + tampa concava com sulcos em cruz. kx, ky em -1..1. */
 	void stick(Canvas c, float sx, float sy, float r, float kx, float ky, float t, float opacity) {
+		light = ApexControlTheme.light();
 		int save = begin(c, sx, sy, r * 1.2f, opacity);
 		socket(c, sx, sy, r, WELL_FILL);
 		float kr = r * 0.58f * (1f - 0.04f * t);
@@ -156,23 +172,25 @@ final class XboxPainter {
 		float x = sx + kx * travel;
 		float y = sy + ky * travel;
 
+		int sh = light ? 80 : 110;
 		p.setStyle(Paint.Style.FILL);
 		shade(new RadialGradient(x, y, kr * 1.2f,
-				new int[]{Color.argb(110, 0, 0, 0), Color.argb(110, 0, 0, 0), Color.argb(0, 0, 0, 0)},
+				new int[]{Color.argb(sh, 0, 0, 0), Color.argb(sh, 0, 0, 0), Color.argb(0, 0, 0, 0)},
 				new float[]{0f, 0.8f, 1f}, Shader.TileMode.CLAMP));
 		c.drawCircle(x, y, kr * 1.2f, p);
 		shade(new LinearGradient(0f, y - kr, 0f, y + kr,
-				new int[]{0xFF5E5E5E, 0xFF323232, 0xFF161616},
+				light ? new int[]{0xFFFFFFFF, 0xFFEBEBEB, 0xFFC2C2C2} : new int[]{0xFF5E5E5E, 0xFF323232, 0xFF161616},
 				new float[]{0f, 0.5f, 1f}, Shader.TileMode.CLAMP));
 		c.drawCircle(x, y, kr, p);
 		float dish = kr * 0.74f;
-		shade(new LinearGradient(0f, y - dish, 0f, y + dish, 0xFF1C1C1C, 0xFF3A3A3A, Shader.TileMode.CLAMP));
+		shade(new LinearGradient(0f, y - dish, 0f, y + dish,
+				light ? 0xFFD0D0D0 : 0xFF1C1C1C, light ? 0xFFF8F8F8 : 0xFF3A3A3A, Shader.TileMode.CLAMP));
 		c.drawCircle(x, y, dish, p);
 		p.setShader(null);
 		p.setStyle(Paint.Style.STROKE);
 		p.setStrokeCap(Paint.Cap.ROUND);
 		p.setStrokeWidth(kr * 0.07f);
-		p.setColor(0xFF121212);
+		p.setColor(light ? 0xFF8E8E8E : 0xFF121212);
 		for (float[] a : AXES) {
 			c.drawLine(x + a[0] * kr * 0.2f, y + a[1] * kr * 0.2f, x + a[0] * kr * 0.6f, y + a[1] * kr * 0.6f, p);
 		}
@@ -184,7 +202,7 @@ final class XboxPainter {
 
 	private static Jewel jewelFor(String label) {
 		if (label == null) return DARK;
-		switch (label) { // apex-cores: so estas 4 teclas coloridas, o resto preto
+		switch (label) { // apex-cores: so estas 4 teclas coloridas, o resto preto (branco no tema claro)
 			case "#": return YELLOW;
 			case "*": return BLUE;
 			case "0": return RED;
@@ -226,11 +244,11 @@ final class XboxPainter {
 	private void socket(Canvas c, float cx, float cy, float r, int fill) {
 		p.setShader(null);
 		p.setStyle(Paint.Style.FILL);
-		p.setColor(Color.argb(fill, 10, 10, 10));
+		p.setColor(light ? Color.argb(fill, 235, 235, 235) : Color.argb(fill, 10, 10, 10));
 		c.drawCircle(cx, cy, r, p);
 		p.setStyle(Paint.Style.STROKE);
 		p.setStrokeWidth(Math.max(2f, r * 0.03f));
-		p.setColor(Color.argb(80, 255, 255, 255));
+		p.setColor(light ? Color.argb(110, 60, 60, 60) : Color.argb(80, 255, 255, 255));
 		c.drawCircle(cx, cy, r, p);
 	}
 
@@ -262,17 +280,18 @@ final class XboxPainter {
 		float hh = r.height() / 2f - pad;
 		p.setShader(null);
 		p.setStyle(Paint.Style.FILL);
-		p.setColor(Color.argb(150, 10, 10, 10));
+		p.setColor(light ? Color.argb(150, 235, 235, 235) : Color.argb(150, 10, 10, 10));
 		c.drawRoundRect(r, hh + pad, hh + pad, p);
 		p.setStyle(Paint.Style.STROKE);
 		p.setStrokeWidth(Math.max(2f, hh * 0.06f));
-		p.setColor(Color.argb(80, 255, 255, 255));
+		p.setColor(light ? Color.argb(110, 60, 60, 60) : Color.argb(80, 255, 255, 255));
 		c.drawRoundRect(r, hh + pad, hh + pad, p);
 
 		rect.set(cx - hw, cy - hh, cx + hw, cy + hh);
 		p.setStyle(Paint.Style.FILL);
 		shade(new LinearGradient(0f, rect.top, 0f, rect.bottom,
-				mix(0xFF505050, 0xFF2A2A2A, t), 0xFF0E0E0E, Shader.TileMode.CLAMP));
+				light ? mix(0xFFFFFFFF, 0xFFDADADA, t) : mix(0xFF505050, 0xFF2A2A2A, t),
+				light ? 0xFFC6C6C6 : 0xFF0E0E0E, Shader.TileMode.CLAMP));
 		c.drawRoundRect(rect, hh, hh, p);
 		rect.set(cx - hw * 0.7f, cy - hh * 0.85f, cx + hw * 0.7f, cy - hh * 0.1f);
 		shade(new LinearGradient(0f, rect.top, 0f, rect.bottom,
@@ -283,7 +302,9 @@ final class XboxPainter {
 
 		if (label != null && !label.isEmpty()) {
 			fit(label, hh * 0.8f, hw * 1.6f);
-			text.setColor(mix(Color.argb(230, 225, 225, 225), Color.argb(200, 170, 170, 170), t));
+			text.setColor(light
+					? mix(Color.argb(235, 40, 40, 40), Color.argb(210, 90, 90, 90), t)
+					: mix(Color.argb(230, 225, 225, 225), Color.argb(200, 170, 170, 170), t));
 			c.drawText(label, cx, cy + text.getTextSize() * 0.36f, text);
 		}
 	}

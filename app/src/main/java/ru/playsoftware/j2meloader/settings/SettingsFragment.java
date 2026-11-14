@@ -34,7 +34,9 @@ import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
+import androidx.preference.PreferenceGroup;
 import ru.playsoftware.j2meloader.R;
+import ru.playsoftware.j2meloader.apex.ApexControlTheme;
 import ru.playsoftware.j2meloader.config.Config;
 import ru.playsoftware.j2meloader.config.ProfilesActivity;
 import ru.playsoftware.j2meloader.theme.ApexTheme;
@@ -69,6 +71,7 @@ public class SettingsFragment extends PreferenceFragmentCompat {
 			return true;
 		});
 		setupThemeMode();
+		setupControlTheme();
 		PreviewPreference preview = findPreference("pref_preview");
 		Runnable refresh = preview::refresh;
 		((ColorPreference) findPreference("pref_color_text")).setup(ApexTheme.K_TEXT, ApexTheme.DEF_TEXT, refresh);
@@ -118,6 +121,26 @@ public class SettingsFragment extends PreferenceFragmentCompat {
 					.show();
 			return true;
 		});
+	}
+
+	/** Tema padrao do controle (escuro/claro): vale para os jogos que nao escolheram um tema proprio. */
+	private void setupControlTheme() {
+		final Preference pref = new Preference(requireContext());
+		pref.setKey("pref_control_theme");
+		pref.setPersistent(false);
+		pref.setTitle("Tema do controle (padrão)");
+		pref.setSummary(ApexControlTheme.defaultName() + " — vale para todos os jogos sem tema próprio");
+		pref.setOnPreferenceClickListener(p -> {
+			ApexControlTheme.showDefault(requireActivity(), () -> pref.setSummary(
+					ApexControlTheme.defaultName() + " — vale para todos os jogos sem tema próprio"));
+			return true;
+		});
+		Preference anchor = findPreference("pref_theme_mode");
+		PreferenceGroup parent = anchor != null ? anchor.getParent() : null;
+		if (parent == null) {
+			parent = getPreferenceScreen();
+		}
+		parent.addPreference(pref);
 	}
 
 	private void setupImport(String key, int target, String mime) {
