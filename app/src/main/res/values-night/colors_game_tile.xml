@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Cards da lista de jogos: tema escuro = preto -->
+    <color name="game_tile_bg">#000000</color>
+    <color name="game_tile_stroke">#3A3A3A</color>
+    <color name="game_tile_icon_border">#6B6F7A</color>
+    <color name="game_tile_text">#FFFFFF</color>
+    <color name="game_tile_sub">#B0B4C0</color>
+</resources>

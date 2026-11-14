@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Cards da lista de jogos: tema claro = branco -->
+    <color name="game_tile_bg">#FFFFFF</color>
+    <color name="game_tile_stroke">#E4E7EE</color>
+    <color name="game_tile_icon_border">#8E93A0</color>
+    <color name="game_tile_text">#1B1E27</color>
+    <color name="game_tile_sub">#6B7080</color>
+</resources>
