@@ -2,8 +2,8 @@ package ru.playsoftware.j2meloader.applist;
 
 import android.content.Context;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.Typeface;
 import android.os.Build;
 import android.text.Layout;
 import android.text.TextPaint;
@@ -20,6 +20,16 @@ import ru.playsoftware.j2meloader.theme.ApexTheme;
  * As cores e a fonte vem de ApexTheme (janela "Cores").
  */
 public class OutlinedTextView extends AppCompatTextView {
+	/** Desfoque maximo da sombra (dp): valores grandes deixam o desenho do texto lento e piscando. */
+	private static final int MAX_SHADOW_BLUR_DP = 6;
+
+	private static int shadowVersion = -1;
+	private static boolean shadowOn;
+	private static float shadowRadius;
+	private static float shadowDx;
+	private static float shadowDy;
+	private static int shadowColor;
+
 	private final int outlineColor;
 
 	public OutlinedTextView(Context context) {
@@ -54,6 +64,26 @@ public class OutlinedTextView extends AppCompatTextView {
 		super.onDraw(canvas);
 	}
 
+	/** Calcula (com cache por versao do tema) a sombra, com o desfoque limitado. */
+	private static synchronized boolean refreshShadow(Context c) {
+		int version = ApexTheme.version();
+		if (shadowVersion != version) {
+			float d = c.getResources().getDisplayMetrics().density;
+			int color = ApexTheme.getColor(c, ApexTheme.K_SHADOW_COLOR, ApexTheme.DEF_SHADOW_COLOR);
+			int opacity = Math.max(0, Math.min(100,
+					ApexTheme.getColor(c, ApexTheme.K_SHADOW_ALPHA, ApexTheme.DEF_SHADOW_ALPHA)));
+			int alpha = Math.round(Color.alpha(color) * opacity / 100f);
+			shadowColor = Color.argb(alpha, Color.red(color), Color.green(color), Color.blue(color));
+			shadowOn = alpha > 0;
+			int blur = Math.max(0, ApexTheme.getColor(c, ApexTheme.K_SHADOW_BLUR, ApexTheme.DEF_SHADOW_BLUR));
+			shadowRadius = Math.max(0.01f, Math.min(blur, MAX_SHADOW_BLUR_DP) * d);
+			shadowDx = ApexTheme.getColor(c, ApexTheme.K_SHADOW_DX, ApexTheme.DEF_SHADOW_DX) * d;
+			shadowDy = ApexTheme.getColor(c, ApexTheme.K_SHADOW_DY, ApexTheme.DEF_SHADOW_DY) * d;
+			shadowVersion = version;
+		}
+		return shadowOn;
+	}
+
 	/**
 	 * Desenha o contorno do texto de qualquer TextView. Com fill=true desenha tambem o preenchimento
 	 * por cima (usado na sobreposicao dos textos que nao sao OutlinedTextView).
@@ -66,7 +96,7 @@ public class OutlinedTextView extends AppCompatTextView {
 		Context c = tv.getContext();
 		float scale = ApexTheme.outlineScale(c);
 		boolean outline = scale > 0.001f;
-		boolean shadow = ApexTheme.shadowEnabled(c);
+		boolean shadow = refreshShadow(c);
 		if (!outline && !shadow) {
 			return;
 		}
@@ -76,7 +106,9 @@ public class OutlinedTextView extends AppCompatTextView {
 		paint.setStrokeJoin(Paint.Join.ROUND);
 		if (shadow) {
 			// a sombra sai so desta primeira passada (por baixo do contorno e do preenchimento)
-			ApexTheme.applyShadow(c, paint);
+			synchronized (OutlinedTextView.class) {
+				paint.setShadowLayer(shadowRadius, shadowDx, shadowDy, shadowColor);
+			}
 		}
 		if (outline) {
 			paint.setStyle(Paint.Style.STROKE);
