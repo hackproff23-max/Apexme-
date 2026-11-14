@@ -17,7 +17,10 @@ import android.util.DisplayMetrics;
 import ru.playsoftware.j2meloader.R;
 import ru.playsoftware.j2meloader.applist.OutlinedTextView;
 
-/** Tela de carregamento: logo e "Carregando" com tres pontos que aparecem um por um em 4 segundos. */
+/**
+ * Tela de carregamento: fundo + logo conforme o tema (claro: fundo branco e logo escuro;
+ * escuro/outro: fundo preto e logo claro) e "Carregando" com tres pontos em 4 segundos.
+ */
 public final class LoadingOverlay {
 	private static final long TOTAL_MS = 4000;
 	private static final int DOTS = 3;
@@ -26,10 +29,17 @@ public final class LoadingOverlay {
 	}
 
 	public static void show(Activity a) {
+		boolean light = ApexThemeMode.current(a) == ApexThemeMode.MODE_LIGHT;
 		FrameLayout root = new FrameLayout(a);
-		root.setBackgroundColor(Color.BLACK);
+		root.setBackgroundColor(light ? Color.WHITE : Color.BLACK);
 		root.setClickable(true);
 		root.setFocusable(true);
+
+		ImageView bg = new ImageView(a);
+		bg.setImageResource(light ? R.drawable.splash_bg_light : R.drawable.splash_bg_dark);
+		bg.setScaleType(ImageView.ScaleType.CENTER_CROP);
+		root.addView(bg, new FrameLayout.LayoutParams(
+				ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
 		LinearLayout box = new LinearLayout(a);
 		box.setOrientation(LinearLayout.VERTICAL);
@@ -38,7 +48,7 @@ public final class LoadingOverlay {
 		DisplayMetrics dm = a.getResources().getDisplayMetrics();
 		int size = (int) (Math.min(dm.widthPixels, dm.heightPixels) * 0.7f);
 		ImageView logo = new ImageView(a);
-		logo.setImageResource(R.drawable.logo_apexme);
+		logo.setImageResource(light ? R.drawable.logo_apexme_light : R.drawable.logo_apexme_dark);
 		logo.setScaleType(ImageView.ScaleType.FIT_CENTER);
 		box.addView(logo, new LinearLayout.LayoutParams(size, size));
 
