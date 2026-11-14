@@ -27,6 +27,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.Settings;
+import android.view.Menu;
 import android.view.ViewConfiguration;
 import android.widget.Toast;
 
@@ -166,6 +167,21 @@ public class MainActivity extends BaseActivity {
 	protected void onResume() {
 		super.onResume();
 		ru.playsoftware.j2meloader.theme.ApexLauncherIcon.sync(this);
+	}
+
+	/** Mostra os logos coloridos tambem nos itens do menu de tres pontinhos. */
+	@Override
+	public boolean onPrepareOptionsMenu(Menu menu) {
+		if (menu != null) {
+			try {
+				java.lang.reflect.Method m = menu.getClass()
+						.getDeclaredMethod("setOptionalIconsVisible", boolean.class);
+				m.setAccessible(true);
+				m.invoke(menu, true);
+			} catch (Throwable ignored) {
+			}
+		}
+		return super.onPrepareOptionsMenu(menu);
 	}
 
 	private void checkAndCreateDirs() {

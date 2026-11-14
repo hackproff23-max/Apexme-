@@ -17,7 +17,10 @@
 
 package ru.playsoftware.j2meloader.applist;
 
+import android.content.Context;
+import android.graphics.Color;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -31,6 +34,8 @@ import java.util.List;
 
 import ru.playsoftware.j2meloader.R;
 import ru.playsoftware.j2meloader.databinding.ListRowJarBinding;
+import ru.playsoftware.j2meloader.theme.ApexTheme;
+import ru.playsoftware.j2meloader.theme.ApexThemeMode;
 
 public class AppsListAdapter extends BaseAdapter implements Filterable {
 
@@ -66,6 +71,7 @@ public class AppsListAdapter extends BaseAdapter implements Filterable {
 		} else {
 			holder = (ViewHolder) view.getTag();
 		}
+		applyTheme(view.getContext(), holder);
 
 		AppItem item = filteredList.get(position);
 		Drawable icon = Drawable.createFromPath(item.getImagePathExt());
@@ -82,6 +88,43 @@ public class AppsListAdapter extends BaseAdapter implements Filterable {
 		return view;
 	}
 
+	private static int withAlpha(int color, int alpha) {
+		return (color & 0x00FFFFFF) | (alpha << 24);
+	}
+
+	/**
+	 * Cor do cartao segue o tema do app: claro = branco, escuro = preto,
+	 * personalizado = cor da janela. O texto usa a cor de texto do tema.
+	 */
+	private static void applyTheme(Context c, ViewHolder h) {
+		int ver = ApexTheme.version();
+		if (h.themeVersion == ver) {
+			return;
+		}
+		h.themeVersion = ver;
+		float d = c.getResources().getDisplayMetrics().density;
+		int mode = ApexThemeMode.current(c);
+		int fill = mode == ApexThemeMode.MODE_LIGHT ? Color.WHITE
+				: mode == ApexThemeMode.MODE_DARK ? Color.BLACK
+				: ApexTheme.windowColor(c);
+		int text = ApexTheme.textColor(c);
+
+		GradientDrawable tile = new GradientDrawable();
+		tile.setColor(fill);
+		tile.setCornerRadius(12 * d);
+		tile.setStroke(Math.max(1, Math.round(d)), withAlpha(text, 0x40));
+		h.binding.tile.setBackground(tile);
+
+		GradientDrawable frame = new GradientDrawable();
+		frame.setColor(Color.TRANSPARENT);
+		frame.setCornerRadius(10 * d);
+		frame.setStroke(Math.round(2 * d), withAlpha(text, 0x80));
+		h.binding.iconFrame.setBackground(frame);
+
+		h.binding.name.setTextColor(text);
+		h.binding.sub.setTextColor(withAlpha(text, 0xB4));
+	}
+
 	public void setItems(List<AppItem> items) {
 		list = items;
 		appFilter.filter(filterConstraint);
@@ -94,6 +137,7 @@ public class AppsListAdapter extends BaseAdapter implements Filterable {
 
 	private static class ViewHolder {
 		ListRowJarBinding binding;
+		int themeVersion = Integer.MIN_VALUE;
 
 		// todo неясно, может быть здесь стоит binding очищать на этапе
 		// ondestroy/ondestroyview где используется этот класс
