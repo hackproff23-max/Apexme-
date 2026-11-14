@@ -40,14 +40,12 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
-import android.view.ContextMenu;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -80,6 +78,7 @@ import io.reactivex.ObservableOnSubscribe;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.Disposable;
 import ru.playsoftware.j2meloader.R;
+import ru.playsoftware.j2meloader.apex.ApexCardMenu;
 import ru.playsoftware.j2meloader.appsdb.AppRepository;
 import ru.playsoftware.j2meloader.config.Config;
 import ru.playsoftware.j2meloader.config.ConfigActivity;
@@ -419,7 +418,11 @@ public class AppsListFragment extends Fragment {
 	@Override
 	public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
 		super.onViewCreated(view, savedInstanceState);
-		registerForContextMenu(binding.list);
+		// toque longo: menu em cartoes (no lugar do menu de contexto do sistema)
+		binding.list.setOnItemLongClickListener((parent, v, position, id) -> {
+			showItemMenu(position);
+			return true;
+		});
 		setHasOptionsMenu(true);
 		binding.list.setEmptyView(binding.empty);
 		binding.floatingActionButton.setBackgroundTintList(new ColorStateList(
@@ -522,43 +525,38 @@ public class AppsListFragment extends Fragment {
 		Config.startApp(requireActivity(), item.getTitle(), item.getPathExt(), false);
 	}
 
-	@Override
-	public void onCreateContextMenu(@NonNull ContextMenu menu, @NonNull View v,
-									ContextMenu.ContextMenuInfo menuInfo) {
-		super.onCreateContextMenu(menu, v, menuInfo);
-		MenuInflater inflater = requireActivity().getMenuInflater();
-		inflater.inflate(R.menu.context_main, menu);
-		if (!ShortcutManagerCompat.isRequestPinShortcutSupported(requireContext())) {
-			menu.findItem(R.id.action_context_shortcut).setVisible(false);
+	/** Menu do toque longo no jogo: cartoes com logo colorido, como na tela de Configuracoes. */
+	private void showItemMenu(int index) {
+		if (!isAdded() || index < 0 || index >= adapter.getCount()) {
+			return;
 		}
-		AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuInfo;
-		int index = info.position;
+		FragmentActivity activity = requireActivity();
 		AppItem appItem = adapter.getItem(index);
-		if (!new File(appItem.getPathExt() + Config.MIDLET_RES_FILE).exists()) {
-			menu.findItem(R.id.action_context_reinstall).setVisible(false);
+		// usa os titulos (traduzidos) do proprio menu de contexto
+		android.widget.PopupMenu titles = new android.widget.PopupMenu(activity, binding.list);
+		activity.getMenuInflater().inflate(R.menu.context_main, titles.getMenu());
+		java.util.ArrayList<ApexCardMenu.Item> rows = new java.util.ArrayList<>();
+		if (ShortcutManagerCompat.isRequestPinShortcutSupported(requireContext())) {
+			rows.add(new ApexCardMenu.Item(R.drawable.apexlogo_shortcut,
+					String.valueOf(titles.getMenu().findItem(R.id.action_context_shortcut).getTitle()),
+					() -> requestAddShortcut(appItem)));
 		}
-	}
-
-	@Override
-	public boolean onContextItemSelected(MenuItem item) {
-		AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) item.getMenuInfo();
-		int index = info.position;
-		AppItem appItem = adapter.getItem(index);
-		int itemId = item.getItemId();
-		if (itemId == R.id.action_context_shortcut) {
-			requestAddShortcut(appItem);
-		} else if (itemId == R.id.action_context_rename) {
-			alertRename(index);
-		} else if (itemId == R.id.action_context_settings) {
-			Config.startApp(requireActivity(), appItem.getTitle(), appItem.getPathExt(), true);
-		} else if (itemId == R.id.action_context_reinstall) {
-			InstallerDialog.newInstance(appItem.getId()).show(getParentFragmentManager(), "installer");
-		} else if (itemId == R.id.action_context_delete) {
-			alertDelete(appItem);
-		} else {
-			return super.onContextItemSelected(item);
+		rows.add(new ApexCardMenu.Item(R.drawable.apexlogo_rename,
+				String.valueOf(titles.getMenu().findItem(R.id.action_context_rename).getTitle()),
+				() -> alertRename(index)));
+		rows.add(new ApexCardMenu.Item(R.drawable.apexlogo_settings,
+				String.valueOf(titles.getMenu().findItem(R.id.action_context_settings).getTitle()),
+				() -> Config.startApp(requireActivity(), appItem.getTitle(), appItem.getPathExt(), true)));
+		if (new File(appItem.getPathExt() + Config.MIDLET_RES_FILE).exists()) {
+			rows.add(new ApexCardMenu.Item(R.drawable.apexlogo_reset,
+					String.valueOf(titles.getMenu().findItem(R.id.action_context_reinstall).getTitle()),
+					() -> InstallerDialog.newInstance(appItem.getId())
+							.show(getParentFragmentManager(), "installer")));
 		}
-		return true;
+		rows.add(new ApexCardMenu.Item(R.drawable.apexlogo_delete,
+				String.valueOf(titles.getMenu().findItem(R.id.action_context_delete).getTitle()),
+				() -> alertDelete(appItem)));
+		ApexCardMenu.show(activity, appItem.getTitle(), rows.toArray(new ApexCardMenu.Item[0]));
 	}
 
 	private void requestAddShortcut(AppItem appItem) {

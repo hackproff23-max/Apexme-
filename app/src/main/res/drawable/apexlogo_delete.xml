@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Logo do Apexme: circulo colorido com brilho e simbolo branco. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="44dp"
+    android:height="44dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <path
+        android:fillColor="#E5484D"
+        android:pathData="M1,24a23,23 0 1 0 46,0a23,23 0 1 0 -46,0z" />
+    <path
+        android:fillColor="#FFFFFF" android:fillAlpha="0.22"
+        android:pathData="M5,20a19,19 0 0 1 38,0c-8,6 -30,6 -38,0z" />
+    <path android:strokeColor="#FFFFFF" android:strokeWidth="4" android:strokeLineCap="round" android:strokeLineJoin="round"
+        android:pathData="M12,16 H36 M20,16 V12 H28 V16 M15,16 L17,36 H31 L33,16 M22,22 V30 M26,22 V30" />
+</vector>

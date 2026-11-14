@@ -15,7 +15,9 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -31,14 +33,19 @@ import javax.microedition.lcdui.Displayable;
 import javax.microedition.shell.MicroActivity;
 
 import ru.playsoftware.j2meloader.BuildConfig;
+import ru.playsoftware.j2meloader.R;
 import ru.playsoftware.j2meloader.config.Config;
 import ru.playsoftware.j2meloader.config.ProfileModel;
 import ru.playsoftware.j2meloader.config.ProfilesManager;
+import ru.playsoftware.j2meloader.theme.ApexCardBackground;
 import ru.playsoftware.j2meloader.theme.ApexTheme;
+import ru.playsoftware.j2meloader.theme.ApexWindowBackground;
 
 /**
- * Janela Tela: a resolucao e aplicada ao vivo enquanto voce digita (ou toca num preset),
- * e so e gravada no perfil do jogo ao tocar em Salvar. Cancelar volta ao que estava antes.
+ * Janela Tela no estilo das Configuracoes (cartoes com logo). A resolucao e aplicada ao vivo
+ * enquanto voce digita (ou toca num preset) e so e gravada no perfil do jogo ao tocar em Salvar.
+ * Cancelar volta ao que estava antes. O painel fica de lado (ou embaixo, em pe) para o jogo
+ * continuar visivel durante a pre-visualizacao.
  */
 public final class ScreenDialog {
 	private static final int[][] PRESETS = {
@@ -77,23 +84,29 @@ public final class ScreenDialog {
 		}
 		Canvas first = canvas(a);
 		boolean[] fs = {first != null && ApexScreen.isFullscreen(first)};
-		// copia para o Cancelar
 		final int[] orig = cur.clone();
 		final boolean origFs = fs[0];
 		final boolean[] saved = {false};
 
 		Dialog d = new Dialog(a);
 		d.requestWindowFeature(Window.FEATURE_NO_TITLE);
-		LinearLayout root = ApexUi.column(a);
-		root.setBackgroundColor(Color.argb(55, 0, 0, 0));
 		Handler handler = new Handler(Looper.getMainLooper());
 
-		// ---- resolucao ----
-		root.addView(label(a, "Resolução (largura × altura, 0 = automática)", 14));
+		LinearLayout root = new LinearLayout(a);
+		root.setOrientation(LinearLayout.VERTICAL);
+		int pad = ApexUi.dp(a, 16);
+		root.setPadding(pad, pad, pad, pad);
+
+		TextView title = ApexUi.text(a, "Tela", 24);
+		title.setPadding(ApexUi.dp(a, 4), 0, 0, ApexUi.dp(a, 6));
+		root.addView(title);
+
+		// ---- cartao: resolucao ----
+		LinearLayout resCard = card(a);
+		resCard.addView(header(a, R.drawable.apexlogo_screen, "Resolução (0 = automática)"));
 		EditText ew = field(a, cur[0]);
 		EditText eh = field(a, cur[1]);
 
-		// aplica ao vivo, com um pequeno atraso para nao redesenhar a cada tecla
 		Runnable preview = () -> {
 			int nw = parseSide(ew.getText());
 			int nh = parseSide(eh.getText());
@@ -126,13 +139,17 @@ public final class ScreenDialog {
 		ew.addTextChangedListener(watcher);
 		eh.addTextChangedListener(watcher);
 
-		LinearLayout resRow = new LinearLayout(a);
-		resRow.setOrientation(LinearLayout.HORIZONTAL);
-		resRow.setGravity(Gravity.CENTER_VERTICAL);
-		resRow.addView(ew, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-		resRow.addView(label(a, "  ×  ", 18));
-		resRow.addView(eh, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-		root.addView(resRow);
+		LinearLayout fields = new LinearLayout(a);
+		fields.setOrientation(LinearLayout.HORIZONTAL);
+		fields.setGravity(Gravity.CENTER_VERTICAL);
+		fields.addView(ew, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+		TextView times = ApexUi.text(a, "  ×  ", 18);
+		fields.addView(times);
+		fields.addView(eh, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+		LinearLayout.LayoutParams flp = new LinearLayout.LayoutParams(
+				LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+		flp.topMargin = ApexUi.dp(a, 8);
+		resCard.addView(fields, flp);
 
 		LinearLayout presets = new LinearLayout(a);
 		presets.setOrientation(LinearLayout.HORIZONTAL);
@@ -154,18 +171,17 @@ public final class ScreenDialog {
 		LinearLayout.LayoutParams hlp = new LinearLayout.LayoutParams(
 				LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
 		hlp.topMargin = ApexUi.dp(a, 8);
-		root.addView(hs, hlp);
+		resCard.addView(hs, hlp);
 
-		// ---- tela cheia ----
-		SwitchCompat sw = ApexUi.toggle(a, "Tela cheia", fs[0], v -> {
+		// ---- cartao: tela cheia ----
+		SwitchCompat sw = ApexUi.toggle(a, R.drawable.apexlogo_screen, "Tela cheia", fs[0], v -> {
 			fs[0] = v;
 			applyPreview(a, cur, fs[0]);
 		});
-		sw.setShadowLayer(ApexUi.dp(a, 3), 0, 0, Color.BLACK);
-		root.addView(sw);
 
-		// ---- orientacao ----
-		root.addView(label(a, "Orientação da tela", 14));
+		// ---- cartao: orientacao ----
+		LinearLayout oriCard = card(a);
+		oriCard.addView(header(a, R.drawable.apexlogo_screen, "Orientação da tela"));
 		LinearLayout orow = new LinearLayout(a);
 		orow.setOrientation(LinearLayout.HORIZONTAL);
 		TextView[] oc = new TextView[ORIENT.length];
@@ -179,26 +195,39 @@ public final class ScreenDialog {
 				}
 				applyPreview(a, cur, fs[0]);
 			});
-			orow.addView(oc[i], chipParams(a, true));
+			orow.addView(oc[i], chipParams(a, false));
 		}
+		HorizontalScrollView ohs = new HorizontalScrollView(a);
+		ohs.setHorizontalScrollBarEnabled(false);
+		ohs.addView(orow);
 		LinearLayout.LayoutParams olp = new LinearLayout.LayoutParams(
 				LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-		olp.topMargin = ApexUi.dp(a, 4);
-		root.addView(orow, olp);
+		olp.topMargin = ApexUi.dp(a, 8);
+		oriCard.addView(ohs, olp);
+
+		LinearLayout body = new LinearLayout(a);
+		body.setOrientation(LinearLayout.VERTICAL);
+		body.addView(resCard);
+		body.addView(sw);
+		body.addView(oriCard);
+
+		boolean landscape = a.getResources().getDisplayMetrics().widthPixels
+				> a.getResources().getDisplayMetrics().heightPixels;
+		int screenH = a.getResources().getDisplayMetrics().heightPixels;
+		ScrollView sv = new ScrollView(a) {
+			@Override
+			protected void onMeasure(int w, int h) {
+				int max = (int) (screenH * (landscape ? 0.62f : 0.42f));
+				super.onMeasure(w, View.MeasureSpec.makeMeasureSpec(max, View.MeasureSpec.AT_MOST));
+			}
+		};
+		sv.setVerticalScrollBarEnabled(false);
+		sv.addView(body);
+		root.addView(sv);
 
 		// ---- rodape fixo: Cancelar / Salvar ----
-		LinearLayout footer = new LinearLayout(a);
-		footer.setOrientation(LinearLayout.HORIZONTAL);
-		footer.setBackgroundColor(Color.argb(110, 0, 0, 0));
-		int fp = ApexUi.dp(a, 8);
-		footer.setPadding(fp, fp, fp, fp);
-
-		TextView cancel = chip(a, "Cancelar", false);
-		cancel.setOnClickListener(v -> d.dismiss()); // o dismiss reverte
-		footer.addView(cancel, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-
-		TextView save = chip(a, "Salvar", true);
-		save.setOnClickListener(v -> {
+		android.widget.Button cancel = ApexUi.button(a, R.drawable.apexlogo_exit, "Cancelar", v -> d.dismiss());
+		android.widget.Button save = ApexUi.button(a, R.drawable.apexlogo_save, "Salvar", v -> {
 			handler.removeCallbacks(preview);
 			int nw = parseSide(ew.getText());
 			int nh = parseSide(eh.getText());
@@ -218,28 +247,13 @@ public final class ScreenDialog {
 				Toast.makeText(a, "Não foi possível salvar o perfil do jogo", Toast.LENGTH_LONG).show();
 			}
 		});
-		LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(
-				0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-		slp.leftMargin = ApexUi.dp(a, 8);
-		footer.addView(save, slp);
+		root.addView(ApexUi.row(a, cancel, save));
 
-		ScrollView sv = new ScrollView(a) {
-			@Override
-			protected void onMeasure(int w, int h) {
-				int max = (int) (getResources().getDisplayMetrics().heightPixels * 0.5f);
-				super.onMeasure(w, View.MeasureSpec.makeMeasureSpec(max, View.MeasureSpec.AT_MOST));
-			}
-		};
-		sv.addView(root);
-
-		LinearLayout outer = new LinearLayout(a);
-		outer.setOrientation(LinearLayout.VERTICAL);
-		outer.addView(sv, new LinearLayout.LayoutParams(
-				LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-		outer.addView(footer, new LinearLayout.LayoutParams(
-				LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-
-		d.setContentView(outer);
+		FrameLayout frame = new FrameLayout(a);
+		frame.setBackground(new ApexWindowBackground());
+		frame.addView(root, new FrameLayout.LayoutParams(
+				FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT));
+		d.setContentView(frame);
 		d.setCanceledOnTouchOutside(false);
 		// Sair sem salvar (Cancelar / botao voltar): restaura o que estava antes.
 		d.setOnDismissListener(x -> {
@@ -255,9 +269,16 @@ public final class ScreenDialog {
 			w.addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL);
 			w.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN
 					| WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
-			w.setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL);
 			WindowManager.LayoutParams lp = w.getAttributes();
-			lp.width = WindowManager.LayoutParams.MATCH_PARENT;
+			int screenW = a.getResources().getDisplayMetrics().widthPixels;
+			if (landscape) {
+				w.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+				lp.width = Math.min(ApexUi.dp(a, 360), (int) (screenW * 0.5f));
+				lp.x = ApexUi.dp(a, 8);
+			} else {
+				w.setGravity(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+				lp.width = screenW - ApexUi.dp(a, 16);
+			}
 			lp.height = WindowManager.LayoutParams.WRAP_CONTENT;
 			lp.dimAmount = 0f;
 			w.setAttributes(lp);
@@ -330,10 +351,35 @@ public final class ScreenDialog {
 		}
 	}
 
-	private static TextView label(MicroActivity a, String s, float sp) {
-		TextView t = ApexUi.text(a, s, sp);
-		t.setShadowLayer(ApexUi.dp(a, 3), 0, 0, Color.BLACK);
-		return t;
+	/** Cartao arredondado translucido (mesmo fundo das Configuracoes). */
+	private static LinearLayout card(MicroActivity a) {
+		LinearLayout c = new LinearLayout(a);
+		c.setOrientation(LinearLayout.VERTICAL);
+		c.setBackground(new ApexCardBackground());
+		c.setPadding(ApexUi.dp(a, 10), ApexUi.dp(a, 10), ApexUi.dp(a, 14), ApexUi.dp(a, 10));
+		LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+				LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+		lp.topMargin = ApexUi.dp(a, 4);
+		lp.bottomMargin = ApexUi.dp(a, 4);
+		c.setLayoutParams(lp);
+		return c;
+	}
+
+	/** Linha de cabecalho do cartao: logo colorido + nome. */
+	private static View header(MicroActivity a, int icon, String label) {
+		LinearLayout h = new LinearLayout(a);
+		h.setOrientation(LinearLayout.HORIZONTAL);
+		h.setGravity(Gravity.CENTER_VERTICAL);
+		ImageView logo = new ImageView(a);
+		logo.setImageResource(icon);
+		int s = ApexUi.dp(a, 44);
+		h.addView(logo, new LinearLayout.LayoutParams(s, s));
+		TextView t = ApexUi.text(a, label, 16);
+		LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+				0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+		lp.leftMargin = ApexUi.dp(a, 12);
+		h.addView(t, lp);
+		return h;
 	}
 
 	private static EditText field(MicroActivity a, int value) {
@@ -345,16 +391,15 @@ public final class ScreenDialog {
 		e.setTextColor(ApexTheme.textColor(a));
 		e.setGravity(Gravity.CENTER);
 		e.setSelectAllOnFocus(true);
-		e.setBackgroundColor(Color.argb(90, 0, 0, 0));
+		e.setBackgroundColor(Color.argb(60, 0, 0, 0));
 		int p = ApexUi.dp(a, 8);
 		e.setPadding(p, p, p, p);
 		ApexTheme.applyFont(e);
-		e.setShadowLayer(ApexUi.dp(a, 3), 0, 0, Color.BLACK);
 		return e;
 	}
 
 	private static TextView chip(MicroActivity a, String s, boolean on) {
-		TextView t = label(a, s, 15);
+		TextView t = ApexUi.text(a, s, 15);
 		int ph = ApexUi.dp(a, 12);
 		int pv = ApexUi.dp(a, 8);
 		t.setPadding(ph, pv, ph, pv);
@@ -366,14 +411,12 @@ public final class ScreenDialog {
 	private static void mark(MicroActivity a, TextView t, boolean on) {
 		int pc = ApexTheme.pressedColor(a);
 		t.setBackgroundColor(on ? Color.argb(150, Color.red(pc), Color.green(pc), Color.blue(pc))
-				: Color.argb(80, 0, 0, 0));
+				: Color.argb(60, 0, 0, 0));
 	}
 
 	private static LinearLayout.LayoutParams chipParams(MicroActivity a, boolean weighted) {
-		LinearLayout.LayoutParams lp = weighted
-				? new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-				: new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT,
-				LinearLayout.LayoutParams.WRAP_CONTENT);
+		LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+				LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
 		lp.rightMargin = ApexUi.dp(a, 6);
 		return lp;
 	}

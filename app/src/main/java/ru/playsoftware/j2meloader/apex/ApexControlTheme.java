@@ -6,8 +6,6 @@ import android.content.SharedPreferences;
 import android.net.Uri;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AlertDialog;
-
 import java.io.File;
 import java.lang.ref.WeakReference;
 
@@ -16,6 +14,7 @@ import javax.microedition.shell.MicroActivity;
 import javax.microedition.util.ContextHolder;
 
 import ru.playsoftware.j2meloader.BuildConfig;
+import ru.playsoftware.j2meloader.R;
 
 /**
  * Tema do controle (teclado virtual): escuro (padrao) ou claro.
@@ -130,36 +129,49 @@ public final class ApexControlTheme {
 			return;
 		}
 		int cur = sp().getInt(K_GAME + id, FOLLOW);
-		String[] items = {"Seguir o padrão (" + defaultName() + ")", NAMES[0], NAMES[1]};
 		int sel = cur == DARK || cur == LIGHT ? cur + 1 : 0;
-		new AlertDialog.Builder(a)
-				.setTitle("Tema do controle (só este jogo)")
-				.setSingleChoiceItems(items, sel, (dlg, which) -> {
-					setGame(id, which == 0 ? FOLLOW : which - 1);
-					dlg.dismiss();
-					VirtualKeyboard vk = ContextHolder.getVk();
-					if (vk != null) {
-						vk.apexRelayout();
-					} else {
-						Toast.makeText(a, "Ative o teclado virtual para ver o controle", Toast.LENGTH_SHORT).show();
-					}
-				})
-				.setNegativeButton(android.R.string.cancel, null)
-				.show();
+		String[] items = {"Seguir o padrão (" + defaultName() + ")", NAMES[0], NAMES[1]};
+		int[] icons = {R.drawable.apexlogo_theme, R.drawable.apexlogo_palette, R.drawable.apexlogo_palette};
+		ApexCardMenu.Item[] rows = new ApexCardMenu.Item[3];
+		for (int i = 0; i < 3; i++) {
+			final int which = i;
+			rows[i] = new ApexCardMenu.Item(icons[i], items[i], i == sel, () -> {
+				setGame(id, which == 0 ? FOLLOW : which - 1);
+				VirtualKeyboard vk = ContextHolder.getVk();
+				if (vk != null) {
+					vk.apexRelayout();
+				} else {
+					Toast.makeText(a, "Ative o teclado virtual para ver o controle", Toast.LENGTH_SHORT).show();
+				}
+			});
+		}
+		ApexCardMenu.show(a, "Tema do controle (só este jogo)", rows);
 	}
 
 	/** Janela das configuracoes: o tema escolhido e o padrao de todos os jogos. */
 	public static void showDefault(Context ctx, Runnable after) {
-		new AlertDialog.Builder(ctx)
-				.setTitle("Tema padrão do controle")
-				.setSingleChoiceItems(NAMES, defaultTheme(), (dlg, which) -> {
-					setDefault(which);
-					dlg.dismiss();
-					if (after != null) {
-						after.run();
-					}
-				})
-				.setNegativeButton(android.R.string.cancel, null)
-				.show();
+		Activity act = null;
+		Context c = ctx;
+		while (c instanceof android.content.ContextWrapper) {
+			if (c instanceof Activity) {
+				act = (Activity) c;
+				break;
+			}
+			c = ((android.content.ContextWrapper) c).getBaseContext();
+		}
+		if (act == null) {
+			return;
+		}
+		ApexCardMenu.Item[] rows = new ApexCardMenu.Item[2];
+		for (int i = 0; i < 2; i++) {
+			final int which = i;
+			rows[i] = new ApexCardMenu.Item(R.drawable.apexlogo_palette, NAMES[i], i == defaultTheme(), () -> {
+				setDefault(which);
+				if (after != null) {
+					after.run();
+				}
+			});
+		}
+		ApexCardMenu.show(act, "Tema padrão do controle", rows);
 	}
 }
