@@ -1,21 +1,30 @@
 package ru.playsoftware.j2meloader.apex;
 
 import android.app.Dialog;
+import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.view.Gravity;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
 import javax.microedition.shell.MicroActivity;
 
 import ru.playsoftware.j2meloader.R;
+import ru.playsoftware.j2meloader.theme.ApexCardBackground;
 import ru.playsoftware.j2meloader.theme.ApexTheme;
+import ru.playsoftware.j2meloader.theme.ApexWindowBackground;
 
-/** Menu lateral do Apexme: Sair, Shaders, Teclado virtual, Tela e Tema do controle, cada um com seu icone branco. */
+/**
+ * Janela de configuracoes do Apexme: titulo e um cartao para cada opcao (logo colorido, nome e seta).
+ * O fundo da janela continua sendo a imagem de janela do app (ApexWindowBackground); os cartoes
+ * ficam translucidos por cima dela: brancos no tema claro, pretos no escuro.
+ */
 public final class ApexMenuDialog {
 	private ApexMenuDialog() {
 	}
@@ -26,41 +35,60 @@ public final class ApexMenuDialog {
 		}
 		Dialog d = new Dialog(a);
 		d.requestWindowFeature(Window.FEATURE_NO_TITLE);
-		LinearLayout root = new LinearLayout(a);
-		root.setOrientation(LinearLayout.VERTICAL);
-		root.setBackground(new ru.playsoftware.j2meloader.theme.ApexWindowBackground());
-		int pad = ApexUi.dp(a, 8);
-		root.setPadding(pad, pad * 2, pad, pad * 2);
 
-		root.addView(item(a, R.drawable.ic_apex_exit, a.getString(R.string.exit), () -> {
+		LinearLayout list = new LinearLayout(a);
+		list.setOrientation(LinearLayout.VERTICAL);
+		int pad = ApexUi.dp(a, 16);
+		list.setPadding(pad, pad, pad, pad);
+
+		TextView title = new TextView(a);
+		title.setText("Configurações");
+		title.setTextSize(24);
+		title.setTextColor(ApexTheme.textColor(a));
+		title.setPadding(ApexUi.dp(a, 4), 0, 0, ApexUi.dp(a, 6));
+		ApexTheme.applyFont(title);
+		list.addView(title);
+
+		list.addView(item(a, R.drawable.apexlogo_exit, a.getString(R.string.exit), () -> {
 			d.dismiss();
 			a.showExitConfirmation();
 		}));
-		root.addView(item(a, R.drawable.ic_apex_shaders, a.getString(R.string.apex_shaders), () -> {
+		list.addView(item(a, R.drawable.apexlogo_shaders, a.getString(R.string.apex_shaders), () -> {
 			d.dismiss();
 			ShadersDialog.show(a);
 		}));
-		root.addView(item(a, R.drawable.ic_apex_keyboard,
+		list.addView(item(a, R.drawable.apexlogo_gamepad,
 				a.getString(R.string.PREF_VIRTUAL_KEYBOARD_OPTIONS), () -> {
 					d.dismiss();
 					VkDialog.show(a);
 				}));
-		root.addView(item(a, R.drawable.ic_apex_screen, "Tela", () -> {
+		list.addView(item(a, R.drawable.apexlogo_screen, "Tela", () -> {
 			d.dismiss();
 			ScreenDialog.show(a);
 		}));
-		root.addView(item(a, R.drawable.ic_apex_theme, "Tema do controle", () -> {
+		list.addView(item(a, R.drawable.apexlogo_palette, "Tema do controle", () -> {
 			d.dismiss();
 			ApexControlTheme.showGame(a);
 		}));
-		d.setContentView(root);
+
+		ScrollView scroll = new ScrollView(a);
+		scroll.setVerticalScrollBarEnabled(false);
+		scroll.addView(list);
+		FrameLayout frame = new FrameLayout(a);
+		frame.setBackground(new ApexWindowBackground());
+		frame.addView(scroll, new FrameLayout.LayoutParams(
+				FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT));
+		d.setContentView(frame);
+
 		Window w = d.getWindow();
 		if (w != null) {
-			w.setBackgroundDrawable(new ColorDrawable(android.graphics.Color.TRANSPARENT));
-			w.setGravity(Gravity.START | Gravity.TOP);
+			w.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+			w.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
 			WindowManager.LayoutParams lp = w.getAttributes();
-			lp.width = ApexUi.dp(a, 260);
-			lp.height = WindowManager.LayoutParams.MATCH_PARENT;
+			int screenW = a.getResources().getDisplayMetrics().widthPixels;
+			lp.width = Math.min(ApexUi.dp(a, 320), screenW - ApexUi.dp(a, 16));
+			lp.height = WindowManager.LayoutParams.WRAP_CONTENT;
+			lp.x = ApexUi.dp(a, 8);
 			w.setAttributes(lp);
 		}
 		d.show();
@@ -70,23 +98,36 @@ public final class ApexMenuDialog {
 		LinearLayout row = new LinearLayout(a);
 		row.setOrientation(LinearLayout.HORIZONTAL);
 		row.setGravity(Gravity.CENTER_VERTICAL);
-		int p = ApexUi.dp(a, 14);
-		row.setPadding(p, p, p, p);
-		row.setBackgroundResource(R.drawable.apex_pressed);
-		ImageView iv = new ImageView(a);
-		iv.setImageResource(icon);
-		iv.setColorFilter(android.graphics.Color.WHITE);
-		int s = ApexUi.dp(a, 28);
-		row.addView(iv, new LinearLayout.LayoutParams(s, s));
+		row.setBackground(new ApexCardBackground());
+		row.setPadding(ApexUi.dp(a, 10), ApexUi.dp(a, 10), ApexUi.dp(a, 14), ApexUi.dp(a, 10));
+		row.setClickable(true);
+
+		ImageView logo = new ImageView(a);
+		logo.setImageResource(icon);
+		int s = ApexUi.dp(a, 44);
+		row.addView(logo, new LinearLayout.LayoutParams(s, s));
+
 		TextView t = new TextView(a);
 		t.setText(label);
-		t.setTextSize(18);
+		t.setTextSize(20);
 		t.setTextColor(ApexTheme.textColor(a));
 		ApexTheme.applyFont(t);
+		LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(
+				0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+		tlp.leftMargin = ApexUi.dp(a, 14);
+		row.addView(t, tlp);
+
+		ImageView chevron = new ImageView(a);
+		chevron.setImageResource(R.drawable.ic_apex_chevron);
+		chevron.setColorFilter(ApexTheme.textColor(a));
+		chevron.setAlpha(0.6f);
+		int cs = ApexUi.dp(a, 22);
+		row.addView(chevron, new LinearLayout.LayoutParams(cs, cs));
+
 		LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-				LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-		lp.leftMargin = ApexUi.dp(a, 16);
-		row.addView(t, lp);
+				LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+		lp.topMargin = ApexUi.dp(a, 8);
+		row.setLayoutParams(lp);
 		row.setOnClickListener(v -> click.run());
 		return row;
 	}

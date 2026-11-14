@@ -156,12 +156,10 @@ public final class ApexThemeMode {
 
 		if (v instanceof ImageView) {
 			Object parent = v.getParent();
-			View p = parent instanceof View ? (View) parent : null;
 			boolean overflow = v.getClass().getName().endsWith("OverflowMenuButton");
 			boolean navButton = v instanceof ImageButton && parent instanceof Toolbar;
-			boolean prefIcon = v.getId() == android.R.id.icon && p != null
-					&& p.getId() == androidx.preference.R.id.icon_frame;
-			if (overflow || navButton || prefIcon) {
+			// os logos coloridos das configuracoes (apexlogo_*) NAO recebem tinta: ficam com as cores deles
+			if (overflow || navButton) {
 				ImageViewCompat.setImageTintList((ImageView) v, ColorStateList.valueOf(tint));
 			} else {
 				applied = false;

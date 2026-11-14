@@ -42,3 +42,4 @@
 -keep class ru.playsoftware.j2meloader.theme.ApexAppBackground { <init>(); }
 -keep class ru.playsoftware.j2meloader.theme.ApexWindowBackground { <init>(); }
 -keep class ru.playsoftware.j2meloader.theme.ApexPressedDrawable { <init>(); }
+-keep class ru.playsoftware.j2meloader.theme.ApexCardBackground { <init>(); }

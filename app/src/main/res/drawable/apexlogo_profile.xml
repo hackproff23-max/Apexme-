@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Logo profile do Apexme: circulo colorido com brilho e simbolo branco. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="44dp"
+    android:height="44dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <path
+        android:fillColor="#6B7280"
+        android:pathData="M1,24a23,23 0 1 0 46,0a23,23 0 1 0 -46,0z" />
+    <path
+        android:fillColor="#FFFFFF" android:fillAlpha="0.22"
+        android:pathData="M5,20a19,19 0 0 1 38,0c-8,6 -30,6 -38,0z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M10,16h28v2.4H10z M10,22.8h28v2.4H10z M10,29.6h28v2.4H10z" />
+    <path
+        android:fillColor="#6B7280"
+        android:pathData="M13.2,17.2a4.8,4.8 0 1 0 9.6,0a4.8,4.8 0 1 0 -9.6,0z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M14.6,17.2a3.4,3.4 0 1 0 6.8,0a3.4,3.4 0 1 0 -6.8,0z" />
+    <path
+        android:fillColor="#6B7280"
+        android:pathData="M26.2,24a4.8,4.8 0 1 0 9.6,0a4.8,4.8 0 1 0 -9.6,0z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M27.6,24a3.4,3.4 0 1 0 6.8,0a3.4,3.4 0 1 0 -6.8,0z" />
+    <path
+        android:fillColor="#6B7280"
+        android:pathData="M17.2,30.8a4.8,4.8 0 1 0 9.6,0a4.8,4.8 0 1 0 -9.6,0z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M18.6,30.8a3.4,3.4 0 1 0 6.8,0a3.4,3.4 0 1 0 -6.8,0z" />
+</vector>

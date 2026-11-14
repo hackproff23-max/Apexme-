@@ -22,6 +22,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.DocumentsContract;
+import android.view.View;
 import android.widget.Toast;
 
 import com.nononsenseapps.filepicker.Utils;
@@ -30,6 +31,8 @@ import java.io.File;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
 import androidx.preference.Preference;
@@ -39,6 +42,7 @@ import ru.playsoftware.j2meloader.R;
 import ru.playsoftware.j2meloader.apex.ApexControlTheme;
 import ru.playsoftware.j2meloader.config.Config;
 import ru.playsoftware.j2meloader.config.ProfilesActivity;
+import ru.playsoftware.j2meloader.theme.ApexCardDecoration;
 import ru.playsoftware.j2meloader.theme.ApexTheme;
 import ru.playsoftware.j2meloader.theme.ApexThemeMode;
 import ru.playsoftware.j2meloader.util.FileUtils;
@@ -55,6 +59,15 @@ public class SettingsFragment extends PreferenceFragmentCompat {
 	private final ActivityResultLauncher<String> openDirLauncher = registerForActivityResult(
 			new PickDirResultContract(),
 			this::onPickDirResult);
+
+	@Override
+	public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+		super.onViewCreated(view, savedInstanceState);
+		// sem divisorias: cada linha vira um cartao arredondado translucido
+		setDivider(null);
+		setDividerHeight(0);
+		getListView().addItemDecoration(new ApexCardDecoration(requireContext()));
+	}
 
 	@Override
 	public void onCreatePreferences(Bundle bundle, String s) {
@@ -128,6 +141,7 @@ public class SettingsFragment extends PreferenceFragmentCompat {
 		final Preference pref = new Preference(requireContext());
 		pref.setKey("pref_control_theme");
 		pref.setPersistent(false);
+		pref.setIcon(R.drawable.apexlogo_palette);
 		pref.setTitle("Tema do controle (padrão)");
 		pref.setSummary(ApexControlTheme.defaultName() + " — vale para todos os jogos sem tema próprio");
 		pref.setOnPreferenceClickListener(p -> {
