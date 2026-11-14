@@ -163,12 +163,6 @@ public class MainActivity extends BaseActivity {
 		setVolumeControlStream(AudioManager.STREAM_MUSIC);
 	}
 
-	@Override
-	protected void onResume() {
-		super.onResume();
-		ru.playsoftware.j2meloader.theme.ApexLauncherIcon.sync(this);
-	}
-
 	/** Mostra os logos coloridos tambem nos itens do menu de tres pontinhos. */
 	@Override
 	public boolean onPrepareOptionsMenu(Menu menu) {
