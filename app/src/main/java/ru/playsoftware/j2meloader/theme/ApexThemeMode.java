@@ -141,7 +141,7 @@ public final class ApexThemeMode {
 	static void tintView(View v, int tint) {
 		if (v instanceof TextView) {
 			TextView tv = (TextView) v;
-			boolean plainButton = tv instanceof Button && !(tv instanceof CompoundButton);
+			boolean plainButton = tv instanceof Button && !(tv instanceof CompoundButton) && !isPickerButton(tv);
 			if (!plainButton && tv.getCurrentTextColor() != tint) {
 				tv.setTextColor(tint);
 			}
@@ -189,6 +189,19 @@ public final class ApexThemeMode {
 		}
 		if (applied) {
 			APPLIED.put(v, tint);
+		}
+	}
+
+	/** Botoes CANCELAR/OK do seletor de arquivos: sem fundo colorido, entao o texto precisa seguir o tema. */
+	private static boolean isPickerButton(View v) {
+		try {
+			if (v.getId() == View.NO_ID) {
+				return false;
+			}
+			String name = v.getResources().getResourceEntryName(v.getId());
+			return name != null && name.startsWith("nnf_button");
+		} catch (Exception e) {
+			return false;
 		}
 	}
 
