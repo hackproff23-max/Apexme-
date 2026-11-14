@@ -76,6 +76,8 @@ public class AppsListAdapter extends BaseAdapter implements Filterable {
 			holder.binding.icon.setImageResource(R.mipmap.ic_launcher);
 		}
 		holder.binding.name.setText(item.getTitle());
+		String sub = item.getAuthor();
+		holder.binding.sub.setText(TextUtils.isEmpty(sub) ? "JAVA ME" : sub);
 
 		return view;
 	}
