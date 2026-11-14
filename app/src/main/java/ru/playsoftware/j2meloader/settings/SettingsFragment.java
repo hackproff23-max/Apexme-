@@ -38,6 +38,7 @@ import ru.playsoftware.j2meloader.R;
 import ru.playsoftware.j2meloader.config.Config;
 import ru.playsoftware.j2meloader.config.ProfilesActivity;
 import ru.playsoftware.j2meloader.theme.ApexTheme;
+import ru.playsoftware.j2meloader.theme.ApexThemeMode;
 import ru.playsoftware.j2meloader.util.FileUtils;
 import ru.playsoftware.j2meloader.util.PickDirResultContract;
 
@@ -67,6 +68,7 @@ public class SettingsFragment extends PreferenceFragmentCompat {
 			}
 			return true;
 		});
+		setupThemeMode();
 		PreviewPreference preview = findPreference("pref_preview");
 		Runnable refresh = preview::refresh;
 		((ColorPreference) findPreference("pref_color_text")).setup(ApexTheme.K_TEXT, ApexTheme.DEF_TEXT, refresh);
@@ -92,6 +94,30 @@ public class SettingsFragment extends PreferenceFragmentCompat {
 		setupImport("pref_import_app_bg", ApexTheme.TARGET_APP_BG, "image/*");
 		setupImport("pref_import_window_bg", ApexTheme.TARGET_WINDOW_BG, "image/*");
 		setupImport("pref_import_font", ApexTheme.TARGET_FONT, "*/*");
+	}
+
+	/** Escolha do tema: padrao (cores personalizadas), claro ou escuro. */
+	private void setupThemeMode() {
+		Preference pref = findPreference("pref_theme_mode");
+		pref.setOnPreferenceClickListener(p -> {
+			final String[] items = {
+					getString(R.string.apex_theme_original),
+					getString(R.string.apex_theme_light),
+					getString(R.string.apex_theme_dark)};
+			int checked = ApexThemeMode.current(requireContext());
+			new AlertDialog.Builder(requireActivity())
+					.setTitle(R.string.apex_theme_mode_title)
+					.setSingleChoiceItems(items, checked, (d, which) -> {
+						d.dismiss();
+						if (which != checked) {
+							ApexThemeMode.apply(requireContext(), which);
+							requireActivity().recreate();
+						}
+					})
+					.setNegativeButton(android.R.string.cancel, null)
+					.show();
+			return true;
+		});
 	}
 
 	private void setupImport(String key, int target, String mime) {

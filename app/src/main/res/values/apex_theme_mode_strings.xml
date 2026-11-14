@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="apex_theme_mode_title" translatable="false">Tema</string>
+    <string name="apex_theme_original" translatable="false">Padrão (cores personalizadas)</string>
+    <string name="apex_theme_light" translatable="false">Claro (texto preto, fundo branco)</string>
+    <string name="apex_theme_dark" translatable="false">Escuro (texto branco, fundo preto)</string>
+    <string name="apex_theme_mode_hint" translatable="false">Escolha tema claro ou escuro. Textos, ícones e fundos mudam juntos.</string>
+</resources>

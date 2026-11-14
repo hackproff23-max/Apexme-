@@ -3,6 +3,11 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools">
     <ru.playsoftware.j2meloader.settings.PreviewPreference android:key="pref_preview" />
+    <Preference
+        android:key="pref_theme_mode"
+        android:icon="@drawable/ic_apex_colors"
+        android:summary="@string/apex_theme_mode_hint"
+        android:title="@string/apex_theme_mode_title" />
     <ru.playsoftware.j2meloader.settings.ColorPreference
         android:key="pref_color_text"
         android:icon="@drawable/ic_apex_colors"
