@@ -86,6 +86,7 @@ public class HexEditorActivity extends BaseActivity {
 
 		LinearLayout root = new LinearLayout(this);
 		root.setOrientation(LinearLayout.VERTICAL);
+		HexUi.padRoot(this, root);
 
 		view = new HexView(this);
 		view.setBuffer(buf);
@@ -93,14 +94,14 @@ public class HexEditorActivity extends BaseActivity {
 			pendingHigh = false;
 			updateStatus();
 		});
-		root.addView(view, new LinearLayout.LayoutParams(-1, 0, 1f));
+		HexUi.addHex(this, root, view);
 
 		status = new TextView(this);
 		status.setTextColor(textColor);
 		status.setTextSize(12);
 		status.setTypeface(android.graphics.Typeface.MONOSPACE);
 		status.setPadding((int) (8 * d), (int) (4 * d), (int) (8 * d), (int) (4 * d));
-		root.addView(status, new LinearLayout.LayoutParams(-1, -2));
+		HexUi.addStatus(this, root, status);
 
 		String digits = "0123456789ABCDEF";
 		for (int row = 0; row < 2; row++) {
@@ -151,7 +152,8 @@ public class HexEditorActivity extends BaseActivity {
 		b.setAllCaps(false);
 		b.setMinWidth(0);
 		b.setMinimumWidth(0);
-		b.setTextSize(13);
+		b.setTextSize(15);
+		HexUi.styleKey(this, b);
 		b.setOnClickListener(l);
 		ApexTheme.applyFont(b);
 		return b;
@@ -462,7 +464,9 @@ public class HexEditorActivity extends BaseActivity {
 		}
 		status.setText(sb);
 		btnUndo.setEnabled(buf.canUndo());
+		btnUndo.setAlpha(buf.canUndo() ? 1f : 0.4f);
 		btnRedo.setEnabled(buf.canRedo());
+		btnRedo.setAlpha(buf.canRedo() ? 1f : 0.4f);
 		setTitle((buf.isDirty() ? "* " : "") + (name.isEmpty() ? "Editor hex" : name));
 	}
 

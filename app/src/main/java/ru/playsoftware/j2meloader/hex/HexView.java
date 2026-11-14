@@ -3,6 +3,7 @@ package ru.playsoftware.j2meloader.hex;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.util.TypedValue;
 import android.view.GestureDetector;
@@ -18,22 +19,25 @@ public class HexView extends View {
 		void onSelectionChanged(int index);
 	}
 
-	private static final int MARK_COLOR = 0xFFFFAA00;
-	private static final int FIND_COLOR = 0x55FFFF00;
+	private static final int MARK_COLOR = 0xFFE06A00;
+	private static final int FIND_COLOR = 0x66FFE000;
 
 	private final Paint text = new Paint(Paint.ANTI_ALIAS_FLAG);
-	private final Paint fill = new Paint();
+	private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
+	private final RectF rect = new RectF();
 	private final OverScroller scroller;
 	private final GestureDetector gestures;
 	private final float pad;
 	private final float cw;
 	private final float rowH;
 	private final float baseOffset;
+	private final float radius;
 	private final int textColor;
 	private final int offsetColor;
 	private final int asciiColor;
-	private final int bgColor;
 	private final int selColor;
+	private final int zebraColor;
+	private final int lineColor;
 
 	private HexBuffer buf;
 	private Listener listener;
@@ -51,18 +55,20 @@ public class HexView extends View {
 		super(context);
 		float d = context.getResources().getDisplayMetrics().density;
 		pad = 8 * d;
+		radius = 5 * d;
 		text.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
 		text.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 13,
 				context.getResources().getDisplayMetrics()));
 		cw = text.measureText("0");
 		Paint.FontMetrics fm = text.getFontMetrics();
-		rowH = (fm.descent - fm.ascent) * 1.3f;
+		rowH = (fm.descent - fm.ascent) * 1.45f;
 		baseOffset = (rowH - (fm.descent - fm.ascent)) / 2f - fm.ascent;
 		textColor = ApexTheme.textColor(context);
-		offsetColor = ApexTheme.outlineColor(context);
+		offsetColor = (textColor & 0x00FFFFFF) | 0x80000000;
 		asciiColor = (textColor & 0x00FFFFFF) | 0xB0000000;
-		bgColor = ApexTheme.bgColor(context) | 0xFF000000;
-		selColor = (offsetColor & 0x00FFFFFF) | 0x88000000;
+		selColor = (ApexTheme.pressedColor(context) & 0x00FFFFFF) | 0xCC000000;
+		zebraColor = (textColor & 0x00FFFFFF) | 0x12000000;
+		lineColor = (textColor & 0x00FFFFFF) | 0x33000000;
 		scroller = new OverScroller(context);
 		gestures = new GestureDetector(context, new GestureDetector.SimpleOnGestureListener() {
 			@Override
@@ -217,18 +223,33 @@ public class HexView extends View {
 
 	@Override
 	protected void onDraw(Canvas c) {
-		c.drawColor(bgColor);
+		// sem fundo proprio: o cartao do tema aparece por tras
 		if (buf == null) {
 			return;
 		}
 		int size = buf.size();
+		if (size == 0) {
+			text.setColor(asciiColor);
+			text.setTextAlign(Paint.Align.CENTER);
+			c.drawText("(arquivo vazio)", getWidth() / 2f, getHeight() / 2f, text);
+			text.setTextAlign(Paint.Align.LEFT);
+			return;
+		}
 		int rows = Math.max(1, (size + perRow - 1) / perRow);
 		int first = Math.max(0, (int) ((scrollY - pad) / rowH));
 		int last = Math.min(rows - 1, (int) ((scrollY + getHeight() - pad) / rowH));
+		// linha separando os bytes do texto
+		fill.setColor(lineColor);
+		c.drawRect(asciiX - cw * 0.6f, 0, asciiX - cw * 0.6f + 1.5f, getHeight(), fill);
 		for (int r = first; r <= last; r++) {
 			float top = pad + r * rowH - scrollY;
 			float base = top + baseOffset;
 			int start = r * perRow;
+			if ((r & 1) == 1) {
+				fill.setColor(zebraColor);
+				rect.set(0, top, getWidth(), top + rowH);
+				c.drawRoundRect(rect, radius, radius, fill);
+			}
 			text.setColor(offsetColor);
 			c.drawText(hex(start, digits), pad, base, text);
 			for (int col = 0; col < perRow; col++) {
@@ -240,13 +261,17 @@ public class HexView extends View {
 				float ax = asciiX + col * cw;
 				if (hlStart >= 0 && i >= hlStart && i < hlStart + hlLen) {
 					fill.setColor(FIND_COLOR);
-					c.drawRect(hx, top, hx + 2 * cw, top + rowH, fill);
-					c.drawRect(ax, top, ax + cw, top + rowH, fill);
+					rect.set(hx - cw * 0.25f, top + 1, hx + 2 * cw + cw * 0.25f, top + rowH - 1);
+					c.drawRoundRect(rect, radius, radius, fill);
+					rect.set(ax, top + 1, ax + cw, top + rowH - 1);
+					c.drawRoundRect(rect, radius, radius, fill);
 				}
 				if (i == sel) {
 					fill.setColor(selColor);
-					c.drawRect(hx - cw * 0.25f, top, hx + 2 * cw + cw * 0.25f, top + rowH, fill);
-					c.drawRect(ax, top, ax + cw, top + rowH, fill);
+					rect.set(hx - cw * 0.35f, top + 1, hx + 2 * cw + cw * 0.35f, top + rowH - 1);
+					c.drawRoundRect(rect, radius, radius, fill);
+					rect.set(ax - cw * 0.1f, top + 1, ax + cw * 1.1f, top + rowH - 1);
+					c.drawRoundRect(rect, radius, radius, fill);
 				}
 				int b = buf.get(i);
 				two[0] = HEX[b >> 4];
@@ -257,10 +282,6 @@ public class HexView extends View {
 				two[0] = b >= 32 && b < 127 ? (char) b : '.';
 				c.drawText(two, 0, 1, ax, base, text);
 			}
-		}
-		if (size == 0) {
-			text.setColor(asciiColor);
-			c.drawText("(arquivo vazio)", pad, pad + baseOffset, text);
 		}
 	}
 

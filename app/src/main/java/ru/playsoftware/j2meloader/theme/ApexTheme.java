@@ -301,6 +301,9 @@ public final class ApexTheme {
 
 	/** Garante contorno em textos que nao sao OutlinedTextView (titulo da barra, menus, botoes, switches...). */
 	public static void applyOutline(android.widget.TextView tv) {
+		if ("apex_no_outline".equals(tv.getTag())) {
+			return;
+		}
 		if (tv instanceof ru.playsoftware.j2meloader.applist.OutlinedTextView || OUTLINED.containsKey(tv)) {
 			return;
 		}
@@ -365,6 +368,7 @@ public final class ApexTheme {
 			}
 		}
 		applyPopupText(root, textColor(c));
+		ApexPopupCards.style(root);
 	}
 
 	private static void applyPopupText(android.view.View v, int color) {

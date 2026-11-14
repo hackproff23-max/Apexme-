@@ -76,6 +76,9 @@ final class ApexTextFix {
 
 	private static boolean fix(View v, int tint) {
 		boolean changed = false;
+		if (v instanceof com.google.android.material.floatingactionbutton.FloatingActionButton) {
+			ApexFab.style((com.google.android.material.floatingactionbutton.FloatingActionButton) v, tint);
+		}
 		if (v instanceof TextView) {
 			TextView tv = (TextView) v;
 			Typeface t = ApexTheme.boldTypeface(tv.getContext());
