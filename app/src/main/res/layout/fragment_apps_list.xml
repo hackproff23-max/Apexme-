@@ -12,7 +12,7 @@
         android:horizontalSpacing="4dp"
         android:numColumns="4"
         android:paddingStart="6dp"
-        android:paddingTop="8dp"
+        android:paddingTop="76dp"
         android:paddingEnd="6dp"
         android:paddingBottom="88dp"
         android:scrollbars="none"
@@ -24,7 +24,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center_horizontal"
-        android:layout_marginTop="10dp"
+        android:layout_marginTop="84dp"
         android:text="@string/no_data_for_display"
         android:textColor="@android:color/white"
         android:textSize="18sp" />
