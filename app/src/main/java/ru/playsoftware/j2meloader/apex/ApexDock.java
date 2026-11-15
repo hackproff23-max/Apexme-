@@ -6,6 +6,9 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewParent;
+import android.widget.Button;
+import android.widget.CompoundButton;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -15,10 +18,13 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
 
 import ru.playsoftware.j2meloader.R;
+import ru.playsoftware.j2meloader.filepicker.FilteredFilePickerActivity;
 import ru.playsoftware.j2meloader.hex.ConverterActivity;
 import ru.playsoftware.j2meloader.hex.HexEditorActivity;
 import ru.playsoftware.j2meloader.settings.SettingsActivity;
@@ -30,10 +36,13 @@ import ru.playsoftware.j2meloader.theme.ApexCardBackground;
  * voltar, tela inicial do celular e Editor Java, cada um com logo colorido.
  * Na lista principal tambem tem duas docks no topo (logo + nome do app; teclado, shaders e menu),
  * transparentes: os jogos passam por tras delas.
+ * No explorador de arquivos, ao lado da dock ficam dois logos redondos: Cancelar (vermelho) e OK (verde),
+ * no lugar dos botoes de texto do seletor.
  */
 public final class ApexDock {
 	private static final String TAG = "apex_dock";
 	private static final String TAG_TOP = "apex_dock_top";
+	private static final String TAG_PICKER = "apex_dock_picker";
 	/** Margem entre o topo da tela e as docks de cima. */
 	private static final int TOP = 8;
 	/** App Editor Java (repo Editor-java). */
@@ -44,6 +53,10 @@ public final class ApexDock {
 	/** Espaco livre a direita para os botoes flutuantes da lista de jogos. */
 	private static final int FAB_SPACE = 88;
 	private static final int MAX_W = 320;
+	/** No explorador a dock e mais estreita para sobrar lugar para Cancelar/OK ao lado. */
+	private static final int PICKER_DOCK_W = 184;
+	private static final int PICKER_GAP = 10;
+	private static final int PICKER_ACTIONS_W = 124;
 
 	private static final Map<View, Boolean> SHIFTED = new WeakHashMap<>();
 
@@ -99,19 +112,7 @@ public final class ApexDock {
 		content.addView(bar, lp);
 
 		// com a tela de ponta a ponta, sobe acima da barra de navegacao do sistema
-		ViewCompat.setOnApplyWindowInsetsListener(bar, (v, insets) -> {
-			int nav = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom;
-			ViewGroup.LayoutParams l = v.getLayoutParams();
-			if (l instanceof FrameLayout.LayoutParams) {
-				FrameLayout.LayoutParams f = (FrameLayout.LayoutParams) l;
-				int want = baseMargin + nav;
-				if (f.bottomMargin != want) {
-					f.bottomMargin = want;
-					v.setLayoutParams(f);
-				}
-			}
-			return insets;
-		});
+		bindBottomInsets(bar, baseMargin);
 		// ajusta a largura quando a tela gira
 		content.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
 			ViewGroup.LayoutParams cur = bar.getLayoutParams();
@@ -124,6 +125,135 @@ public final class ApexDock {
 		ViewCompat.requestApplyInsets(bar);
 		if (main) {
 			attachTop(a, content);
+		}
+		if (a instanceof FilteredFilePickerActivity) {
+			// o fragmento do seletor pode ainda estar sendo criado: espera o proximo ciclo da tela
+			content.post(() -> attachPickerActions(a, content));
+		}
+	}
+
+	/** Mantem a view acima da barra de navegacao do sistema (quando ela esta visivel). */
+	private static void bindBottomInsets(View view, final int baseMargin) {
+		ViewCompat.setOnApplyWindowInsetsListener(view, (v, insets) -> {
+			int nav = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom;
+			ViewGroup.LayoutParams l = v.getLayoutParams();
+			if (l instanceof FrameLayout.LayoutParams) {
+				FrameLayout.LayoutParams f = (FrameLayout.LayoutParams) l;
+				int want = baseMargin + nav;
+				if (f.bottomMargin != want) {
+					f.bottomMargin = want;
+					v.setLayoutParams(f);
+				}
+			}
+			return insets;
+		});
+	}
+
+	/** Explorador de arquivos: Cancelar (vermelho) e OK (verde) como logos redondos ao lado da dock. */
+	private static void attachPickerActions(Activity a, FrameLayout content) {
+		if (a.isFinishing() || content.findViewWithTag(TAG_PICKER) != null) {
+			return;
+		}
+		final View ok = findLibButton(a, content, "nnf_button_ok", android.R.string.ok);
+		final View cancel = findLibButton(a, content, "nnf_button_cancel", android.R.string.cancel);
+		hideLibButtons(content, ok, cancel);
+
+		LinearLayout card = new LinearLayout(a);
+		card.setTag(TAG_PICKER);
+		card.setOrientation(LinearLayout.HORIZONTAL);
+		card.setGravity(Gravity.CENTER_VERTICAL);
+		card.setBackground(new ApexCardBackground());
+		card.setClickable(true);
+		int p = ApexUi.dp(a, 6);
+		card.setPadding(p, p, p, p);
+		card.addView(cell(a, R.drawable.apexlogo_btn_cancel, "Cancelar", () -> {
+			if (cancel != null) {
+				cancel.performClick();
+			} else {
+				a.finish();
+			}
+		}), cellParams());
+		card.addView(cell(a, R.drawable.apexlogo_btn_ok, "OK", () -> {
+			if (ok != null) {
+				ok.performClick();
+			}
+		}), cellParams());
+
+		int baseMargin = ApexUi.dp(a, BOTTOM);
+		FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
+				ApexUi.dp(a, PICKER_ACTIONS_W), ApexUi.dp(a, BAR_H), Gravity.BOTTOM | Gravity.START);
+		lp.setMarginStart(ApexUi.dp(a, SIDE + PICKER_DOCK_W + PICKER_GAP));
+		lp.bottomMargin = baseMargin;
+		content.addView(card, lp);
+		bindBottomInsets(card, baseMargin);
+		ViewCompat.requestApplyInsets(card);
+	}
+
+	/** Acha o botao do seletor pelo id da biblioteca; se o id for outro, pelo texto (OK / Cancelar). */
+	private static View findLibButton(Activity a, View root, String idName, int textRes) {
+		int id = a.getResources().getIdentifier(idName, "id", a.getPackageName());
+		if (id != 0) {
+			View v = root.findViewById(id);
+			if (v != null) {
+				return v;
+			}
+		}
+		String want = a.getString(textRes);
+		List<View> all = new ArrayList<>();
+		collect(root, all);
+		for (View v : all) {
+			if (v instanceof Button && !(v instanceof CompoundButton)) {
+				CharSequence t = ((TextView) v).getText();
+				if (t != null && want.equalsIgnoreCase(t.toString().trim())) {
+					return v;
+				}
+			}
+		}
+		return null;
+	}
+
+	private static void collect(View v, List<View> out) {
+		out.add(v);
+		if (v instanceof ViewGroup) {
+			ViewGroup g = (ViewGroup) v;
+			for (int i = 0; i < g.getChildCount(); i++) {
+				collect(g.getChildAt(i), out);
+			}
+		}
+	}
+
+	/**
+	 * Esconde os botoes de texto do seletor (e a faixa deles, se ficar vazia) sem tirar da tela
+	 * a lista de arquivos. Os cliques passam a ser feitos pelos logos redondos.
+	 */
+	private static void hideLibButtons(FrameLayout content, View ok, View cancel) {
+		if (ok != null) {
+			ok.setVisibility(View.GONE);
+		}
+		if (cancel != null) {
+			cancel.setVisibility(View.GONE);
+		}
+		View cur = ok != null ? ok : cancel;
+		for (int level = 0; cur != null && level < 3; level++) {
+			ViewParent pp = cur.getParent();
+			if (!(pp instanceof ViewGroup) || pp == content) {
+				break;
+			}
+			ViewGroup g = (ViewGroup) pp;
+			boolean empty = true;
+			for (int i = 0; i < g.getChildCount(); i++) {
+				View ch = g.getChildAt(i);
+				if (ch == cur || ch.getVisibility() == View.GONE || ch.getClass() == View.class) {
+					continue; // escondido ou divisoria simples
+				}
+				empty = false;
+				break;
+			}
+			if (!empty) {
+				break;
+			}
+			g.setVisibility(View.GONE);
+			cur = g;
 		}
 	}
 
@@ -213,6 +343,9 @@ public final class ApexDock {
 	}
 
 	private static int barWidth(Activity a, int contentWidth) {
+		if (a instanceof FilteredFilePickerActivity) {
+			return ApexUi.dp(a, PICKER_DOCK_W);
+		}
 		int avail = contentWidth - ApexUi.dp(a, SIDE) - ApexUi.dp(a, FAB_SPACE);
 		return Math.max(ApexUi.dp(a, 180), Math.min(avail, ApexUi.dp(a, MAX_W)));
 	}
