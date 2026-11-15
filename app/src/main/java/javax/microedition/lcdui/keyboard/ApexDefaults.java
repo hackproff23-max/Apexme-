@@ -17,7 +17,12 @@ final class ApexDefaults {
 
 	/** Botao normal: joia/pilula Xbox com animacao de pressionar. */
 	static boolean drawKey(CanvasWrapper g, RectF r, String label, boolean pressed) {
-		String id = label + "@" + (int) r.left + ":" + (int) r.top;
+		return drawKey(g, r, label, pressed, false);
+	}
+
+	/** plain = tecla de letra: sem icones nem cores especiais (so o texto). */
+	static boolean drawKey(CanvasWrapper g, RectF r, String label, boolean pressed, boolean plain) {
+		String id = label + "@" + (int) r.left + ":" + (int) r.top + (plain ? "p" : "");
 		ApexAnim.Value a = anims.get(id);
 		if (a == null) {
 			a = new ApexAnim.Value();
@@ -26,7 +31,7 @@ final class ApexDefaults {
 		float t = a.linear(pressed);
 		float n = ApexPrefs.normalOpacity();
 		float opacity = n + (ApexPrefs.pressedOpacity() - n) * t;
-		XboxPainter.INSTANCE.key(g.getCanvas(), r, label, t, opacity);
+		XboxPainter.INSTANCE.key(g.getCanvas(), r, label, t, opacity, plain);
 		return true;
 	}
 }

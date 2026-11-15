@@ -62,6 +62,14 @@ final class XboxPainter {
 
 	/** Tecla do teclado virtual. Retangulo largo vira pilula; o resto, joia redonda. */
 	void key(Canvas c, RectF r, String label, float t, float opacity) {
+		key(c, r, label, t, opacity, false);
+	}
+
+	/**
+	 * plain = true: tecla de letra do teclado de letras. Fica sempre preta/branca e so com o texto:
+	 * as letras A, B, M e F nao viram os icones nem a cor das teclas especiais.
+	 */
+	void key(Canvas c, RectF r, String label, float t, float opacity, boolean plain) {
 		light = ApexControlTheme.light();
 		float w = r.width(), h = r.height();
 		float cx = r.centerX(), cy = r.centerY();
@@ -70,14 +78,14 @@ final class XboxPainter {
 			pill(c, r, label, t);
 		} else {
 			float rad = Math.min(w, h) / 2f / 1.13f;
-			Jewel j = jewelFor(label);
+			Jewel j = plain ? DARK : jewelFor(label);
 			boolean neutral = j == DARK;
 			if (neutral && light) {
 				j = WHITE;
 			}
 			socket(c, cx, cy, rad * 1.13f, 150);
 			jewel(c, cx, cy, rad, j, t);
-			if (XboxIcons.draw(c, cx, cy, rad, label, j.dark, neutral, light)) {
+			if (!plain && XboxIcons.draw(c, cx, cy, rad, label, j.dark, neutral, light)) {
 				c.restoreToCount(save);
 				return;
 			}

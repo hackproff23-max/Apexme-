@@ -71,7 +71,7 @@ final class XboxIcons {
 		}
 		int color = light ? Color.argb(240, 40, 40, 40) : Color.argb(240, 235, 235, 235);
 		float s = rad * 0.5f;
-		boolean centered = kind == 7 || kind == 8;
+		boolean centered = kind == 1 || kind == 2 || kind == 7 || kind == 8;
 		float ix = centered ? cx : cx - rad * 0.06f;
 		float iy = centered ? cy : cy - rad * 0.1f;
 		p.setShader(null);

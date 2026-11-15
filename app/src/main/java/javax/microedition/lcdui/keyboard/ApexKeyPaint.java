@@ -24,8 +24,10 @@ final class ApexKeyPaint {
 			g.drawBitmap(bmp, r, a);
 			return;
 		}
+		// teclas do teclado de letras (letter_*): so texto, sem os icones de A/B/M nem as cores do F
+		boolean plain = id != null && id.startsWith(ApexPrefs.LETTER_PREFIX);
 		g.setTextScale(textScale);
-		boolean def = ApexDefaults.drawKey(g, r, label, sel);
+		boolean def = ApexDefaults.drawKey(g, r, label, sel, plain);
 		g.setTextScale(1f);
 		if (def) {
 			return;
