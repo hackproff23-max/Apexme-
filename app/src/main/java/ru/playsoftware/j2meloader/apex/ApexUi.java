@@ -29,9 +29,16 @@ import ru.playsoftware.j2meloader.theme.ApexTheme;
 /**
  * Utilitarios de interface das janelas do Apexme.
  * Botoes, chaves e controles deslizantes saem no mesmo estilo da tela de Configuracoes:
- * cartao arredondado translucido + logo colorido + nome.
+ * cartao arredondado translucido + logo colorido + nome. Tudo em tamanho compacto.
  */
 final class ApexUi {
+	/** Fator aplicado aos tamanhos de letra pedidos pelas janelas (compacto). */
+	private static final float TEXT_FACTOR = 0.8f;
+	private static final float TEXT_MIN = 10f;
+	/** Tamanho do logo dentro dos cartoes e da letra dos botoes/chaves. */
+	private static final int LOGO_DP = 30;
+	private static final float CARD_TEXT_SP = 13f;
+
 	private static int nextCode = 0xA7E0;
 
 	interface IntListener {
@@ -56,15 +63,15 @@ final class ApexUi {
 	static LinearLayout column(Context c) {
 		LinearLayout l = new LinearLayout(c);
 		l.setOrientation(LinearLayout.VERTICAL);
-		int p = dp(c, 16);
-		l.setPadding(p, dp(c, 8), p, dp(c, 8));
+		int p = dp(c, 10);
+		l.setPadding(p, dp(c, 4), p, dp(c, 4));
 		return l;
 	}
 
 	static TextView text(Context c, String s, float sp) {
 		TextView t = new TextView(c);
 		t.setText(s);
-		t.setTextSize(sp);
+		t.setTextSize(Math.max(TEXT_MIN, sp * TEXT_FACTOR));
 		t.setTextColor(ApexTheme.textColor(c));
 		ApexTheme.applyFont(t);
 		return t;
@@ -72,8 +79,8 @@ final class ApexUi {
 
 	/** Titulo de grupo (acima dos cartoes). */
 	static TextView section(Context c, String s) {
-		TextView t = text(c, s, 18);
-		t.setPadding(dp(c, 4), dp(c, 16), 0, dp(c, 4));
+		TextView t = text(c, s, 17);
+		t.setPadding(dp(c, 3), dp(c, 8), 0, dp(c, 3));
 		return t;
 	}
 
@@ -122,18 +129,25 @@ final class ApexUi {
 	private static LinearLayout.LayoutParams cardParams(Context c) {
 		LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
 				LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-		lp.topMargin = dp(c, 4);
-		lp.bottomMargin = dp(c, 4);
+		lp.topMargin = dp(c, 3);
+		lp.bottomMargin = dp(c, 3);
 		return lp;
 	}
 
 	private static void cardPadding(Context c, View v) {
-		v.setPadding(dp(c, 10), dp(c, 10), dp(c, 14), dp(c, 10));
+		v.setPadding(dp(c, 6), dp(c, 6), dp(c, 9), dp(c, 6));
 	}
 
+	/** Logo ja no tamanho compacto (os vetores sao 44dp, aqui viram LOGO_DP). */
 	private static Drawable logo(Context c, int res) {
 		Drawable d = ContextCompat.getDrawable(c, res);
-		return d == null ? null : d.mutate();
+		if (d == null) {
+			return null;
+		}
+		d = d.mutate();
+		int s = dp(c, LOGO_DP);
+		d.setBounds(0, 0, s, s);
+		return d;
 	}
 
 	static Button button(Context c, String label, View.OnClickListener l) {
@@ -144,7 +158,7 @@ final class ApexUi {
 		Button b = new Button(c);
 		b.setText(label);
 		b.setAllCaps(false);
-		b.setTextSize(16);
+		b.setTextSize(CARD_TEXT_SP);
 		b.setTextColor(ApexTheme.textColor(c));
 		b.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
 		b.setBackground(new ApexCardBackground());
@@ -152,8 +166,8 @@ final class ApexUi {
 		b.setMinHeight(0);
 		b.setMinimumHeight(0);
 		cardPadding(c, b);
-		b.setCompoundDrawablePadding(dp(c, 12));
-		b.setCompoundDrawablesRelativeWithIntrinsicBounds(logo(c, icon), null, null, null);
+		b.setCompoundDrawablePadding(dp(c, 8));
+		b.setCompoundDrawablesRelative(logo(c, icon), null, null, null);
 		b.setOnClickListener(l);
 		ApexTheme.applyFont(b);
 		b.setLayoutParams(cardParams(c));
@@ -174,7 +188,7 @@ final class ApexUi {
 				lp.bottomMargin = ((LinearLayout.LayoutParams) old).bottomMargin;
 			}
 			if (i > 0) {
-				lp.leftMargin = dp(c, 8);
+				lp.leftMargin = dp(c, 6);
 			}
 			r.addView(v, lp);
 		}
@@ -195,7 +209,7 @@ final class ApexUi {
 
 		ImageView img = new ImageView(c);
 		img.setImageDrawable(logo(c, icon));
-		int s = dp(c, 44);
+		int s = dp(c, LOGO_DP);
 		card.addView(img, new LinearLayout.LayoutParams(s, s));
 
 		LinearLayout col = new LinearLayout(c);
@@ -225,7 +239,7 @@ final class ApexUi {
 		col.addView(sb);
 		LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(
 				0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-		clp.leftMargin = dp(c, 12);
+		clp.leftMargin = dp(c, 8);
 		card.addView(col, clp);
 		card.setLayoutParams(cardParams(c));
 		return card;
@@ -238,14 +252,14 @@ final class ApexUi {
 	static SwitchCompat toggle(Context c, int icon, String label, boolean checked, BoolListener l) {
 		SwitchCompat sw = new SwitchCompat(c);
 		sw.setText(label);
-		sw.setTextSize(16);
+		sw.setTextSize(CARD_TEXT_SP);
 		sw.setTextColor(ApexTheme.textColor(c));
 		sw.setChecked(checked);
 		sw.setOnCheckedChangeListener((b, v) -> l.on(v));
 		sw.setBackground(new ApexCardBackground());
 		cardPadding(c, sw);
-		sw.setCompoundDrawablePadding(dp(c, 12));
-		sw.setCompoundDrawablesRelativeWithIntrinsicBounds(logo(c, icon), null, null, null);
+		sw.setCompoundDrawablePadding(dp(c, 8));
+		sw.setCompoundDrawablesRelative(logo(c, icon), null, null, null);
 		ApexTheme.applyFont(sw);
 		sw.setLayoutParams(cardParams(c));
 		return sw;
