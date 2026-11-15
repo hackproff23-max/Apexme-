@@ -2,7 +2,6 @@ package ru.playsoftware.j2meloader.apex;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.provider.Settings;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
@@ -10,7 +9,6 @@ import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.Toast;
 
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -19,11 +17,12 @@ import java.util.Map;
 import java.util.WeakHashMap;
 
 import ru.playsoftware.j2meloader.R;
+import ru.playsoftware.j2meloader.hex.HexEditorActivity;
 import ru.playsoftware.j2meloader.theme.ApexCardBackground;
 
 /**
  * Dock fixa no rodape de todas as telas do app (lista, configuracoes, editores...), menos dentro do jogo:
- * voltar, tela inicial do celular e tarefas recentes, cada um com logo colorido.
+ * voltar, tela inicial do celular e editor, cada um com logo colorido.
  */
 public final class ApexDock {
 	private static final String TAG = "apex_dock";
@@ -77,7 +76,7 @@ public final class ApexDock {
 		bar.setPadding(p, p, p, p);
 		bar.addView(cell(a, R.drawable.apexlogo_back, "Voltar", () -> back(a)), cellParams());
 		bar.addView(cell(a, R.drawable.apexlogo_home, "Tela inicial", () -> home(a)), cellParams());
-		bar.addView(cell(a, R.drawable.apexlogo_recents, "Tarefas recentes", () -> recents(a)), cellParams());
+		bar.addView(cell(a, R.drawable.apexlogo_hex, "Editor", () -> editor(a)), cellParams());
 
 		final int baseMargin = ApexUi.dp(a, BOTTOM);
 		FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
@@ -168,29 +167,13 @@ public final class ApexDock {
 		}
 	}
 
-	/** Janela de tarefas: o Android so deixa abrir por um servico de acessibilidade. */
-	private static void recents(Activity a) {
-		if (ApexNavService.recents()) {
+	/** Abre o editor (o mesmo editor hex do menu da lista); se ja esta nele, nao faz nada. */
+	private static void editor(Activity a) {
+		if (a instanceof HexEditorActivity) {
 			return;
 		}
 		try {
-			new androidx.appcompat.app.AlertDialog.Builder(a)
-					.setTitle("Tarefas recentes")
-					.setMessage("Para abrir a janela de tarefas, ative o serviço de acessibilidade do app "
-							+ "(Acessibilidade > Apps instalados) e volte aqui.")
-					.setNegativeButton(android.R.string.cancel, null)
-					.setPositiveButton("Abrir ajustes", (d, w) -> openAccessibility(a))
-					.show();
-		} catch (Throwable t) {
-			Toast.makeText(a, "Ative o serviço de acessibilidade do app para usar as tarefas recentes.",
-					Toast.LENGTH_LONG).show();
-			openAccessibility(a);
-		}
-	}
-
-	private static void openAccessibility(Activity a) {
-		try {
-			a.startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
+			a.startActivity(new Intent(a, HexEditorActivity.class));
 		} catch (Exception ignored) {
 		}
 	}
