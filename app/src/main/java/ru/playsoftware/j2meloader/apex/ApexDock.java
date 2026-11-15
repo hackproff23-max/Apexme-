@@ -22,10 +22,12 @@ import ru.playsoftware.j2meloader.theme.ApexCardBackground;
 
 /**
  * Dock fixa no rodape de todas as telas do app (lista, configuracoes, editores...), menos dentro do jogo:
- * voltar, tela inicial do celular e editor, cada um com logo colorido.
+ * voltar, tela inicial do celular e Editor Java, cada um com logo colorido.
  */
 public final class ApexDock {
 	private static final String TAG = "apex_dock";
+	/** App Editor Java (repo Editor-java). */
+	private static final String EDITOR_PKG = "org.jareditor.app";
 	private static final int BAR_H = 56;
 	private static final int SIDE = 16;
 	private static final int BOTTOM = 12;
@@ -76,7 +78,7 @@ public final class ApexDock {
 		bar.setPadding(p, p, p, p);
 		bar.addView(cell(a, R.drawable.apexlogo_back, "Voltar", () -> back(a)), cellParams());
 		bar.addView(cell(a, R.drawable.apexlogo_home, "Tela inicial", () -> home(a)), cellParams());
-		bar.addView(cell(a, R.drawable.apexlogo_hex, "Editor", () -> editor(a)), cellParams());
+		bar.addView(cell(a, R.drawable.apexlogo_hex, "Editor Java", () -> editor(a)), cellParams());
 
 		final int baseMargin = ApexUi.dp(a, BOTTOM);
 		FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
@@ -167,8 +169,17 @@ public final class ApexDock {
 		}
 	}
 
-	/** Abre o editor (o mesmo editor hex do menu da lista); se ja esta nele, nao faz nada. */
+	/** Abre o app Editor Java direto; sem ele instalado, abre o editor hex do proprio app. */
 	private static void editor(Activity a) {
+		try {
+			Intent i = a.getPackageManager().getLaunchIntentForPackage(EDITOR_PKG);
+			if (i != null) {
+				i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+				a.startActivity(i);
+				return;
+			}
+		} catch (Exception ignored) {
+		}
 		if (a instanceof HexEditorActivity) {
 			return;
 		}
