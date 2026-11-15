@@ -326,7 +326,7 @@ public class AppsListFragment extends Fragment {
 
 	private void convertAll(java.util.List<Uri> uris, ru.playsoftware.j2meloader.config.Profile profile) {
 		Activity activity = requireActivity();
-		AlertDialog progress = new AlertDialog.Builder(activity)
+		ru.playsoftware.j2meloader.apex.ApexProgressDialog progress = ru.playsoftware.j2meloader.apex.ApexProgressDialog.builder(activity)
 				.setTitle(R.string.apex_converting_title)
 				.setMessage("…")
 				.setCancelable(false)
