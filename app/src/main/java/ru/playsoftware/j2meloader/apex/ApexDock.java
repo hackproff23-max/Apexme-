@@ -272,7 +272,7 @@ public final class ApexDock {
 		int p = ApexUi.dp(a, 6);
 		brand.setPadding(p + ApexUi.dp(a, 2), p, ApexUi.dp(a, 14), p);
 		ImageView logo = new ImageView(a);
-		logo.setImageResource(R.mipmap.ic_launcher);
+		logo.setImageResource(R.mipmap.ic_launcher_dark);
 		int ls = ApexUi.dp(a, 40);
 		brand.addView(logo, new LinearLayout.LayoutParams(ls, ls));
 		TextView name = new TextView(a);
