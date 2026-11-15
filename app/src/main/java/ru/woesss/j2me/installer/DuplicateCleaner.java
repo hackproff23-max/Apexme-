@@ -43,6 +43,24 @@ public final class DuplicateCleaner {
 		return new File(item.getPathExt(), Config.MIDLET_DEX_FILE).isFile();
 	}
 
+	private static String iconHash(AppItem item) {
+		File f = new File(item.getPathExt(), Config.MIDLET_ICON_FILE);
+		if (!f.isFile() || f.length() == 0 || f.length() > 4 * 1024 * 1024) {
+			return null;
+		}
+		try (java.io.InputStream in = new java.io.FileInputStream(f)) {
+			java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+			byte[] b = new byte[8192];
+			int r;
+			while ((r = in.read(b)) > 0) {
+				md.update(b, 0, r);
+			}
+			return java.util.Arrays.toString(md.digest());
+		} catch (Exception e) {
+			return null;
+		}
+	}
+
 	private static int find(int[] parent, int i) {
 		while (parent[i] != i) {
 			parent[i] = parent[parent[i]];
@@ -79,11 +97,23 @@ public final class DuplicateCleaner {
 		}
 		Map<String, Integer> byHash = new HashMap<>();
 		Map<String, Integer> byTitle = new HashMap<>();
+		Map<String, Integer> byIcon = new HashMap<>();
 		for (int i = 0; i < n; i++) {
 			if (hashes[i] != null) {
 				Integer j = byHash.get(hashes[i]);
 				if (j == null) {
 					byHash.put(hashes[i], i);
+				} else {
+					parent[find(parent, i)] = find(parent, j);
+				}
+			}
+			// mesmo icone + mesmo autor = mesmo jogo (ex.: versao "BR" com titulo diferente)
+			String ih = iconHash(all.get(i));
+			if (ih != null) {
+				String k = ih + "|" + String.valueOf(all.get(i).getAuthor()).trim().toLowerCase();
+				Integer j = byIcon.get(k);
+				if (j == null) {
+					byIcon.put(k, i);
 				} else {
 					parent[find(parent, i)] = find(parent, j);
 				}

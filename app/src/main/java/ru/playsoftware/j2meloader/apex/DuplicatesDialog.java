@@ -63,7 +63,7 @@ final class DuplicatesDialog {
 		for (DuplicateCleaner.Group g : groups) {
 			total += g.remove.size();
 			sb.append("• ").append(g.keep.getTitle()).append(" — fica 1, apaga ").append(g.remove.size())
-					.append(g.identical ? "" : " (mesmo título)").append('\n');
+					.append(g.identical ? "" : " (mesmo título/ícone)").append('\n');
 		}
 		final int count = total;
 		new ApexDialogBuilder(a).setTitle(count + " duplicatas em " + groups.size() + " jogos")
