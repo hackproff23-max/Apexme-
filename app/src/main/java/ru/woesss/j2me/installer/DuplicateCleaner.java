@@ -2,192 +2,122 @@ package ru.woesss.j2me.installer;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
+import java.util.Collection;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 
 import ru.playsoftware.j2meloader.applist.AppItem;
 import ru.playsoftware.j2meloader.appsdb.AppRepository;
 import ru.playsoftware.j2meloader.config.Config;
 import ru.playsoftware.j2meloader.util.AppUtils;
+import ru.playsoftware.j2meloader.util.FileUtils;
 
 /**
- * Analise profunda de duplicatas entre os jogos instalados (ja convertidos).
- * Dois jogos sao duplicatas se o conteudo do res.jar e identico OU se o titulo normalizado e igual.
- * Em cada grupo fica so o primeiro ja convertido (menor id, que tem converted.dex); o resto sai.
+ * Liga o {@link DeepDuplicateScanner} (motor, sem Android) ao app: monta a lista de jogos instalados,
+ * as pastas a varrer e apaga o que o usuario marcou.
  */
 public final class DuplicateCleaner {
 	private DuplicateCleaner() {
 	}
 
-	public interface Progress {
-		void onProgress(int done, int total);
-	}
-
-	public static final class Group {
-		public final AppItem keep;
-		public final List<AppItem> remove;
-		/** true se algum removido tem o conteudo exatamente igual ao mantido. */
-		public final boolean identical;
-
-		Group(AppItem keep, List<AppItem> remove, boolean identical) {
-			this.keep = keep;
-			this.remove = remove;
-			this.identical = identical;
+	/** Roda em thread de fundo. */
+	public static DeepDuplicateScanner.Result analyze(AppRepository repo, Set<String> protectedFiles,
+													  DeepDuplicateScanner.Progress progress) throws Exception {
+		GameFingerprint.init(null);
+		List<AppItem> items = new ArrayList<>(repo.getAll().blockingFirst());
+		List<DeepDuplicateScanner.Game> games = new ArrayList<>(items.size());
+		for (AppItem item : items) {
+			games.add(new DeepDuplicateScanner.Game(item.getId(), item.getTitle(), item.getAuthor(),
+					item.getVersion(), new File(item.getPathExt()),
+					new File(Config.getSavesDir(item.getPath())),
+					new File(Config.getConfigsDir(), item.getPath()), item));
 		}
-	}
 
-	private static boolean converted(AppItem item) {
-		return new File(item.getPathExt(), Config.MIDLET_DEX_FILE).isFile();
-	}
-
-	private static String iconHash(AppItem item) {
-		File f = new File(item.getPathExt(), Config.MIDLET_ICON_FILE);
-		if (!f.isFile() || f.length() == 0 || f.length() > 4 * 1024 * 1024) {
-			return null;
+		DeepDuplicateScanner.Options opt = new DeepDuplicateScanner.Options();
+		File appsDir = new File(Config.getAppDir());
+		File configsDir = new File(Config.getConfigsDir());
+		opt.appsDir = appsDir;
+		opt.configsDir = configsDir;
+		opt.deletableRoot = new File(Config.getShadersDir());
+		if (protectedFiles != null) {
+			opt.protectedPaths.addAll(protectedFiles);
 		}
-		try (java.io.InputStream in = new java.io.FileInputStream(f)) {
-			java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
-			byte[] b = new byte[8192];
-			int r;
-			while ((r = in.read(b)) > 0) {
-				md.update(b, 0, r);
+		// arquivos repetidos: tudo da pasta do app, menos o conteudo dos jogos (data/ e jogos/),
+		// onde bibliotecas iguais em varios jogos sao normais
+		File[] top = new File(Config.getEmulatorDir()).listFiles();
+		if (top != null) {
+			for (File f : top) {
+				if (!f.equals(appsDir) && !f.equals(configsDir)
+						&& !f.getName().equals(appsDir.getName()) && !f.getName().equals(configsDir.getName())) {
+					opt.fileRoots.add(f);
+				}
 			}
-			return java.util.Arrays.toString(md.digest());
+		}
+
+		DeepDuplicateScanner.Result res = DeepDuplicateScanner.scan(games, opt,
+				new DeepDuplicateScanner.Hasher() {
+					@Override
+					public String contentHash(File jar) throws Exception {
+						return GameFingerprint.hashOf(jar);
+					}
+				}, progress);
+		GameFingerprint.flush();
+		return res;
+	}
+
+	/** Grava o relatorio completo em configuracoes/duplicatas-relatorio.txt. Devolve o arquivo ou null. */
+	public static File writeReport(DeepDuplicateScanner.Result res) {
+		try {
+			File dir = new File(Config.getSettingsDir());
+			if (!dir.isDirectory() && !dir.mkdirs()) {
+				return null;
+			}
+			File out = new File(dir, "duplicatas-relatorio.txt");
+			try (java.io.FileOutputStream os = new java.io.FileOutputStream(out)) {
+				os.write(DeepDuplicateScanner.report(res).getBytes("UTF-8"));
+			}
+			return out;
 		} catch (Exception e) {
 			return null;
 		}
 	}
 
-	private static int find(int[] parent, int i) {
-		while (parent[i] != i) {
-			parent[i] = parent[parent[i]];
-			i = parent[i];
-		}
-		return i;
-	}
-
-	/** Roda em thread de fundo. */
-	public static List<Group> analyze(AppRepository repo, Progress progress) throws Exception {
-		GameFingerprint.init(null);
-		List<AppItem> all = new ArrayList<>(repo.getAll().blockingFirst());
-		Collections.sort(all, new Comparator<AppItem>() {
-			@Override
-			public int compare(AppItem x, AppItem y) {
-				return Integer.compare(x.getId(), y.getId());
-			}
-		});
-		int n = all.size();
-		int[] parent = new int[n];
-		String[] hashes = new String[n];
-		for (int i = 0; i < n; i++) {
-			parent[i] = i;
-			File jar = new File(all.get(i).getPathExt(), Config.MIDLET_RES_FILE);
-			if (jar.isFile()) {
-				try {
-					hashes[i] = GameFingerprint.hashOf(jar);
-				} catch (Exception ignored) {
-				}
-			}
-			if (progress != null) {
-				progress.onProgress(i + 1, n);
+	/**
+	 * Apaga o que foi marcado: jogos (pasta, saves e configs + registro no banco), pastas sem dono e
+	 * copias de arquivos. Devolve quantos itens foram apagados. Roda em thread de fundo.
+	 */
+	public static int delete(AppRepository repo, Collection<DeepDuplicateScanner.Game> games,
+							 Collection<DeepDuplicateScanner.Extra> extras,
+							 Collection<DeepDuplicateScanner.FileGroup> fileGroups) {
+		int count = 0;
+		List<AppItem> items = new ArrayList<>();
+		for (DeepDuplicateScanner.Game g : games) {
+			if (g.tag instanceof AppItem) {
+				AppItem item = (AppItem) g.tag;
+				AppUtils.deleteApp(item);
+				items.add(item);
+				count++;
 			}
 		}
-		Map<String, Integer> byHash = new HashMap<>();
-		Map<String, Integer> byTitle = new HashMap<>();
-		Map<String, Integer> byIcon = new HashMap<>();
-		for (int i = 0; i < n; i++) {
-			if (hashes[i] != null) {
-				Integer j = byHash.get(hashes[i]);
-				if (j == null) {
-					byHash.put(hashes[i], i);
-				} else {
-					parent[find(parent, i)] = find(parent, j);
-				}
-			}
-			// mesmo icone + mesmo autor = mesmo jogo (ex.: versao "BR" com titulo diferente)
-			String ih = iconHash(all.get(i));
-			if (ih != null) {
-				String k = ih + "|" + String.valueOf(all.get(i).getAuthor()).trim().toLowerCase();
-				Integer j = byIcon.get(k);
-				if (j == null) {
-					byIcon.put(k, i);
-				} else {
-					parent[find(parent, i)] = find(parent, j);
-				}
-			}
-			String t = GameFingerprint.normalizeTitle(all.get(i).getTitle());
-			if (!t.isEmpty()) {
-				Integer j = byTitle.get(t);
-				if (j == null) {
-					byTitle.put(t, i);
-				} else {
-					parent[find(parent, i)] = find(parent, j);
-				}
+		if (!items.isEmpty()) {
+			repo.delete(items);
+		}
+		for (DeepDuplicateScanner.Extra e : extras) {
+			if (FileUtils.deleteDirectory(e.dir)) {
+				count++;
 			}
 		}
-		Map<Integer, List<Integer>> groups = new HashMap<>();
-		for (int i = 0; i < n; i++) {
-			int r = find(parent, i);
-			List<Integer> g = groups.get(r);
-			if (g == null) {
-				g = new ArrayList<>();
-				groups.put(r, g);
-			}
-			g.add(i);
-		}
-		List<Group> result = new ArrayList<>();
-		for (List<Integer> g : groups.values()) {
-			if (g.size() < 2) {
+		for (DeepDuplicateScanner.FileGroup fg : fileGroups) {
+			if (!fg.deletable) {
 				continue;
 			}
-			int keepIdx = -1;
-			for (int i : g) { // g ja esta em ordem de id
-				if (converted(all.get(i))) {
-					keepIdx = i;
-					break;
+			for (int i = 0; i < fg.files.size(); i++) {
+				if (i != fg.keepIndex && fg.files.get(i).delete()) {
+					count++;
 				}
 			}
-			if (keepIdx < 0) {
-				continue; // nenhum convertido: nao mexe
-			}
-			List<AppItem> remove = new ArrayList<>();
-			boolean identical = false;
-			for (int i : g) {
-				if (i == keepIdx) {
-					continue;
-				}
-				remove.add(all.get(i));
-				if (hashes[i] != null && hashes[i].equals(hashes[keepIdx])) {
-					identical = true;
-				}
-			}
-			result.add(new Group(all.get(keepIdx), remove, identical));
-		}
-		Collections.sort(result, new Comparator<Group>() {
-			@Override
-			public int compare(Group x, Group y) {
-				return x.keep.getTitle().compareToIgnoreCase(y.keep.getTitle());
-			}
-		});
-		return result;
-	}
-
-	/** Apaga os duplicados (pasta, saves e configs) e tira do banco. Roda em thread de fundo. */
-	public static int delete(AppRepository repo, List<Group> groups) {
-		List<AppItem> all = new ArrayList<>();
-		for (Group g : groups) {
-			for (AppItem item : g.remove) {
-				AppUtils.deleteApp(item);
-				all.add(item);
-			}
-		}
-		if (!all.isEmpty()) {
-			repo.delete(all);
 		}
 		GameFingerprint.flush();
-		return all.size();
+		return count;
 	}
 }
