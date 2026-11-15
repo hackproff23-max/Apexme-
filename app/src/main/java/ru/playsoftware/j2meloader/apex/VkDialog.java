@@ -206,7 +206,7 @@ public final class VkDialog {
 		}));
 		root.addView(ApexUi.text(a, "Dica: use o Modo edição para arrastar o analógico e o teclado de letras.", 12));
 
-		holder[0] = new AlertDialog.Builder(a)
+		holder[0] = new ApexDialogBuilder(a)
 				.setTitle(R.string.PREF_VIRTUAL_KEYBOARD_OPTIONS)
 				.setView(sv)
 				.setPositiveButton(R.string.apex_close, null)
@@ -231,7 +231,7 @@ public final class VkDialog {
 				sel = i;
 			}
 		}
-		new AlertDialog.Builder(a)
+		new ApexDialogBuilder(a)
 				.setTitle("Velocidade do fast-forward")
 				.setSingleChoiceItems(names, sel, (d, which) -> {
 					ApexPrefs.setFfSpeed(speeds[which]);
@@ -253,7 +253,7 @@ public final class VkDialog {
 				sel = i;
 			}
 		}
-		new AlertDialog.Builder(a)
+		new ApexDialogBuilder(a)
 				.setTitle("Tipo de jogo")
 				.setSingleChoiceItems(ApexPrefs.GAME_NAMES, sel, (d, which) -> {
 					ApexPrefs.setGameType(ApexPrefs.GAME_TYPES[which]);
@@ -273,7 +273,7 @@ public final class VkDialog {
 		for (int i = 0; i < all.length; i++) {
 			items[i] = all[i][1] + (ApexPrefs.hasButtonImage(all[i][0], false) ? "  ✓" : "");
 		}
-		AlertDialog d = new AlertDialog.Builder(a)
+		AlertDialog d = new ApexDialogBuilder(a)
 				.setTitle("Imagem de qual botão? (" + ApexPrefs.gameTypeName() + ")")
 				.setItems(items, (dlg, which) -> showButtonOptions(a, vk, all[which], which))
 				.setNegativeButton(R.string.apex_close, null)
@@ -284,7 +284,7 @@ public final class VkDialog {
 
 	private static void showButtonOptions(Activity a, VirtualKeyboard vk, String[] btn, int index) {
 		String id = btn[0];
-		new AlertDialog.Builder(a)
+		new ApexDialogBuilder(a)
 				.setTitle(btn[1])
 				.setItems(new String[]{"Importar imagem", "Remover imagem deste botão"}, (dlg, which) -> {
 					if (which == 1) {
@@ -335,7 +335,7 @@ public final class VkDialog {
 			row.addView(sp, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
 			root.addView(row);
 		}
-		new AlertDialog.Builder(a)
+		new ApexDialogBuilder(a)
 				.setTitle("Mapear números nas letras")
 				.setView(sv)
 				.setPositiveButton(android.R.string.ok, (d, w) -> {
@@ -410,7 +410,7 @@ public final class VkDialog {
 			row.addView(sp, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
 			root.addView(row);
 		}
-		new AlertDialog.Builder(a)
+		new ApexDialogBuilder(a)
 				.setTitle("Mapear D-pad")
 				.setView(sv)
 				.setPositiveButton(android.R.string.ok, (d, w) -> {

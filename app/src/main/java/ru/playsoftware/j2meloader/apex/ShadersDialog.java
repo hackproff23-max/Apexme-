@@ -92,7 +92,7 @@ public final class ShadersDialog {
 					}
 				}
 			}
-			new AlertDialog.Builder(a)
+			new ApexDialogBuilder(a)
 					.setTitle("Selecionar shader")
 					.setSingleChoiceItems(names, checked, (d, which) -> {
 						if (which == 0) {
@@ -150,7 +150,7 @@ public final class ShadersDialog {
 				"shaders do app. Importe shaders GLSL ES 2.0: arquivo único com #if defined(VERTEX) / " +
 				"FRAGMENT (estilo RetroArch), ou só o fragment usando sampler0 e v_texcoord0.", 12));
 
-		AlertDialog dialog = new AlertDialog.Builder(a)
+		AlertDialog dialog = new ApexDialogBuilder(a)
 				.setTitle(R.string.apex_shaders)
 				.setView(sv)
 				.setNeutralButton("Restaurar padrão", (d, w) -> {
@@ -174,7 +174,7 @@ public final class ShadersDialog {
 			Toast.makeText(a, "Nenhum shader importado", Toast.LENGTH_SHORT).show();
 			return;
 		}
-		new AlertDialog.Builder(a)
+		new ApexDialogBuilder(a)
 				.setTitle("Testar todos os shaders")
 				.setMessage("Compila os " + total + " shaders neste aparelho, um por um. Os que funcionam " +
 						"são renomeados sem o prefixo \"" + LibretroShaders.PREFIX + "\" e os que dão erro " +
@@ -192,7 +192,7 @@ public final class ShadersDialog {
 		int pad = ApexUi.dp(a, 20);
 		msg.setPadding(pad, pad, pad, pad);
 		boolean[] cancel = {false};
-		AlertDialog progress = new AlertDialog.Builder(a)
+		AlertDialog progress = new ApexDialogBuilder(a)
 				.setTitle("Testando shaders")
 				.setView(msg)
 				.setCancelable(false)
@@ -224,7 +224,7 @@ public final class ShadersDialog {
 					if (cr.duplicates > 0) {
 						text += "\n" + cr.duplicates + " cópias repetidas removidas.";
 					}
-					new AlertDialog.Builder(a).setTitle("Teste dos shaders")
+					new ApexDialogBuilder(a).setTitle("Teste dos shaders")
 							.setMessage(text)
 							.setPositiveButton(R.string.apex_close, null).show();
 				});
@@ -238,7 +238,7 @@ public final class ShadersDialog {
 	}
 
 	private static void confirmDownload(Activity a, TextView current) {
-		new AlertDialog.Builder(a)
+		new ApexDialogBuilder(a)
 				.setTitle("Shaders do libretro")
 				.setMessage("Baixa o repositório libretro/glsl-shaders do GitHub (use Wi-Fi) e importa só os " +
 						"shaders compatíveis com o emulador: arquivo único que usa apenas a imagem do jogo. " +
@@ -254,7 +254,7 @@ public final class ShadersDialog {
 		int pad = ApexUi.dp(a, 20);
 		msg.setPadding(pad, pad, pad, pad);
 		boolean[] cancel = {false};
-		AlertDialog progress = new AlertDialog.Builder(a)
+		AlertDialog progress = new ApexDialogBuilder(a)
 				.setTitle("Baixando shaders")
 				.setView(msg)
 				.setCancelable(false)
@@ -289,7 +289,7 @@ public final class ShadersDialog {
 							"incompatíveis).\nRode \"Testar todos os shaders\" para apagar os que não funcionam e tirar o prefixo " +
 							LibretroShaders.PREFIX + " dos que funcionam.";
 				}
-				new AlertDialog.Builder(a).setTitle("Shaders do libretro").setMessage(text)
+				new ApexDialogBuilder(a).setTitle("Shaders do libretro").setMessage(text)
 						.setPositiveButton(R.string.apex_close, null).show();
 			});
 		}, "ApexLibretroShaders").start();
