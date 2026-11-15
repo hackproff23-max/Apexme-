@@ -11,7 +11,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import java.util.Map;
 import java.util.WeakHashMap;
 
-/** Botoes flutuantes (importar jogo / pasta): icone com contraste sobre o fundo do tema. */
+/** Botoes flutuantes (importar jogo / pasta): logo colorido, ou icone com contraste sobre o fundo do tema. */
 final class ApexFab {
 	private static final Map<View, Integer> DONE = new WeakHashMap<>();
 
@@ -29,13 +29,15 @@ final class ApexFab {
 			icon = ApexTheme.textColor(c);
 			fill = ApexTheme.windowColor(c);
 		}
-		int key = icon * 31 + fill;
+		// botoes marcados como "apexlogo" usam o logo colorido: so o aro (fundo) segue o tema
+		boolean logo = "apexlogo".equals(fab.getTag());
+		int key = icon * 31 + fill + (logo ? 1 : 0);
 		Integer old = DONE.get(fab);
 		if (old != null && old == key) {
 			return;
 		}
 		DONE.put(fab, key);
-		ImageViewCompat.setImageTintList(fab, ColorStateList.valueOf(icon));
+		ImageViewCompat.setImageTintList(fab, logo ? null : ColorStateList.valueOf(icon));
 		fab.setBackgroundTintList(ColorStateList.valueOf(fill));
 	}
 }

@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <GridView
+    <ru.playsoftware.j2meloader.applist.ApexGridView
         android:id="@+id/list"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -37,8 +37,11 @@
         android:layout_marginEnd="24dp"
         android:layout_marginBottom="88dp"
         android:contentDescription="@string/apex_add_folder"
+        android:tag="apexlogo"
         app:fabSize="mini"
-        app:srcCompat="@drawable/ic_add_folder" />
+        app:maxImageSize="38dp"
+        app:srcCompat="@drawable/apexlogo_add_folder"
+        app:tint="@null" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/floating_action_button"
@@ -46,5 +49,8 @@
         android:layout_height="wrap_content"
         android:layout_gravity="end|bottom"
         android:layout_margin="16dp"
-        app:srcCompat="@drawable/ic_add_white" />
+        android:tag="apexlogo"
+        app:maxImageSize="52dp"
+        app:srcCompat="@drawable/apexlogo_add_game"
+        app:tint="@null" />
 </FrameLayout>

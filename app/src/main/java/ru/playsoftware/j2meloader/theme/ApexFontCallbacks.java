@@ -112,6 +112,11 @@ public final class ApexFontCallbacks implements Application.ActivityLifecycleCal
 			running = true;
 			Choreographer.getInstance().postFrameCallback(frame);
 		}
+		// dock (voltar / inicio / recentes) em todas as telas, menos dentro do jogo
+		try {
+			ru.playsoftware.j2meloader.apex.ApexDock.attach(a);
+		} catch (Throwable ignored) {
+		}
 	}
 
 	@Override

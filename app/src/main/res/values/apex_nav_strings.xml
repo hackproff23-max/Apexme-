@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="apex_nav_service_desc" translatable="false">Usado só pelo botão de tarefas recentes da dock do app. Não lê nada da tela.</string>
+</resources>
