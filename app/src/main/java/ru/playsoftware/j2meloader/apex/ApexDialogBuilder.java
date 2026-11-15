@@ -24,7 +24,7 @@ public final class ApexDialogBuilder extends AlertDialog.Builder {
 	private static final int GAME_MAX_WIDTH_DP = 320;
 	private static final float GAME_MAX_WIDTH_FRAC = 0.40f;
 	private static final float GAME_MAX_HEIGHT = 0.96f;
-	private static final int MENU_MAX_WIDTH_DP = 340;
+	private static final int MENU_MAX_WIDTH_DP = 284;
 	private static final float MENU_MAX_HEIGHT = 0.78f;
 	private static final int MARGIN_DP = 8;
 
