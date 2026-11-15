@@ -512,19 +512,22 @@ public class MicroActivity extends AppCompatActivity {
 		final VirtualKeyboard vk = ContextHolder.getVk();
 		boolean[] keyStates = vk.getKeysVisibility();
 		int n = keyStates.length;
-		// ultimo item: D-pad (marcado = oculto)
-		boolean[] states = Arrays.copyOf(keyStates, n + 1);
+		// ultimos itens: D-pad e botao das letras (marcado = oculto)
+		boolean[] states = Arrays.copyOf(keyStates, n + 2);
 		states[n] = !ru.playsoftware.j2meloader.apex.ApexPrefs.dpadEnabled();
+		states[n + 1] = ru.playsoftware.j2meloader.apex.ApexLetterToggle.hidden();
 		boolean[] changed = states.clone();
 		String[] keyNames = vk.getKeyNames();
-		String[] names = Arrays.copyOf(keyNames, n + 1);
+		String[] names = Arrays.copyOf(keyNames, n + 2);
 		names[n] = "D-pad (8 direções)";
+		names[n + 1] = "Botão das letras (liga/desliga)";
 		new AlertDialog.Builder(this)
 				.setTitle(R.string.hide_buttons)
 				.setMultiChoiceItems(names, changed, (dialog, which, isChecked) -> {})
 				.setPositiveButton(android.R.string.ok, (dialog, which) -> {
 					if (!Arrays.equals(states, changed)) {
 						ru.playsoftware.j2meloader.apex.ApexPrefs.setDpadEnabled(!changed[n]);
+						ru.playsoftware.j2meloader.apex.ApexLetterToggle.setHidden(changed[n + 1]);
 						vk.setKeysVisibility(Arrays.copyOf(changed, n));
 						vk.apexRelayout();
 						showSaveVkAlert(true);

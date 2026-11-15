@@ -8,15 +8,19 @@ import java.util.ArrayList;
 import javax.microedition.lcdui.Canvas;
 import javax.microedition.lcdui.graphics.CanvasWrapper;
 
+import ru.playsoftware.j2meloader.apex.ApexLetterToggle;
 import ru.playsoftware.j2meloader.apex.ApexPrefs;
 import ru.playsoftware.j2meloader.config.ProfileModel;
 
 /**
  * Teclado de letras proprio, para jogos em que os numeros nao funcionam.
  * Letras mapeadas (Teclado virtual > Mapear letras) enviam o numero correspondente.
+ * Tambem cuida do botao redondo que liga/desliga as letras (some pela lista "Ocultar botoes").
  */
 public class ApexLetterPad {
 	private static final String POS = "letters";
+	private static final String TOGGLE_POS = "lettertoggle";
+	private static final String TOGGLE_ID = "lettertoggle";
 	private static final String[] ROWS = {"qwertyuiop", "asdfghjkl", "zxcvbnm"};
 
 	private static class Key {
@@ -54,6 +58,14 @@ public class ApexLetterPad {
 	private float offX, offY;
 	private Canvas target;
 	private View view;
+
+	// ---- botao liga/desliga das letras ----
+	private final RectF tRect = new RectF();
+	private float tcx, tcy, tsize;
+	private int tPointer = -1;
+	private boolean tInside;
+	private boolean tEditing;
+	private float tOffX, tOffY;
 
 	public ApexLetterPad(ProfileModel settings) {
 		this.settings = settings;
@@ -167,6 +179,10 @@ public class ApexLetterPad {
 		float w = keySize * cols;
 		float h = keySize * rows;
 		moveTo(scr.left + scr.width() * p[0] - w / 2f, scr.top + scr.height() * p[1] - h / 2f);
+		// botao liga/desliga: padrao no topo, entre o fast-forward e o botao B
+		tsize = Math.max(scr.width(), scr.height()) / 12f * ApexPrefs.buttonScale();
+		float[] tp = ApexPrefs.pos(TOGGLE_POS, landscape(), 0.675f, 0.097f);
+		placeToggle(scr.left + scr.width() * tp[0], scr.top + scr.height() * tp[1]);
 	}
 
 	private void moveTo(float left, float top) {
@@ -197,8 +213,52 @@ public class ApexLetterPad {
 		}
 	}
 
+	// ---- botao liga/desliga ----
+	private boolean toggleVisible() {
+		return !screen.isEmpty() && !ApexLetterToggle.hidden();
+	}
+
+	private boolean toggleContains(float x, float y) {
+		float pad = tsize * 0.12f;
+		return x >= tRect.left - pad && x <= tRect.right + pad && y >= tRect.top - pad && y <= tRect.bottom + pad;
+	}
+
+	private void placeToggle(float x, float y) {
+		float h = tsize / 2f;
+		tcx = Math.max(screen.left + h, Math.min(screen.right - h, x));
+		tcy = Math.max(screen.top + h, Math.min(screen.bottom - h, y));
+		tRect.set(tcx - h, tcy - h, tcx + h, tcy + h);
+	}
+
+	private void releaseLetters() {
+		for (int i = 0; i < owned.length; i++) {
+			if (owned[i] != null) {
+				release(i);
+			}
+		}
+	}
+
+	/** Liga ou desliga o teclado de letras e refaz as teclas. */
+	private void toggleLetters() {
+		releaseLetters();
+		boolean on = !ApexPrefs.lettersEnabled();
+		ApexPrefs.setLettersEnabled(on);
+		layout(screen);
+		invalidate();
+		final String msg = on ? "Letras ligadas" : "Letras desligadas";
+		javax.microedition.lcdui.ViewHandler.postEvent(() -> android.widget.Toast.makeText(
+				javax.microedition.util.ContextHolder.getActivity(), msg, android.widget.Toast.LENGTH_SHORT).show());
+	}
+
 	public void paint(CanvasWrapper g, boolean opaque) {
-		if (!enabled() || screen.isEmpty()) {
+		if (screen.isEmpty()) {
+			return;
+		}
+		if (toggleVisible()) {
+			ApexKeyPaint.draw(g, tRect, TOGGLE_ID, XboxIcons.LETTERS_TOGGLE, tPointer >= 0 || tEditing,
+					opaque, settings, 0.8f);
+		}
+		if (!enabled()) {
 			return;
 		}
 		for (Key k : shown) {
@@ -211,7 +271,16 @@ public class ApexLetterPad {
 	}
 
 	public boolean press(int id, float x, float y) {
-		if (!enabled() || id < 0 || id >= owned.length || !bounds.contains(x, y)) {
+		if (id < 0 || id >= owned.length) {
+			return false;
+		}
+		if (tPointer < 0 && toggleVisible() && toggleContains(x, y)) {
+			tPointer = id;
+			tInside = true;
+			invalidate();
+			return true;
+		}
+		if (!enabled() || !bounds.contains(x, y)) {
 			return false;
 		}
 		for (Key k : shown) {
@@ -233,6 +302,10 @@ public class ApexLetterPad {
 	}
 
 	public boolean drag(int id, float x, float y) {
+		if (id >= 0 && id == tPointer) {
+			tInside = toggleContains(x, y);
+			return true;
+		}
 		if (id < 0 || id >= owned.length || owned[id] == null) {
 			return false;
 		}
@@ -244,6 +317,14 @@ public class ApexLetterPad {
 	}
 
 	public boolean release(int id) {
+		if (id >= 0 && id == tPointer) {
+			tPointer = -1;
+			if (tInside) {
+				toggleLetters();
+			}
+			invalidate();
+			return true;
+		}
 		if (id < 0 || id >= owned.length || owned[id] == null) {
 			return false;
 		}
@@ -258,6 +339,7 @@ public class ApexLetterPad {
 	}
 
 	public void cancel() {
+		tPointer = -1;
 		for (int i = 0; i < owned.length; i++) {
 			release(i);
 		}
@@ -265,6 +347,12 @@ public class ApexLetterPad {
 
 	// ---- modo edicao ----
 	public boolean editBegin(float x, float y) {
+		if (toggleVisible() && toggleContains(x, y)) {
+			tEditing = true;
+			tOffX = x - tcx;
+			tOffY = y - tcy;
+			return true;
+		}
 		if (!enabled() || !bounds.contains(x, y)) {
 			return false;
 		}
@@ -275,10 +363,15 @@ public class ApexLetterPad {
 	}
 
 	public boolean isEditing() {
-		return editing;
+		return editing || tEditing;
 	}
 
 	public void editDrag(float x, float y) {
+		if (tEditing) {
+			placeToggle(ApexPrefs.gridSnap(x - tOffX, screen.left), ApexPrefs.gridSnap(y - tOffY, screen.top));
+			invalidate();
+			return;
+		}
 		float hw = bounds.width() / 2f, hh = bounds.height() / 2f;
 		moveTo(ApexPrefs.gridSnap(x - offX + hw, screen.left) - hw,
 				ApexPrefs.gridSnap(y - offY + hh, screen.top) - hh);
@@ -286,6 +379,14 @@ public class ApexLetterPad {
 	}
 
 	public void editEnd() {
+		if (tEditing) {
+			tEditing = false;
+			if (screen.width() > 0 && screen.height() > 0) {
+				ApexPrefs.setPos(TOGGLE_POS, landscape(), (tcx - screen.left) / screen.width(),
+						(tcy - screen.top) / screen.height());
+			}
+			return;
+		}
 		editing = false;
 		if (screen.width() > 0 && screen.height() > 0) {
 			ApexPrefs.setPos(POS, landscape(), (bounds.centerX() - screen.left) / screen.width(),
