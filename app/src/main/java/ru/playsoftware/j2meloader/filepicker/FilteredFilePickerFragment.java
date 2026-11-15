@@ -16,10 +16,14 @@
 
 package ru.playsoftware.j2meloader.filepicker;
 
+import android.content.Context;
+import android.os.Bundle;
 import android.os.Environment;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
 
 import com.nononsenseapps.filepicker.FilePickerFragment;
 import com.nononsenseapps.filepicker.LogicHandler;
@@ -30,13 +34,56 @@ import java.util.List;
 import java.util.Stack;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 import ru.playsoftware.j2meloader.R;
+import ru.playsoftware.j2meloader.theme.ApexCardBackground;
+import ru.playsoftware.j2meloader.theme.ApexTheme;
 
 public class FilteredFilePickerFragment extends FilePickerFragment {
 	private static final List<String> extList = Arrays.asList(".jad", ".jar", ".kjx");
 	private static final Stack<File> history = new Stack<>();
 	private static File currentDir = Environment.getExternalStorageDirectory();
+
+	@Override
+	public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+		super.onViewCreated(view, savedInstanceState);
+		styleHeader(view);
+	}
+
+	/**
+	 * Faixa do caminho no topo: cartao com altura fixa, no estilo das docks. Antes era a barra preta da
+	 * biblioteca, que ficava baixa demais e cortava o texto do caminho.
+	 */
+	private void styleHeader(View root) {
+		Context c = root.getContext();
+		float d = c.getResources().getDisplayMetrics().density;
+		int tbId = c.getResources().getIdentifier("nnf_picker_toolbar", "id", c.getPackageName());
+		int dirId = c.getResources().getIdentifier("nnf_current_dir", "id", c.getPackageName());
+		View tb = tbId != 0 ? root.findViewById(tbId) : null;
+		View dir = dirId != 0 ? root.findViewById(dirId) : null;
+		if (tb != null) {
+			int h = Math.round(48 * d);
+			int pad = Math.round(14 * d);
+			tb.setBackground(new ApexCardBackground());
+			tb.setMinimumHeight(h);
+			tb.setPadding(pad, 0, pad, 0);
+			ViewGroup.LayoutParams lp = tb.getLayoutParams();
+			if (lp != null) {
+				lp.height = h;
+				if (lp instanceof ViewGroup.MarginLayoutParams) {
+					int side = Math.round(16 * d);
+					((ViewGroup.MarginLayoutParams) lp).setMargins(side, Math.round(12 * d), side, Math.round(8 * d));
+				}
+				tb.setLayoutParams(lp);
+			}
+		}
+		if (dir instanceof TextView) {
+			TextView t = (TextView) dir;
+			t.setTextColor(ApexTheme.textColor(c));
+			t.setGravity(Gravity.CENTER_VERTICAL);
+		}
+	}
 
 	@NonNull
 	@Override
