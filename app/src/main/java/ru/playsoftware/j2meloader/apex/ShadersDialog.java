@@ -35,7 +35,7 @@ public final class ShadersDialog {
 		if (ApexPrefs.SEL_BUILTIN.equals(sel)) {
 			return "Apex (LCD + cores)";
 		}
-		return "Automático (do perfil)";
+		return "Automático (padrão: 4k resolution)";
 	}
 
 	private static void apply(Activity a, boolean full) {
@@ -77,7 +77,7 @@ public final class ShadersDialog {
 		View selectBtn = ApexUi.button(a, "Selecionar shader", v -> {
 			String[] user = ApexPrefs.listWorkingShaders();
 			String[] names = new String[user.length + 2];
-			names[0] = "Automático (do perfil)";
+			names[0] = "Automático (padrão: 4k resolution)";
 			names[1] = "Apex (LCD + cores)";
 			System.arraycopy(user, 0, names, 2, user.length);
 			String sel = ApexPrefs.shaderSel();

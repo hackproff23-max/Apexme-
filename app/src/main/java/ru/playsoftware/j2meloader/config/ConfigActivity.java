@@ -139,6 +139,10 @@ public class ConfigActivity extends BaseActivity implements View.OnClickListener
 	/** Marca no spinner o shader global escolhido (importado ou Apex), se houver. */
 	private boolean selectApexShader() {
 		String sel = ru.playsoftware.j2meloader.apex.ApexPrefs.shaderSel();
+		// Automatico + perfil sem shader proprio = padrao "4k resolution"
+		if (ru.playsoftware.j2meloader.apex.ApexPrefs.SEL_AUTO.equals(sel) && (params == null || params.shader == null)) {
+			sel = ru.playsoftware.j2meloader.apex.ApexPrefs.SEL_USER + ru.playsoftware.j2meloader.apex.ApexDefaults.K4;
+		}
 		for (int i = 0; i < spShaderAdapter.getCount(); i++) {
 			ShaderInfo it = spShaderAdapter.getItem(i);
 			boolean match = (sel.startsWith(ru.playsoftware.j2meloader.apex.ApexPrefs.SEL_USER)
@@ -463,6 +467,9 @@ public class ConfigActivity extends BaseActivity implements View.OnClickListener
 				} else if (AX_USER.equals(item.author)) {
 					ru.playsoftware.j2meloader.apex.ApexPrefs.setShaderSel(
 							ru.playsoftware.j2meloader.apex.ApexPrefs.SEL_USER + item.name.substring(2));
+				} else if (position == 0) {
+					// "Rapido (sem filtro)": escolha explicita de nao usar o 4k (Automatico agora e o 4k)
+					ru.playsoftware.j2meloader.apex.ApexPrefs.setShaderSel(ru.playsoftware.j2meloader.apex.ApexPrefs.SEL_BUILTIN);
 				} else if (!ru.playsoftware.j2meloader.apex.ApexPrefs.SEL_AUTO.equals(
 						ru.playsoftware.j2meloader.apex.ApexPrefs.shaderSel())) {
 					ru.playsoftware.j2meloader.apex.ApexPrefs.setShaderSel(ru.playsoftware.j2meloader.apex.ApexPrefs.SEL_AUTO);
@@ -652,13 +659,15 @@ public class ConfigActivity extends BaseActivity implements View.OnClickListener
 		binding.forceFullscreenToggle.setChecked(params.forceFullscreen);
 		binding.graphicalModeSelector.setSelection(params.graphicsMode);
 		binding.showFpsToggle.setChecked(params.showFps);
-		binding.shaderSelector.setSelection(0);
 		if (spShaderAdapter != null) {
 			ShaderInfo shader = params.shader;
 			int position = shader == null ? -1 : spShaderAdapter.getPosition(shader);
 			if (position > 0) {
 				spShaderAdapter.getItem(position).values = shader.values;
 				binding.shaderSelector.setSelection(position);
+			} else if (!selectApexShader()) {
+				// perfil sem shader proprio: mostra o padrao (4k resolution), sem zerar a escolha global
+				binding.shaderSelector.setSelection(0);
 			}
 		}
 

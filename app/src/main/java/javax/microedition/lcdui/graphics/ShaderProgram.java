@@ -69,6 +69,13 @@ public class ShaderProgram {
 
 	public ShaderProgram(ShaderInfo shader) {
 		String sel = ApexPrefs.shaderSel();
+		// Padrao do emulador e de todos os perfis: sem escolha (Automatico) e sem shader proprio no perfil,
+		// usa o "4k resolution". Escolhas explicitas (Apex LCD, importado, shader do perfil) continuam valendo.
+		if (ApexPrefs.SEL_AUTO.equals(sel) && shader == null
+				&& !ApexPrefs.badShaders().contains(ru.playsoftware.j2meloader.apex.ApexDefaults.K4)
+				&& ru.playsoftware.j2meloader.apex.ApexDefaults.ensureK4() != null) {
+			sel = ApexPrefs.SEL_USER + ru.playsoftware.j2meloader.apex.ApexDefaults.K4;
+		}
 		if (sel.startsWith(ApexPrefs.SEL_USER)) {
 			File f = ApexPrefs.userShaderFile(sel.substring(ApexPrefs.SEL_USER.length()));
 			if (f.exists()) {

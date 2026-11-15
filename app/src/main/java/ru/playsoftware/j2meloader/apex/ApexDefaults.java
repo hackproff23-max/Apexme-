@@ -10,6 +10,8 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 
+import javax.microedition.util.ContextHolder;
+
 import ru.playsoftware.j2meloader.config.Config;
 
 /**
@@ -89,6 +91,24 @@ public final class ApexDefaults {
 			ImportStore.sync();
 		} catch (Throwable t) {
 			Log.e(TAG, "install: ", t);
+		}
+	}
+
+	/**
+	 * Arquivo do shader padrao "4k resolution". Se ele nao estiver na pasta shaders/ (apagado, ou o app
+	 * ainda nao rodou o install), copia de novo do asset embutido. Devolve null se nao conseguir.
+	 */
+	public static synchronized File ensureK4() {
+		try {
+			File k4 = ApexPrefs.userShaderFile(K4);
+			if (k4.isFile()) {
+				return k4;
+			}
+			copyAsset(ContextHolder.getAppContext().getAssets(), "defaults/shaders/" + K4_ASSET, k4);
+			return k4.isFile() ? k4 : null;
+		} catch (Throwable t) {
+			Log.e(TAG, "ensureK4: ", t);
+			return null;
 		}
 	}
 

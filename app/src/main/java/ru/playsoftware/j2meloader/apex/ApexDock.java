@@ -299,6 +299,7 @@ public final class ApexDock {
 		tools.setBackground(new ApexCardBackground());
 		tools.setClickable(true);
 		tools.setPadding(p, p, p, p);
+		tools.addView(cell(a, R.drawable.apexlogo_top_dedupe, "Apagar duplicatas", () -> dedupe(a)), toolParams(a));
 		tools.addView(cell(a, R.drawable.apexlogo_top_keyboard, "Teclado virtual", () -> keyboard(a)), toolParams(a));
 		tools.addView(cell(a, R.drawable.apexlogo_top_shaders, "Shaders", () -> shaders(a)), toolParams(a));
 		tools.addView(cell(a, R.drawable.apexlogo_top_menu, "Menu", () -> menu(a)), toolParams(a));
@@ -316,6 +317,12 @@ public final class ApexDock {
 	private static void keyboard(Activity a) {
 		if (a instanceof AppCompatActivity) {
 			VkDialog.show((AppCompatActivity) a);
+		}
+	}
+
+	private static void dedupe(Activity a) {
+		if (a instanceof AppCompatActivity) {
+			DuplicatesDialog.show((AppCompatActivity) a);
 		}
 	}
 
