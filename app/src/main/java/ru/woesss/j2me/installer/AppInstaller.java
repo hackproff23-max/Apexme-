@@ -39,7 +39,10 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.jar.JarFile;
 
 import io.reactivex.Single;
@@ -64,10 +67,17 @@ public class AppInstaller {
 	static final int STATUS_DUPLICATE_EXACT = 6;
 	static final int STATUS_DUPLICATE_TITLE = 7;
 
+	/** Nomes de pasta ja escolhidos por conversoes em andamento (varios jogos ao mesmo tempo). */
+	private static final Set<String> RESERVED = new HashSet<>();
+	/** Protege a criacao/limpeza das pastas temporarias. */
+	private static final Object TMP_LOCK = new Object();
+	private static final AtomicInteger SEQ = new AtomicInteger();
+
 	private final int id;
 	private final Application context;
 	private final AppRepository appRepository;
-	private final File cacheDir;
+	private final String uid = "i" + SEQ.incrementAndGet();
+	private File cacheDir;
 
 	private Uri uri;
 	private Descriptor manifest;
@@ -78,6 +88,11 @@ public class AppInstaller {
 	private File tmpDir;
 	private AppItem currentApp;
 	private File srcFile;
+	/** Em lote: reserva o nome da pasta para dois jogos iguais nao escolherem a mesma. */
+	private boolean reserveNames;
+	private String reservedName;
+	/** Threads usadas pelo dx para traduzir as classes deste jogo. */
+	private int dexThreads = Math.max(1, Math.min(4, Runtime.getRuntime().availableProcessors()));
 
 	AppInstaller(String path, Uri uri, Application context, AppRepository appRepository) {
 		id = -1;
@@ -86,6 +101,7 @@ public class AppInstaller {
 		this.uri = uri;
 		this.context = context;
 		this.cacheDir = new File(context.getCacheDir(), "installer");
+		GameFingerprint.init(context.getCacheDir());
 	}
 
 	public AppInstaller(int id, Application context, AppRepository appRepository) {
@@ -93,6 +109,24 @@ public class AppInstaller {
 		this.context = context;
 		this.appRepository = appRepository;
 		this.cacheDir = new File(context.getCacheDir(), "installer");
+		GameFingerprint.init(context.getCacheDir());
+	}
+
+	/** Modo lote: pasta de cache propria, nome de pasta reservado e 1 thread do dx (o lote ja e paralelo). */
+	void isolate() {
+		reserveNames = true;
+		dexThreads = 1;
+		cacheDir = new File(new File(context.getCacheDir(), "installer"), uid);
+	}
+
+	/** Libera o nome de pasta reservado (a pasta ja existe, ou a conversao foi desistida). */
+	void release() {
+		if (reservedName != null) {
+			synchronized (RESERVED) {
+				RESERVED.remove(reservedName);
+			}
+			reservedName = null;
+		}
 	}
 
 	Descriptor getNewDescriptor() {
@@ -278,9 +312,13 @@ public class AppInstaller {
 		if (!cacheDir.exists() && !cacheDir.mkdirs()) {
 			throw new ConverterException("Can't create cache dir");
 		}
-		tmpDir = new File(targetDir.getParent(), ".tmp");
-		if (!tmpDir.isDirectory() && !tmpDir.mkdirs())
-			throw new ConverterException("Can't create directory: '" + targetDir + "'");
+		// pasta temporaria so deste jogo: varias conversoes podem rodar juntas
+		synchronized (TMP_LOCK) {
+			tmpDir = new File(new File(targetDir.getParent(), ".tmp"), uid);
+			FileUtils.deleteDirectory(tmpDir);
+			if (!tmpDir.isDirectory() && !tmpDir.mkdirs())
+				throw new ConverterException("Can't create directory: '" + targetDir + "'");
+		}
 		if (srcJar == null) {
 			srcJar = new File(cacheDir, "tmp.jar");
 			downloadJar();
@@ -291,7 +329,8 @@ public class AppInstaller {
 			}
 		}
 		try {
-			Main.main(new String[]{"--no-optimize", "--core-library",
+			Main.main(new String[]{"--no-optimize", "--core-library", "--no-warning",
+					"--num-threads=" + dexThreads,
 					"--output=" + tmpDir + Config.MIDLET_DEX_FILE,
 					srcJar.getAbsolutePath()});
 		} catch (Throwable e) {
@@ -320,6 +359,9 @@ public class AppInstaller {
 		if (!tmpDir.renameTo(targetDir)) {
 			throw new ConverterException("Can't move '" + tmpDir + "' to '" + targetDir + "'");
 		}
+		removeTmpRoot();
+		// o jar guardado e igual ao de origem: guarda o hash para as proximas conversoes
+		GameFingerprint.seed(new File(targetDir, Config.MIDLET_RES_FILE), srcJar);
 		String name = newDesc.getName();
 		String vendor = newDesc.getVendor();
 		AppItem app = new AppItem(appDirName, name, vendor, newDesc.getVersion());
@@ -345,6 +387,10 @@ public class AppInstaller {
 		appRepository.insert(app);
 		clearCache();
 		deleteTemp();
+		if (!reserveNames) {
+			// instalacao avulsa: salva o cache (o lote salva uma vez no fim)
+			GameFingerprint.flush();
+		}
 		emitter.onSuccess(STATUS_SUCCESS);
 	}
 
@@ -406,12 +452,18 @@ public class AppInstaller {
 
 	private void generatePathName(String name) {
 		String appsDir = Config.getAppDir();
-		File dir = new File(appsDir, name);
-		for (int i = 1; dir.exists(); i++) {
-			dir = new File(appsDir, name + "_" + i);
+		synchronized (RESERVED) {
+			File dir = new File(appsDir, name);
+			for (int i = 1; dir.exists() || RESERVED.contains(dir.getName()); i++) {
+				dir = new File(appsDir, name + "_" + i);
+			}
+			appDirName = dir.getName();
+			targetDir = dir;
+			if (reserveNames) {
+				RESERVED.add(appDirName);
+				reservedName = appDirName;
+			}
 		}
-		appDirName = dir.getName();
-		targetDir = dir;
 	}
 
 	private void downloadJar() throws ConverterException {
@@ -477,7 +529,24 @@ public class AppInstaller {
 
 	void deleteTemp() {
 		if (tmpDir != null) {
-			FileUtils.deleteDirectory(tmpDir);
+			synchronized (TMP_LOCK) {
+				FileUtils.deleteDirectory(tmpDir);
+			}
+			removeTmpRoot();
+		}
+	}
+
+	/** Apaga a pasta ".tmp" se ficou vazia (so apaga vazia, entao nao atrapalha outro jogo em andamento). */
+	private void removeTmpRoot() {
+		if (tmpDir == null) {
+			return;
+		}
+		File root = tmpDir.getParentFile();
+		if (root != null) {
+			synchronized (TMP_LOCK) {
+				//noinspection ResultOfMethodCallIgnored
+				root.delete();
+			}
 		}
 	}
 
