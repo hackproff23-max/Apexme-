@@ -51,7 +51,12 @@ public final class ApexCardMenu {
 	}
 
 	public static void show(Activity a, String title, Item... items) {
-		show(a, title, ApexGridView.takeAnchor(), items);
+		Rect an = ApexGridView.takeAnchor();
+		if (an == null && !(a instanceof javax.microedition.shell.MicroActivity)) {
+			int sw = a.getResources().getDisplayMetrics().widthPixels;
+			an = new Rect(sw - ApexUi.dp(a, 8), 0, sw, 0);
+		}
+		show(a, title, an, items);
 	}
 
 	/** anchor != null: menu compacto ao lado desse retangulo (coordenadas da tela). */

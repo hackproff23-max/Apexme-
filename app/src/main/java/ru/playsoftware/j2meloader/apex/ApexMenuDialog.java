@@ -86,12 +86,23 @@ public final class ApexMenuDialog {
 			w.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
 			WindowManager.LayoutParams lp = w.getAttributes();
 			int screenW = a.getResources().getDisplayMetrics().widthPixels;
-			lp.width = Math.min(ApexUi.dp(a, 320), screenW - ApexUi.dp(a, 16));
+			lp.width = Math.min(ApexUi.dp(a, 284), screenW - ApexUi.dp(a, 16));
 			lp.height = WindowManager.LayoutParams.WRAP_CONTENT;
 			lp.x = ApexUi.dp(a, 8);
 			w.setAttributes(lp);
 		}
 		d.show();
+		if (w != null) {
+			final int maxH = (int) (a.getResources().getDisplayMetrics().heightPixels * 0.96f);
+			final View decor = w.getDecorView();
+			decor.post(() -> {
+				if (decor.getHeight() > maxH) {
+					WindowManager.LayoutParams l2 = w.getAttributes();
+					l2.height = maxH;
+					w.setAttributes(l2);
+				}
+			});
+		}
 	}
 
 	private static View item(MicroActivity a, int icon, String label, Runnable click) {
