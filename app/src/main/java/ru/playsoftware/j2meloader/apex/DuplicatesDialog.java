@@ -2,6 +2,12 @@ package ru.playsoftware.j2meloader.apex;
 
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Typeface;
+import android.view.Gravity;
+import android.view.View;
+import android.widget.ImageView;
 import android.widget.CheckBox;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -92,16 +98,29 @@ final class DuplicatesDialog {
 		}, "apex-dedupe").start();
 	}
 
+	/** Uma copia dentro de um grupo, com a caixa "apagar". */
+	private static final class Member {
+		final Game game;
+		final CheckBox box;
+
+		Member(Game game, CheckBox box) {
+			this.game = game;
+			this.box = box;
+		}
+	}
+
 	/** Uma linha marcavel e o que ela apaga. */
 	private static final class Row {
 		final CheckBox box;
 		final Group group;
+		final List<Member> members;
 		final Extra extra;
 		final FileGroup files;
 
-		Row(CheckBox box, Group group, Extra extra, FileGroup files) {
+		Row(CheckBox box, Group group, List<Member> members, Extra extra, FileGroup files) {
 			this.box = box;
 			this.group = group;
+			this.members = members;
 			this.extra = extra;
 			this.files = files;
 		}
@@ -122,6 +141,121 @@ final class DuplicatesDialog {
 		t.setAlpha(0.8f);
 		t.setPadding(ApexUi.dp(a, 32), 0, 0, ApexUi.dp(a, 6));
 		return t;
+	}
+
+	private static Bitmap icon(Game g) {
+		try {
+			File f = new File(g.dir, "icon.png");
+			if (!f.isFile()) {
+				return null;
+			}
+			BitmapFactory.Options o = new BitmapFactory.Options();
+			o.inJustDecodeBounds = true;
+			BitmapFactory.decodeFile(f.getPath(), o);
+			int sample = 1;
+			while (o.outWidth / sample > 128 || o.outHeight / sample > 128) {
+				sample *= 2;
+			}
+			BitmapFactory.Options o2 = new BitmapFactory.Options();
+			o2.inSampleSize = sample;
+			return BitmapFactory.decodeFile(f.getPath(), o2);
+		} catch (Throwable t) {
+			return null;
+		}
+	}
+
+	private static String headerText(Group g, List<Member> members, boolean open) {
+		int del = 0;
+		for (Member m : members) {
+			if (m.box.isChecked()) {
+				del++;
+			}
+		}
+		return (open ? "▼ " : "▶ ") + g.keep.title + "\n    " + members.size() + " cópias · "
+				+ g.level.label + " · apagar " + del;
+	}
+
+	/** Linha do grupo: toque abre embaixo as copias, cada uma com icone, nome completo e caixa "apagar". */
+	private static Row groupRow(final AppCompatActivity a, LinearLayout root, final Group g) {
+		final List<Member> members = new ArrayList<>();
+		final LinearLayout body = new LinearLayout(a);
+		body.setOrientation(LinearLayout.VERTICAL);
+		body.setVisibility(View.GONE);
+		final TextView head = ApexUi.text(a, "", 14);
+		head.setTypeface(head.getTypeface(), Typeface.BOLD);
+		head.setPadding(ApexUi.dp(a, 4), ApexUi.dp(a, 8), ApexUi.dp(a, 4), ApexUi.dp(a, 8));
+		head.setClickable(true);
+		final boolean[] open = {false};
+		final Runnable refresh = () -> head.setText(headerText(g, members, open[0]));
+
+		List<Game> all = new ArrayList<>();
+		all.add(g.keep);
+		all.addAll(g.remove);
+		for (final Game x : all) {
+			boolean suggested = g.remove.contains(x) && g.defaultChecked;
+			LinearLayout item = new LinearLayout(a);
+			item.setOrientation(LinearLayout.VERTICAL);
+			item.setPadding(ApexUi.dp(a, 8), ApexUi.dp(a, 6), ApexUi.dp(a, 4), ApexUi.dp(a, 6));
+
+			LinearLayout top = new LinearLayout(a);
+			top.setOrientation(LinearLayout.HORIZONTAL);
+			top.setGravity(Gravity.CENTER_VERTICAL);
+			ImageView iv = new ImageView(a);
+			iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
+			Bitmap bmp = icon(x);
+			if (bmp != null) {
+				iv.setImageBitmap(bmp);
+			}
+			top.addView(iv, new LinearLayout.LayoutParams(ApexUi.dp(a, 44), ApexUi.dp(a, 44)));
+			StringBuilder sb = new StringBuilder(x.title);
+			sb.append("\n").append(x.version.isEmpty() ? "" : "v" + x.version + " · ")
+					.append(x.author.isEmpty() ? "" : x.author + " · ")
+					.append(DeepDuplicateScanner.formatSize(x.dirSize));
+			sb.append("\n").append(x.converted ? "convertido" : "NÃO convertido");
+			if (x.savesSize > 0) {
+				sb.append(" · saves ").append(DeepDuplicateScanner.formatSize(x.savesSize));
+			}
+			sb.append("\npasta: ").append(x.dir.getName());
+			if (x == g.keep) {
+				sb.append("\n(sugestão: ficar)");
+			}
+			TextView info = ApexUi.text(a, sb.toString(), 12);
+			LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(0,
+					LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+			ip.setMarginStart(ApexUi.dp(a, 8));
+			top.addView(info, ip);
+			item.addView(top);
+
+			final CheckBox cb = box(a, "Apagar este", suggested);
+			item.addView(cb);
+			final Member m = new Member(x, cb);
+			members.add(m);
+			cb.setOnClickListener(v -> {
+				boolean allMarked = true;
+				for (Member o : members) {
+					allMarked &= o.box.isChecked();
+				}
+				if (allMarked) { // nunca apagar todas as copias
+					cb.setChecked(false);
+					Toast.makeText(a, "Pelo menos uma cópia precisa ficar", Toast.LENGTH_SHORT).show();
+				}
+				refresh.run();
+			});
+			body.addView(item);
+		}
+		TextView why = note(a, "Motivo: " + g.reason);
+		why.setPadding(ApexUi.dp(a, 8), 0, 0, ApexUi.dp(a, 4));
+		body.addView(why, 0);
+
+		head.setOnClickListener(v -> {
+			open[0] = !open[0];
+			body.setVisibility(open[0] ? View.VISIBLE : View.GONE);
+			refresh.run();
+		});
+		refresh.run();
+		root.addView(head);
+		root.addView(body);
+		return new Row(null, g, members, null, null);
 	}
 
 	private static void results(final AppCompatActivity a, final AppRepository repo,
@@ -176,21 +310,12 @@ final class DuplicatesDialog {
 				}
 				if (!header) {
 					root.addView(ApexUi.section(a, wantSuspect
-							? "Suspeitas (revise antes de marcar)" : "Jogos duplicados"));
+							? "Suspeitas (toque para escolher qual apagar)"
+							: "Jogos duplicados (toque para ver as cópias)"));
 					header = true;
 				}
 				any = true;
-				CheckBox cb = box(a, g.keep.title + " — apaga " + g.remove.size() + " · " + g.level.label,
-						g.defaultChecked);
-				root.addView(cb);
-				StringBuilder sb = new StringBuilder();
-				sb.append("Motivo: ").append(g.reason).append("\nFica: ")
-						.append(DeepDuplicateScanner.describe(g.keep));
-				for (Game x : g.remove) {
-					sb.append("\nSai: ").append(DeepDuplicateScanner.describe(x));
-				}
-				root.addView(note(a, sb.toString()));
-				rows.add(new Row(cb, g, null, null));
+				rows.add(groupRow(a, root, g));
 			}
 		}
 
@@ -208,7 +333,7 @@ final class DuplicatesDialog {
 			root.addView(note(a, e.copyOf != null ? "É cópia de: " + e.copyOf.title
 					: e.kind == ExtraKind.ORPHAN_CONFIG ? "Pode conter saves antigos — vem desmarcado."
 					: "Não é cópia de nenhum jogo instalado — vem desmarcado."));
-			rows.add(new Row(cb, null, e, null));
+			rows.add(new Row(cb, null, null, e, null));
 		}
 
 		header = false;
@@ -231,7 +356,7 @@ final class DuplicatesDialog {
 				}
 			}
 			root.addView(note(a, sb.toString()));
-			rows.add(new Row(cb, null, null, fg));
+			rows.add(new Row(cb, null, null, null, fg));
 		}
 		if (fileOnly > 0) {
 			root.addView(ApexUi.section(a, "Outros arquivos repetidos"));
@@ -259,15 +384,33 @@ final class DuplicatesDialog {
 		final List<Extra> extras = new ArrayList<>();
 		final List<FileGroup> files = new ArrayList<>();
 		for (Row r : rows) {
-			if (!r.box.isChecked()) {
+			if (r.members != null) {
+				for (Member m : r.members) {
+					if (m.box.isChecked()) {
+						games.add(m.game);
+					}
+				}
+			} else if (r.box != null && r.box.isChecked()) {
+				if (r.extra != null) {
+					extras.add(r.extra);
+				} else if (r.files != null) {
+					files.add(r.files);
+				}
+			}
+		}
+		// guarda: em nenhum grupo pode sumir todas as copias (um grupo pode compartilhar jogos com outro)
+		for (Row r : rows) {
+			if (r.members == null) {
 				continue;
 			}
-			if (r.group != null) {
-				games.addAll(r.group.remove);
-			} else if (r.extra != null) {
-				extras.add(r.extra);
-			} else if (r.files != null) {
-				files.add(r.files);
+			boolean survivor = false;
+			for (Member m : r.members) {
+				survivor |= !games.contains(m.game);
+			}
+			if (!survivor) {
+				Toast.makeText(a, "\"" + r.group.keep.title + "\": pelo menos uma cópia precisa ficar",
+						Toast.LENGTH_LONG).show();
+				return;
 			}
 		}
 		if (games.isEmpty() && extras.isEmpty() && files.isEmpty()) {
