@@ -1104,18 +1104,18 @@ public class VirtualKeyboard implements Overlay, Runnable {
 		g.setStrokeWidth(1f);
 	}
 
+	/** Barra da grade: coluna no canto esquerdo (um botao embaixo do outro). */
 	private void layoutGridBar() {
-		float h = Math.max(keySize * 0.55f, 44f * ContextHolder.getAppContext()
-				.getResources().getDisplayMetrics().density);
-		float gap = h * 0.12f;
-		float wGrid = h * 2.6f, wBtn = h, wVal = h * 1.2f;
-		float total = wGrid + wBtn + wVal + wBtn + gap * 3;
-		float left = screen.centerX() - total / 2f;
-		float top = screen.top + gap;
-		barGrid.set(left, top, left + wGrid, top + h);
-		barMinus.set(barGrid.right + gap, top, barGrid.right + gap + wBtn, top + h);
-		barValue.set(barMinus.right + gap, top, barMinus.right + gap + wVal, top + h);
-		barPlus.set(barValue.right + gap, top, barValue.right + gap + wBtn, top + h);
+		float d = ContextHolder.getAppContext().getResources().getDisplayMetrics().density;
+		float h = 32f * d;
+		float w = 88f * d;
+		float gap = 6f * d;
+		float left = screen.left + gap;
+		float top = screen.top + 32f * d;
+		barGrid.set(left, top, left + w, top + h);
+		barMinus.set(left, barGrid.bottom + gap, left + w, barGrid.bottom + gap + h);
+		barValue.set(left, barMinus.bottom + gap, left + w, barMinus.bottom + gap + h);
+		barPlus.set(left, barValue.bottom + gap, left + w, barValue.bottom + gap + h);
 	}
 
 	private void paintBarButton(CanvasWrapper g, RectF r, String text, boolean active) {
@@ -1131,10 +1131,12 @@ public class VirtualKeyboard implements Overlay, Runnable {
 	private void paintGridBar(CanvasWrapper g) {
 		layoutGridBar();
 		boolean on = ApexPrefs.gridOn();
+		g.setTextScale(0.7f);
 		paintBarButton(g, barGrid, on ? "Grade: ON" : "Grade: OFF", on);
 		paintBarButton(g, barMinus, "-", false);
 		paintBarButton(g, barValue, String.valueOf(ApexPrefs.gridSize()), false);
 		paintBarButton(g, barPlus, "+", false);
+		g.setTextScale(1f);
 		g.setStrokeWidth(1f);
 	}
 
