@@ -330,7 +330,7 @@ public class VirtualKeyboard implements Overlay, Runnable {
 				setSnap(KEY_UP, KEY_C, RectSnap.EXT_SOUTHEAST, false);
 				setSnap(KEY_UP_RIGHT, KEY_D, RectSnap.EXT_SOUTH, false);
 				setSnap(KEY_LEFT, KEY_UP_LEFT, RectSnap.EXT_SOUTH, false);
-				setSnap(KEY_MENU, KEY_UP, RectSnap.EXT_SOUTH, false);
+				setSnap(KEY_MENU, KEY_UP, RectSnap.EXT_SOUTH, true);
 				setSnap(KEY_RIGHT, KEY_UP_RIGHT, RectSnap.EXT_SOUTH, false);
 				setSnap(KEY_DOWN_LEFT, KEY_LEFT, RectSnap.EXT_SOUTH, false);
 				setSnap(KEY_DOWN, KEY_MENU, RectSnap.EXT_SOUTH, false);
@@ -404,7 +404,7 @@ public class VirtualKeyboard implements Overlay, Runnable {
 				setSnap(KEY_C, KEY_NUM3, RectSnap.EXT_NORTH, false);
 				setSnap(KEY_A, SCREEN, RectSnap.INT_NORTHWEST, false);
 				setSnap(KEY_B, SCREEN, RectSnap.INT_NORTHEAST, false);
-				setSnap(KEY_MENU, KEY_UP, RectSnap.EXT_NORTH, false);
+				setSnap(KEY_MENU, KEY_UP, RectSnap.EXT_NORTH, true);
 				break;
 			case TYPE_ARR_NUM:
 				Arrays.fill(keyScales, 1);
@@ -437,7 +437,7 @@ public class VirtualKeyboard implements Overlay, Runnable {
 				setSnap(KEY_C, KEY_NUM3, RectSnap.EXT_NORTH, false);
 				setSnap(KEY_A, SCREEN, RectSnap.INT_NORTHWEST, false);
 				setSnap(KEY_B, SCREEN, RectSnap.INT_NORTHEAST, false);
-				setSnap(KEY_MENU, KEY_UP, RectSnap.EXT_NORTH, false);
+				setSnap(KEY_MENU, KEY_UP, RectSnap.EXT_NORTH, true);
 				break;
 			case TYPE_NUMBERS:
 				Arrays.fill(keyScales, 1);
@@ -470,7 +470,7 @@ public class VirtualKeyboard implements Overlay, Runnable {
 				setSnap(KEY_B, KEY_NUM6, RectSnap.EXT_EAST, false);
 				setSnap(KEY_C, KEY_NUM7, RectSnap.EXT_WEST, false);
 				setSnap(KEY_D, KEY_NUM9, RectSnap.EXT_EAST, false);
-				setSnap(KEY_MENU, SCREEN, RectSnap.INT_NORTHEAST, false);
+				setSnap(KEY_MENU, SCREEN, RectSnap.INT_NORTHEAST, true);
 				break;
 			case TYPE_ARROWS:
 				Arrays.fill(keyScales, 1);
@@ -503,7 +503,7 @@ public class VirtualKeyboard implements Overlay, Runnable {
 				setSnap(KEY_B, KEY_RIGHT, RectSnap.EXT_EAST, false);
 				setSnap(KEY_C, KEY_DOWN_LEFT, RectSnap.EXT_WEST, false);
 				setSnap(KEY_D, KEY_DOWN_RIGHT, RectSnap.EXT_EAST, false);
-				setSnap(KEY_MENU, SCREEN, RectSnap.INT_NORTHEAST, false);
+				setSnap(KEY_MENU, SCREEN, RectSnap.INT_NORTHEAST, true);
 				break;
 		}
 	}
