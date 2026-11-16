@@ -365,7 +365,7 @@ public final class ApexPrefs {
 
 	/** D-pad de 8 direcoes no lugar das setas (padrao: ligado). */
 	public static boolean dpadEnabled() {
-		return sp().getBoolean("dpad_on", false);
+		return sp().getBoolean("dpad_on", true);
 	}
 
 	public static void setDpadEnabled(boolean v) {
@@ -373,7 +373,7 @@ public final class ApexPrefs {
 	}
 
 	public static float dpadScale() {
-		return sp().getFloat("dpad_scale", 1f);
+		return sp().getFloat("dpad_scale", 0.9f);
 	}
 
 	public static void setDpadScale(float v) {
@@ -411,7 +411,7 @@ public final class ApexPrefs {
 
 	/** Botao de fast-forward na tela (padrao: desativado). */
 	public static boolean ffEnabled() {
-		return sp().getBoolean("ff_on", false);
+		return sp().getBoolean("ff_on", true);
 	}
 
 	public static void setFfEnabled(boolean v) {
@@ -479,6 +479,19 @@ public final class ApexPrefs {
 		sp().edit().putFloat("ab_scale", v).apply();
 	}
 
+	// ---------------- botoes de cima ----------------
+	/** Fracao do tamanho de tecla (maior lado / 12) usada pelos botoes de cima. */
+	public static final float TOP_RATIO = 0.72f;
+
+	/**
+	 * Tamanho unico (lado, em pixels) dos botoes de cima: A (mover), menu, fast-forward, liga/desliga
+	 * das letras e B (tamanho). Todos saem iguais ao botao de menu.
+	 */
+	public static float topButtonSize(float w, float h) {
+		float s = Math.max(w, h) / 12f * TOP_RATIO * buttonScale();
+		return abEditable() ? s * abScale() : s;
+	}
+
 	// ---------------- teclado virtual ----------------
 	/** Escala global dos botoes: 0.5 .. 2 (padrao 1). */
 	public static float buttonScale() {
@@ -500,7 +513,7 @@ public final class ApexPrefs {
 
 	/** Escala do analogico: 0.5 .. 2 (padrao 1). */
 	public static float analogScale() {
-		return sp().getFloat("analog_scale", 1f);
+		return sp().getFloat("analog_scale", 1.33f);
 	}
 
 	public static void setAnalogScale(float v) {

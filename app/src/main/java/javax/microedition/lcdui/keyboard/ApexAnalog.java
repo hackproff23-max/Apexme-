@@ -58,7 +58,8 @@ public class ApexAnalog implements Runnable {
 		screen.set(scr);
 		float min = Math.min(scr.width(), scr.height());
 		radius = min * 0.13f * ApexPrefs.analogScale();
-		float[] p = ApexPrefs.pos(POS, landscape(), 0.15f, 0.70f);
+		float[] p = landscape() ? ApexPrefs.pos(POS, true, 0.0906f, 0.785f)
+				: ApexPrefs.pos(POS, false, 0.15f, 0.70f);
 		place(scr.left + scr.width() * p[0], scr.top + scr.height() * p[1]);
 	}
 

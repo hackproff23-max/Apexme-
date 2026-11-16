@@ -195,6 +195,8 @@ public class VirtualKeyboard implements Overlay, Runnable {
 			Math.min(ContextHolder.getDisplayWidth(), ContextHolder.getDisplayHeight()) / 6.0f;
 	private float snapRadius;
 	private int layoutVariant;
+	/** Sem teclado salvo: usa o layout padrao do Apexme (deitado) em vez do NUM_ARR. */
+	private boolean apexDefault;
 	// dedo que esta editando (so um por vez) e dedo da barra de grade
 	private int editPointer = -1;
 	private int barPointer = -1;
@@ -249,6 +251,7 @@ public class VirtualKeyboard implements Overlay, Runnable {
 			layoutVariant = settings.vkType;
 			if (layoutVariant == TYPE_CUSTOM) {
 				layoutVariant = TYPE_NUM_ARR;
+				apexDefault = true;
 			}
 		}
 		resetLayout(layoutVariant);
@@ -514,6 +517,7 @@ public class VirtualKeyboard implements Overlay, Runnable {
 	}
 
 	public void setLayout(int variant) {
+		apexDefault = false;
 		resetLayout(variant);
 		if (variant == TYPE_CUSTOM) {
 			try {
@@ -878,6 +882,9 @@ public class VirtualKeyboard implements Overlay, Runnable {
 
 	public void setLayoutEditMode(int mode) {
 		layoutEditMode = mode;
+		if (mode != LAYOUT_EOF) {
+			apexDefault = false; // o usuario vai mexer: a partir daqui vale o que ele fizer
+		}
 		editPointer = -1;
 		barPointer = -1;
 		if (mode == LAYOUT_KEYS) {
@@ -918,10 +925,11 @@ public class VirtualKeyboard implements Overlay, Runnable {
 		float sizeY = keySize * keyScales[group * 2 + 1];
 		for (int key = 0; key < keyScaleGroups[group].length; key++) {
 			int idx = keyScaleGroups[group][key];
-			if (idx == KEY_A || idx == KEY_B) {
-				// A e B tem tamanho proprio (fixo, a menos que o usuario libere na janela do teclado)
-				float s = ApexPrefs.abEditable() ? ApexPrefs.abScale() : 1f;
-				resizeKey(idx, keySize * s, keySize * s);
+			if (idx == KEY_A || idx == KEY_B || idx == KEY_MENU) {
+				// botoes de cima (A, B e menu): tamanho unico, igual ao do fast-forward e das letras
+				float t = screen != null ? ApexPrefs.topButtonSize(screen.width(), screen.height())
+						: keySize * ApexPrefs.TOP_RATIO;
+				resizeKey(idx, t, t);
 			} else {
 				resizeKey(idx, sizeX, sizeY);
 			}
@@ -942,8 +950,15 @@ public class VirtualKeyboard implements Overlay, Runnable {
 		float keySize = getKeySize(screen.width(), screen.height());
 		snapRadius = keySize * snapRadius / 4;
 		this.keySize = keySize;
+		boolean apexLandscape = apexDefault && screen.width() > screen.height();
+		if (apexDefault) {
+			resetLayout(TYPE_NUM_ARR); // em pe continua o layout de sempre
+		}
 		for (int group = 0; group < keyScaleGroups.length; group++) {
 			resizeKeyGroup(group);
+		}
+		if (apexLandscape) {
+			applyApexLayout();
 		}
 		snapKeys();
 		analog.layout(screen);
@@ -960,6 +975,41 @@ public class VirtualKeyboard implements Overlay, Runnable {
 			}
 			handler.postDelayed(this, delay);
 		}
+	}
+
+	/**
+	 * Layout padrao do Apexme com a tela deitada (posicoes em fracao da tela): em cima A, menu e B;
+	 * L e R embaixo no meio; #, *, 0 e F no canto direito. O resto (setas, numeros, C, D) some,
+	 * porque o analogico e o D-pad fazem esse papel.
+	 */
+	private void applyApexLayout() {
+		for (VirtualKey k : keypad) {
+			k.visible = false;
+		}
+		placeKey(KEY_A, 0.319f, 0.069f);
+		placeKey(KEY_MENU, 0.4125f, 0.090f);
+		placeKey(KEY_B, 0.700f, 0.069f);
+		placeKey(KEY_SOFT_LEFT, 0.449f, 0.907f);
+		placeKey(KEY_SOFT_RIGHT, 0.550f, 0.907f);
+		placeKey(KEY_POUND, 0.873f, 0.621f);
+		placeKey(KEY_STAR, 0.802f, 0.757f);
+		placeKey(KEY_NUM0, 0.944f, 0.757f);
+		placeKey(KEY_FIRE, 0.873f, 0.907f);
+	}
+
+	private void placeKey(int key, float fx, float fy) {
+		VirtualKey k = keypad[key];
+		float w = k.rect.width();
+		float h = k.rect.height();
+		float left = screen.left + screen.width() * fx - w / 2f;
+		float top = screen.top + screen.height() * fy - h / 2f;
+		left = Math.max(screen.left, Math.min(screen.right - w, left));
+		top = Math.max(screen.top, Math.min(screen.bottom - h, top));
+		k.rect.offsetTo(left, top);
+		k.snapOrigin = SCREEN;
+		k.snapMode = RectSnap.getSnap(k.rect, screen, k.snapOffset);
+		k.snapValid = false;
+		k.visible = true;
 	}
 
 	private float getKeySize(float screenWidth, float screenHeight) {

@@ -25,6 +25,8 @@ public final class ApexDefaults {
 	private static final String FLAG_FILE = "apex_defaults";
 	/** v3: o shader padrao passou de J5PRIME para "4k resolution". Roda uma vez tambem em quem ja tinha a v2. */
 	private static final String FLAG_KEY = "installed_v3";
+	/** v4: perfil 320 refeito com o teclado padrao novo. */
+	private static final String FLAG_320 = "profile320_v4";
 	/** Mesmo arquivo de preferencias usado por ApexPrefs. */
 	private static final String PREFS_FILE = "apex_extras";
 	/** Shader padrao antigo: continua na pasta shaders/ para quem quiser escolher. */
@@ -42,6 +44,7 @@ public final class ApexDefaults {
 	public static synchronized void install(Context c) {
 		try {
 			SharedPreferences flag = c.getSharedPreferences(FLAG_FILE, Context.MODE_PRIVATE);
+			refresh320(c, flag);
 			if (flag.getBoolean(FLAG_KEY, false)) {
 				return;
 			}
@@ -91,6 +94,29 @@ public final class ApexDefaults {
 			ImportStore.sync();
 		} catch (Throwable t) {
 			Log.e(TAG, "install: ", t);
+		}
+	}
+
+	/**
+	 * v4: o teclado padrao do emulador mudou (botoes de cima do mesmo tamanho, controles no lugar do
+	 * print). Troca o perfil 320 pela versao nova, sem teclado salvo, para valer o padrao do emulador.
+	 * O perfil 480 nao e mexido.
+	 */
+	private static void refresh320(Context c, SharedPreferences flag) {
+		if (flag.getBoolean(FLAG_320, false)) {
+			return;
+		}
+		try {
+			File profiles = new File(Config.getProfilesDir());
+			if (!profiles.isDirectory() && !profiles.mkdirs()) {
+				return; // pasta ainda nao gravavel: tenta de novo na proxima abertura
+			}
+			File dst = new File(profiles, "320");
+			ru.playsoftware.j2meloader.util.FileUtils.deleteDirectory(dst);
+			copyAsset(c.getAssets(), "defaults/perfil/320", dst);
+			flag.edit().putBoolean(FLAG_320, true).apply();
+		} catch (Throwable t) {
+			Log.e(TAG, "refresh320: ", t);
 		}
 	}
 

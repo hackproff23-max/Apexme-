@@ -2,14 +2,13 @@
   "versao": 1,
   "tipo_de_jogo": "padrao",
   "analog_ligado": true,
-  "analog_tamanho": 1.3300000429153442,
-  "dpad_ligado": false,
-  "dpad_tamanho": 1,
+  "analog_tamanho": 1.33,
+  "dpad_ligado": true,
+  "dpad_tamanho": 0.9,
   "dpad_mapa": "",
   "opacidade_normal": 0.6800000071525574,
   "opacidade_pressionado": 0.7799999713897705,
-  "posicao": {
-    "analog_lx": 0.10598437488079071,
-    "analog_ly": 0.77385413646698
-  }
+  "posicao": {},
+  "ff_ligado": true,
+  "ff_velocidade": 2.0
 }

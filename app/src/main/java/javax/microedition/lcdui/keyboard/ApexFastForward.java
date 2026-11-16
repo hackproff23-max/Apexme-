@@ -52,9 +52,9 @@ public class ApexFastForward {
 
 	public void layout(RectF scr) {
 		screen.set(scr);
-		float size = Math.min(scr.width(), scr.height()) * 0.16f * ApexPrefs.buttonScale();
-		w = size * 1.3f;
-		h = size * 0.8f;
+		float size = ApexPrefs.topButtonSize(scr.width(), scr.height());
+		w = size;
+		h = size;
 		float[] p = ApexPrefs.pos(POS, landscape(), 0.50f, 0.10f);
 		place(scr.left + scr.width() * p[0], scr.top + scr.height() * p[1]);
 	}

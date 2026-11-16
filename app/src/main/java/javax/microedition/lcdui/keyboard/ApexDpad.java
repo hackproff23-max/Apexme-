@@ -58,7 +58,8 @@ public class ApexDpad implements Runnable {
 		screen.set(scr);
 		float min = Math.min(scr.width(), scr.height());
 		side = min * 0.34f * ApexPrefs.dpadScale();
-		float[] p = ApexPrefs.pos(POS, landscape(), 0.80f, 0.55f);
+		float[] p = landscape() ? ApexPrefs.pos(POS, true, 0.2925f, 0.785f)
+				: ApexPrefs.pos(POS, false, 0.80f, 0.55f);
 		place(scr.left + scr.width() * p[0], scr.top + scr.height() * p[1]);
 	}
 

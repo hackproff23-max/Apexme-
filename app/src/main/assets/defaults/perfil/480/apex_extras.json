@@ -11,5 +11,6 @@
   "posicao": {
     "analog_lx": 0.10598437488079071,
     "analog_ly": 0.77385413646698
-  }
+  },
+  "ff_ligado": false
 }
