@@ -46,7 +46,7 @@ public final class ApexControlTheme {
 
 	/** Tema padrao (das configuracoes): DARK ou LIGHT. */
 	public static int defaultTheme() {
-		return sp().getInt(K_DEFAULT, DARK) == LIGHT ? LIGHT : DARK;
+		return sp().getInt(K_DEFAULT, LIGHT) == DARK ? DARK : LIGHT;
 	}
 
 	public static String defaultName() {
