@@ -47,6 +47,7 @@ public class ShaderProgram {
 	public int uColor;
 	/** Controle de cores/LCD aplicado por cima de qualquer shader: brilho, contraste, saturacao, LCD. */
 	public int uApexColor;
+	public int uApexExtra;
 	/** Grade do LCD: origem (px) e tamanho de um pixel do jogo na tela (px). */
 	public int uApexGrid;
 	private FloatBuffer gridVbo;
@@ -340,6 +341,11 @@ public class ShaderProgram {
 	 * Se o codigo nao tiver main (ou ja tiver sido envolvido), devolve o codigo sem mudar.
 	 */
 	static String withColorControls(String fragment) {
+		return ApexColorWrap.wrap(fragment);
+	}
+
+	@SuppressWarnings("unused")
+	static String withColorControlsOld(String fragment) {
 		if (fragment == null || fragment.contains("apex_main") || !MAIN_FN.matcher(fragment).find()) {
 			return fragment;
 		}
@@ -426,6 +432,7 @@ public class ShaderProgram {
 		uSetting = glGetUniformLocation(program, "u_setting");
 		uColor = glGetUniformLocation(program, "u_color");
 		uApexColor = glGetUniformLocation(program, "apex_color");
+		uApexExtra = glGetUniformLocation(program, "apex_extra");
 		uApexGrid = glGetUniformLocation(program, "apex_grid");
 		glUseProgram(program);
 		if (uMvp != -1) {

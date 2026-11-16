@@ -117,8 +117,23 @@ public final class ApexPrefs {
 				.putFloat("saturation", s).putFloat("lcd", lcd).apply();
 	}
 
+	/** Gama: 0.5 .. 2 (padrao 1). */
+	public static float gamma() {
+		return sp().getFloat("gamma", 1f);
+	}
+
+	/** Suavidade das curvas do shader 4k resolution: 0.05 .. 1 (padrao 0.45). */
+	public static float curveSoftness() {
+		return sp().getFloat("curve_soft", 0.45f);
+	}
+
+	public static void setExtraValues(float gamma, float soft) {
+		sp().edit().putFloat("gamma", gamma).putFloat("curve_soft", soft).apply();
+	}
+
 	public static void resetShaderValues() {
 		setColorValues(0f, 1f, 1f, 0f);
+		setExtraValues(1f, 0.45f);
 	}
 
 	public static File userShaderFile(String name) {

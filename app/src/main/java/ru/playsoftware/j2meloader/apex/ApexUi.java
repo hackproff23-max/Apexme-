@@ -195,6 +195,35 @@ final class ApexUi {
 		return r;
 	}
 
+	private static android.view.Window dragWindow;
+	private static float dragDim = -1f;
+
+	/** Janela que fica transparente enquanto um controle deslizante esta sendo arrastado. */
+	static void setDragWindow(android.view.Window w) {
+		dragWindow = w;
+	}
+
+	private static void drag(boolean on) {
+		android.view.Window w = dragWindow;
+		if (w == null || !w.getDecorView().isAttachedToWindow()) {
+			return;
+		}
+		android.view.WindowManager.LayoutParams lp = w.getAttributes();
+		if (on) {
+			if (lp.alpha >= 0.99f) {
+				dragDim = lp.dimAmount;
+			}
+			lp.alpha = 0.1f;
+			lp.dimAmount = 0f;
+		} else {
+			lp.alpha = 1f;
+			if (dragDim >= 0f) {
+				lp.dimAmount = dragDim;
+			}
+		}
+		w.setAttributes(lp);
+	}
+
 	static View slider(Context c, String label, int min, int max, int cur, String suffix, IntListener l) {
 		return slider(c, iconFor(label), label, min, max, cur, suffix, l);
 	}
@@ -229,10 +258,12 @@ final class ApexUi {
 
 			@Override
 			public void onStartTrackingTouch(SeekBar s) {
+				drag(true);
 			}
 
 			@Override
 			public void onStopTrackingTouch(SeekBar s) {
+				drag(false);
 			}
 		});
 		col.addView(t);

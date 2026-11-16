@@ -140,6 +140,7 @@ public final class ShadersDialog {
 			vals[1] = v / 100f;
 			save(a, vals);
 		}));
+		ApexShaderExtras.add(a, root);
 		root.addView(ApexUi.section(a, "Efeito LCD"));
 		root.addView(ApexUi.slider(a, "Opacidade do LCD", 0, 100, Math.round(vals[3] * 100), "%", v -> {
 			vals[3] = v / 100f;
@@ -159,6 +160,7 @@ public final class ShadersDialog {
 				})
 				.setPositiveButton(R.string.apex_close, null)
 				.create();
+		ApexUi.setDragWindow(dialog.getWindow());
 		dialog.show();
 	}
 

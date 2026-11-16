@@ -822,6 +822,7 @@ public abstract class Canvas extends Displayable {
 					ApexPrefs.saturation(), ApexPrefs.lcdOpacity());
 			glUniform4f(program.uApexColor, ApexPrefs.brightness(), ApexPrefs.contrast(),
 					ApexPrefs.saturation(), ApexPrefs.lcdOpacity());
+			glUniform4f(program.uApexExtra, ApexPrefs.gamma(), ApexPrefs.curveSoftness(), 0f, 0f);
 		}
 
 		/** Atualiza so os valores (brilho, contraste, saturacao, LCD). */
