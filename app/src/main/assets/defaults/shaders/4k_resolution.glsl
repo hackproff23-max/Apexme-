@@ -70,9 +70,9 @@ varying vec2 v_texcoord0;
 #define CURVE_SOFTNESS        0.45   // maior = curvas mais suaves
 
 // --- Cor ---
-#define BRIGHTNESS            1.05   // 1.0 = neutro | >1 mais claro | <1 mais escuro
-#define CONTRAST              1.15   // 1.0 = neutro | >1 mais contraste
-#define SATURATION            1.17   // 1.0 = neutro | >1 mais saturado | 0 = P&B
+#define BRIGHTNESS            1.00   // 1.0 = neutro | >1 mais claro | <1 mais escuro
+#define CONTRAST              1.00   // 1.0 = neutro | >1 mais contraste
+#define SATURATION            1.00   // 1.0 = neutro | >1 mais saturado | 0 = P&B
 #define GAMMA                 1.00   // 1.0 = neutro | <1 clareia sombras | >1 escurece
 
 // --- LCD / Opacidade ---

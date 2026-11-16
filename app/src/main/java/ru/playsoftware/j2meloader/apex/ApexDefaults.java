@@ -45,6 +45,7 @@ public final class ApexDefaults {
 		try {
 			SharedPreferences flag = c.getSharedPreferences(FLAG_FILE, Context.MODE_PRIVATE);
 			refresh320(c, flag);
+			ApexK4Neutral.run(c, flag);
 			if (flag.getBoolean(FLAG_KEY, false)) {
 				return;
 			}
