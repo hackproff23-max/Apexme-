@@ -181,7 +181,7 @@ public class ApexLetterPad {
 		moveTo(scr.left + scr.width() * p[0] - w / 2f, scr.top + scr.height() * p[1] - h / 2f);
 		// botao liga/desliga: padrao no topo, entre o fast-forward e o botao B
 		tsize = ApexPrefs.topButtonSize(scr.width(), scr.height());
-		float[] tp = landscape() ? ApexPrefs.pos(TOGGLE_POS, true, 0.595f, 0.090f)
+		float[] tp = landscape() ? ApexPrefs.pos(TOGGLE_POS, true, 0.595f, VirtualKeyboard.TOP_ROW_Y)
 				: ApexPrefs.pos(TOGGLE_POS, false, 0.675f, 0.097f);
 		placeToggle(scr.left + scr.width() * tp[0], scr.top + scr.height() * tp[1]);
 	}

@@ -174,11 +174,20 @@ public class ApexAnalog implements Runnable {
 		knobY = cy + dy;
 		int m = 0;
 		if (d > radius * 0.3f) {
-			double ang = Math.toDegrees(Math.atan2(dy, dx)); // 0 = direita, 90 = baixo
-			if (Math.abs(ang) < 67.5) m |= RIGHT;
-			if (Math.abs(ang) > 112.5) m |= LEFT;
-			if (ang > 22.5 && ang < 157.5) m |= DOWN;
-			if (ang < -22.5 && ang > -157.5) m |= UP;
+			if (ApexPrefs.fourWay()) {
+				// 4 direcoes: vale so o eixo em que o dedo foi mais longe (sem diagonais)
+				if (Math.abs(dx) >= Math.abs(dy)) {
+					m = dx > 0 ? RIGHT : LEFT;
+				} else {
+					m = dy > 0 ? DOWN : UP;
+				}
+			} else {
+				double ang = Math.toDegrees(Math.atan2(dy, dx)); // 0 = direita, 90 = baixo
+				if (Math.abs(ang) < 67.5) m |= RIGHT;
+				if (Math.abs(ang) > 112.5) m |= LEFT;
+				if (ang > 22.5 && ang < 157.5) m |= DOWN;
+				if (ang < -22.5 && ang > -157.5) m |= UP;
+			}
 		}
 		setMask(m);
 		invalidate();

@@ -108,7 +108,7 @@ public class LoadProfileDialog extends DialogFragment {
 	private void onItemClick(AdapterView<?> adapterView, View view, int pos, long l) {
 		final Profile profile = profiles.get(pos);
 		final boolean hasConfig = profile.hasConfig() || profile.hasOldConfig();
-		final boolean hasVk = profile.hasKeyLayout() || profile.hasApexExtras();
+		final boolean hasVk = profile.hasKeyLayout() || profile.hasApexExtras() || profile.usesDefaultKeyboard();
 		binding.cbConfig.setEnabled(hasConfig && hasVk);
 		binding.cbConfig.setChecked(hasConfig);
 		binding.cbKeyboard.setEnabled(hasVk && hasConfig);

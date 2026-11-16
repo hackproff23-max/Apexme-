@@ -405,6 +405,15 @@ public final class ApexPrefs {
 		sp().edit().putString("dpad_map", sb.toString()).apply();
 	}
 
+	/** Apenas 4 direcoes (cima, baixo, esquerda, direita) no D-pad e no analogico (padrao: 8). */
+	public static boolean fourWay() {
+		return sp().getBoolean("four_way", false);
+	}
+
+	public static void setFourWay(boolean v) {
+		sp().edit().putBoolean("four_way", v).apply();
+	}
+
 	// ---------------- fast-forward ----------------
 	public static final float[] FF_SPEEDS = {1f, 1.25f, 1.5f, 2f, 3f, 4f, 6f, 8f, 16f, 32f};
 	public static final String FF = "fastforward";
@@ -905,6 +914,7 @@ public final class ApexPrefs {
 		o.put("dpad_ligado", dpadEnabled());
 		o.put("dpad_tamanho", dpadScale());
 		o.put("dpad_mapa", sp().getString("dpad_map", ""));
+		o.put("quatro_direcoes", fourWay());
 		o.put("ff_ligado", ffEnabled());
 		o.put("ff_velocidade", (double) ffSpeed());
 		o.put("opacidade_normal", normalOpacity());
@@ -938,6 +948,7 @@ public final class ApexPrefs {
 		if (o.has("dpad_ligado")) e.putBoolean("dpad_on", o.optBoolean("dpad_ligado"));
 		if (o.has("dpad_tamanho")) e.putFloat("dpad_scale", (float) o.optDouble("dpad_tamanho", 1));
 		if (o.has("dpad_mapa")) e.putString("dpad_map", o.optString("dpad_mapa", ""));
+		if (o.has("quatro_direcoes")) e.putBoolean("four_way", o.optBoolean("quatro_direcoes"));
 		if (o.has("ff_ligado")) e.putBoolean("ff_on", o.optBoolean("ff_ligado"));
 		if (o.has("ff_velocidade")) e.putFloat("ff_speed_f", (float) o.optDouble("ff_velocidade", 2));
 		if (o.has("opacidade_normal")) e.putFloat("op_normal", (float) o.optDouble("opacidade_normal", 0.7));

@@ -171,6 +171,16 @@ public class ApexDpad implements Runnable {
 		float cs = side / 3f;
 		int col = Math.max(0, Math.min(2, (int) Math.floor((x - rect.left) / cs)));
 		int row = Math.max(0, Math.min(2, (int) Math.floor((y - rect.top) / cs)));
+		if (ApexPrefs.fourWay() && row != 1 && col != 1) {
+			// 4 direcoes: no canto vale o eixo em que o dedo esta mais longe do centro
+			float dx = x - (rect.left + 1.5f * cs);
+			float dy = y - (rect.top + 1.5f * cs);
+			if (Math.abs(dx) >= Math.abs(dy)) {
+				row = 1;
+			} else {
+				col = 1;
+			}
+		}
 		setCell(dirIndex(row, col));
 		invalidate();
 	}

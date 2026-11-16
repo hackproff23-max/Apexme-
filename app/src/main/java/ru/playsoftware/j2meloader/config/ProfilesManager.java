@@ -97,6 +97,10 @@ public class ProfilesManager {
 			}
 			if (keyboard && from.hasKeyLayout()) {
 				FileUtils.copyFileUsingChannel(from.getKeyLayout(), dstKeyLayout);
+			} else if (keyboard && from.usesDefaultKeyboard() && dstKeyLayout.exists()) {
+				// o jogo volta a usar o teclado padrao do emulador
+				//noinspection ResultOfMethodCallIgnored
+				dstKeyLayout.delete();
 			}
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();

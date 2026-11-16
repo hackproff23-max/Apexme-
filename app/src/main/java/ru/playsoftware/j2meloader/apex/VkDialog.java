@@ -120,6 +120,11 @@ public final class VkDialog {
 			showDpadMapping(a, vk);
 		}));
 
+		root.addView(ApexUi.toggle(a, "Apenas 4 direções (D-pad e analógico)", ApexPrefs.fourWay(), on -> {
+			ApexPrefs.setFourWay(on);
+			relayout(vk);
+		}));
+
 		root.addView(ApexUi.section(a, "Analógico"));
 		root.addView(ApexUi.toggle(a, "Mostrar analógico", ApexPrefs.analogEnabled(), on -> {
 			ApexPrefs.setAnalogEnabled(on);

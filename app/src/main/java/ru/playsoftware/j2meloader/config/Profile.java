@@ -69,6 +69,11 @@ public class Profile implements Comparable<Profile> {
 		return new File(Config.getProfilesDir(), name + Config.PROFILE_APEX_IMAGES_DIR);
 	}
 
+	/** Perfil sem teclado proprio que manda usar o teclado padrao do emulador. */
+	public boolean usesDefaultKeyboard() {
+		return new File(Config.getProfilesDir(), name + "/teclado_padrao.txt").exists();
+	}
+
 	public boolean hasApexExtras() {
 		return getApexExtras().exists();
 	}

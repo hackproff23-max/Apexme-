@@ -25,8 +25,8 @@ public final class ApexDefaults {
 	private static final String FLAG_FILE = "apex_defaults";
 	/** v3: o shader padrao passou de J5PRIME para "4k resolution". Roda uma vez tambem em quem ja tinha a v2. */
 	private static final String FLAG_KEY = "installed_v3";
-	/** v4: perfil 320 refeito com o teclado padrao novo. */
-	private static final String FLAG_320 = "profile320_v4";
+	/** v5: perfil 320 refeito com o teclado padrao novo e o marcador teclado_padrao.txt. */
+	private static final String FLAG_320 = "profile320_v5";
 	/** Mesmo arquivo de preferencias usado por ApexPrefs. */
 	private static final String PREFS_FILE = "apex_extras";
 	/** Shader padrao antigo: continua na pasta shaders/ para quem quiser escolher. */

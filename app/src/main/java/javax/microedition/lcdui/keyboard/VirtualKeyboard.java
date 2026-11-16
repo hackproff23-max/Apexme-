@@ -982,15 +982,21 @@ public class VirtualKeyboard implements Overlay, Runnable {
 	 * L e R embaixo no meio; #, *, 0 e F no canto direito. O resto (setas, numeros, C, D) some,
 	 * porque o analogico e o D-pad fazem esse papel.
 	 */
+	/** Altura (fracao da tela) da fileira de cima: A, menu, fast-forward, letras e B. */
+	public static final float TOP_ROW_Y = 0.085f;
+
 	private void applyApexLayout() {
 		for (VirtualKey k : keypad) {
 			k.visible = false;
 		}
-		placeKey(KEY_A, 0.319f, 0.069f);
-		placeKey(KEY_MENU, 0.4125f, 0.090f);
-		placeKey(KEY_B, 0.700f, 0.069f);
-		placeKey(KEY_SOFT_LEFT, 0.449f, 0.907f);
+		// fileira de cima: mesma altura, espacos iguais (0.095) em volta do centro da tela
+		placeKey(KEY_A, 0.310f, TOP_ROW_Y);
+		placeKey(KEY_MENU, 0.405f, TOP_ROW_Y);
+		placeKey(KEY_B, 0.690f, TOP_ROW_Y);
+		// L e R simetricos no centro, na mesma altura do F
+		placeKey(KEY_SOFT_LEFT, 0.450f, 0.907f);
 		placeKey(KEY_SOFT_RIGHT, 0.550f, 0.907f);
+		// losango do canto direito: # em cima, F embaixo (mesma coluna); * e 0 na mesma linha, simetricos
 		placeKey(KEY_POUND, 0.873f, 0.621f);
 		placeKey(KEY_STAR, 0.802f, 0.757f);
 		placeKey(KEY_NUM0, 0.944f, 0.757f);

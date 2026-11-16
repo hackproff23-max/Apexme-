@@ -55,7 +55,8 @@ public class ApexFastForward {
 		float size = ApexPrefs.topButtonSize(scr.width(), scr.height());
 		w = size;
 		h = size;
-		float[] p = ApexPrefs.pos(POS, landscape(), 0.50f, 0.10f);
+		float[] p = landscape() ? ApexPrefs.pos(POS, true, 0.50f, VirtualKeyboard.TOP_ROW_Y)
+				: ApexPrefs.pos(POS, false, 0.50f, 0.10f);
 		place(scr.left + scr.width() * p[0], scr.top + scr.height() * p[1]);
 	}
 
