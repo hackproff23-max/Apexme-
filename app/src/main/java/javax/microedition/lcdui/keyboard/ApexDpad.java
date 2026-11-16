@@ -58,8 +58,7 @@ public class ApexDpad implements Runnable {
 		screen.set(scr);
 		float min = Math.min(scr.width(), scr.height());
 		side = min * 0.34f * ApexPrefs.dpadScale();
-		float[] p = landscape() ? ApexPrefs.pos(POS, true, 0.2925f, 0.785f)
-				: ApexPrefs.pos(POS, false, 0.80f, 0.55f);
+		float[] p = ApexPrefs.pos(POS, landscape(), landscape() ? 0.25f : 0.80f, landscape() ? 0.81f : 0.55f);
 		place(scr.left + scr.width() * p[0], scr.top + scr.height() * p[1]);
 	}
 
@@ -171,16 +170,6 @@ public class ApexDpad implements Runnable {
 		float cs = side / 3f;
 		int col = Math.max(0, Math.min(2, (int) Math.floor((x - rect.left) / cs)));
 		int row = Math.max(0, Math.min(2, (int) Math.floor((y - rect.top) / cs)));
-		if (ApexPrefs.fourWay() && row != 1 && col != 1) {
-			// 4 direcoes: no canto vale o eixo em que o dedo esta mais longe do centro
-			float dx = x - (rect.left + 1.5f * cs);
-			float dy = y - (rect.top + 1.5f * cs);
-			if (Math.abs(dx) >= Math.abs(dy)) {
-				row = 1;
-			} else {
-				col = 1;
-			}
-		}
 		setCell(dirIndex(row, col));
 		invalidate();
 	}

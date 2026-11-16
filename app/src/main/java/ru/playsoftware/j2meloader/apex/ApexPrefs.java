@@ -117,23 +117,8 @@ public final class ApexPrefs {
 				.putFloat("saturation", s).putFloat("lcd", lcd).apply();
 	}
 
-	/** Gama: 0.5 .. 2 (padrao 1). */
-	public static float gamma() {
-		return sp().getFloat("gamma", 1f);
-	}
-
-	/** Suavidade das curvas do shader 4k resolution: 0.05 .. 1 (padrao 0.45). */
-	public static float curveSoftness() {
-		return sp().getFloat("curve_soft", 0.45f);
-	}
-
-	public static void setExtraValues(float gamma, float soft) {
-		sp().edit().putFloat("gamma", gamma).putFloat("curve_soft", soft).apply();
-	}
-
 	public static void resetShaderValues() {
 		setColorValues(0f, 1f, 1f, 0f);
-		setExtraValues(1f, 0.45f);
 	}
 
 	public static File userShaderFile(String name) {
@@ -388,7 +373,7 @@ public final class ApexPrefs {
 	}
 
 	public static float dpadScale() {
-		return sp().getFloat("dpad_scale", 0.9f);
+		return sp().getFloat("dpad_scale", 1f);
 	}
 
 	public static void setDpadScale(float v) {
@@ -418,15 +403,6 @@ public final class ApexPrefs {
 			sb.append(m[i]);
 		}
 		sp().edit().putString("dpad_map", sb.toString()).apply();
-	}
-
-	/** Apenas 4 direcoes (cima, baixo, esquerda, direita) no D-pad e no analogico (padrao: 8). */
-	public static boolean fourWay() {
-		return sp().getBoolean("four_way", false);
-	}
-
-	public static void setFourWay(boolean v) {
-		sp().edit().putBoolean("four_way", v).apply();
 	}
 
 	// ---------------- fast-forward ----------------
@@ -503,19 +479,6 @@ public final class ApexPrefs {
 		sp().edit().putFloat("ab_scale", v).apply();
 	}
 
-	// ---------------- botoes de cima ----------------
-	/** Fracao do tamanho de tecla (maior lado / 12) usada pelos botoes de cima. */
-	public static final float TOP_RATIO = 0.72f;
-
-	/**
-	 * Tamanho unico (lado, em pixels) dos botoes de cima: A (mover), menu, fast-forward, liga/desliga
-	 * das letras e B (tamanho). Todos saem iguais ao botao de menu.
-	 */
-	public static float topButtonSize(float w, float h) {
-		float s = Math.max(w, h) / 12f * TOP_RATIO * buttonScale();
-		return abEditable() ? s * abScale() : s;
-	}
-
 	// ---------------- teclado virtual ----------------
 	/** Escala global dos botoes: 0.5 .. 2 (padrao 1). */
 	public static float buttonScale() {
@@ -537,7 +500,7 @@ public final class ApexPrefs {
 
 	/** Escala do analogico: 0.5 .. 2 (padrao 1). */
 	public static float analogScale() {
-		return sp().getFloat("analog_scale", 1.33f);
+		return sp().getFloat("analog_scale", 1f);
 	}
 
 	public static void setAnalogScale(float v) {
@@ -929,7 +892,6 @@ public final class ApexPrefs {
 		o.put("dpad_ligado", dpadEnabled());
 		o.put("dpad_tamanho", dpadScale());
 		o.put("dpad_mapa", sp().getString("dpad_map", ""));
-		o.put("quatro_direcoes", fourWay());
 		o.put("ff_ligado", ffEnabled());
 		o.put("ff_velocidade", (double) ffSpeed());
 		o.put("opacidade_normal", normalOpacity());
@@ -963,7 +925,6 @@ public final class ApexPrefs {
 		if (o.has("dpad_ligado")) e.putBoolean("dpad_on", o.optBoolean("dpad_ligado"));
 		if (o.has("dpad_tamanho")) e.putFloat("dpad_scale", (float) o.optDouble("dpad_tamanho", 1));
 		if (o.has("dpad_mapa")) e.putString("dpad_map", o.optString("dpad_mapa", ""));
-		if (o.has("quatro_direcoes")) e.putBoolean("four_way", o.optBoolean("quatro_direcoes"));
 		if (o.has("ff_ligado")) e.putBoolean("ff_on", o.optBoolean("ff_ligado"));
 		if (o.has("ff_velocidade")) e.putFloat("ff_speed_f", (float) o.optDouble("ff_velocidade", 2));
 		if (o.has("opacidade_normal")) e.putFloat("op_normal", (float) o.optDouble("opacidade_normal", 0.7));

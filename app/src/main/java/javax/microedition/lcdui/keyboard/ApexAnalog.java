@@ -58,8 +58,7 @@ public class ApexAnalog implements Runnable {
 		screen.set(scr);
 		float min = Math.min(scr.width(), scr.height());
 		radius = min * 0.13f * ApexPrefs.analogScale();
-		float[] p = landscape() ? ApexPrefs.pos(POS, true, 0.0906f, 0.785f)
-				: ApexPrefs.pos(POS, false, 0.15f, 0.70f);
+		float[] p = ApexPrefs.pos(POS, landscape(), 0.085f, landscape() ? 0.81f : 0.70f);
 		place(scr.left + scr.width() * p[0], scr.top + scr.height() * p[1]);
 	}
 
@@ -174,20 +173,11 @@ public class ApexAnalog implements Runnable {
 		knobY = cy + dy;
 		int m = 0;
 		if (d > radius * 0.3f) {
-			if (ApexPrefs.fourWay()) {
-				// 4 direcoes: vale so o eixo em que o dedo foi mais longe (sem diagonais)
-				if (Math.abs(dx) >= Math.abs(dy)) {
-					m = dx > 0 ? RIGHT : LEFT;
-				} else {
-					m = dy > 0 ? DOWN : UP;
-				}
-			} else {
-				double ang = Math.toDegrees(Math.atan2(dy, dx)); // 0 = direita, 90 = baixo
-				if (Math.abs(ang) < 67.5) m |= RIGHT;
-				if (Math.abs(ang) > 112.5) m |= LEFT;
-				if (ang > 22.5 && ang < 157.5) m |= DOWN;
-				if (ang < -22.5 && ang > -157.5) m |= UP;
-			}
+			double ang = Math.toDegrees(Math.atan2(dy, dx)); // 0 = direita, 90 = baixo
+			if (Math.abs(ang) < 67.5) m |= RIGHT;
+			if (Math.abs(ang) > 112.5) m |= LEFT;
+			if (ang > 22.5 && ang < 157.5) m |= DOWN;
+			if (ang < -22.5 && ang > -157.5) m |= UP;
 		}
 		setMask(m);
 		invalidate();
