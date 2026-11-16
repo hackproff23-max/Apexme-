@@ -505,7 +505,7 @@ public final class ApexPrefs {
 
 	// ---------------- botoes de cima ----------------
 	/** Fracao do tamanho de tecla (maior lado / 12) usada pelos botoes de cima. */
-	public static final float TOP_RATIO = 0.72f;
+	public static final float TOP_RATIO = 0.54f;
 
 	/**
 	 * Tamanho unico (lado, em pixels) dos botoes de cima: A (mover), menu, fast-forward, liga/desliga
